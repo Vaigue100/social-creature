@@ -36,7 +36,10 @@
       "Bash(node update-db-configs.js:*)",
       "Bash(git remote add:*)",
       "Bash(git push:*)",
-      "Bash(node export-creature-queue.js:*)"
+      "Bash(node export-creature-queue.js:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nAdd offline creature image generation queue\n\n- Created CSV queue with all 1,259 creatures (randomized order)\n- Added export script to generate queue from database\n- Queue includes all data needed for AI image generation\n- Created tracking CSV for completed images (gitignored)\n- Queue CSV committed for use on gaming PC without database access\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(python generate_more_creatures.py:*)",
+      "Bash(node export-detailed-prompts.js:*)"
     ],
     "deny": [],
     "ask": []
