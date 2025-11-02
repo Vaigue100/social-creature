@@ -80,10 +80,10 @@ function generateDetailedPrompt(creature) {
   const material = promptTemplates.materials[style] || 'cute living creature, natural style';
   parts.push(material);
 
-  // Subject with mood
+  // Subject with mood - emphasize it's a creature
   const mood = creature.mood_name.toLowerCase();
   const subspecies = creature.subspecies_name.toLowerCase();
-  parts.push(`${mood} ${subspecies} character`);
+  parts.push(`${mood} ${subspecies} creature character`, 'full body visible', 'complete creature');
 
   // Colors - more descriptive
   const colors = creature.colouring_name.toLowerCase().split(' & ');
@@ -120,14 +120,14 @@ function generateDetailedPrompt(creature) {
     parts.push(details);
   }
 
-  // Always add these
-  parts.push('natural environment', 'dynamic pose', 'stylized 3D art', 'no stand', 'no base', 'no pedestal');
+  // Always add these - ensure full creature in frame
+  parts.push('natural environment', 'dynamic pose', 'stylized 3D art', 'no stand', 'no base', 'no pedestal', 'full body shot', 'creature centered', 'entire creature visible');
 
   return parts.join(', ');
 }
 
 function generateNegativePrompt() {
-  return 'blurry, low quality, distorted, ugly, bad anatomy, text, watermark, realistic photo, scary, creepy, horror, human, person, nsfw, deformed, mutated, extra limbs, bad proportions, stand, pedestal, platform, base, display stand, statue base, mounted, toy stand, figurine base';
+  return 'blurry, low quality, distorted, ugly, bad anatomy, text, watermark, realistic photo, scary, creepy, horror, human, person, nsfw, deformed, mutated, extra limbs, bad proportions, stand, pedestal, platform, base, display stand, statue base, mounted, toy stand, figurine base, cropped, cut off, partial view, close up, zoomed in, body cut off, out of frame, abstract, object, item, tool, weapon, inanimate object, not a creature';
 }
 
 async function exportDetailedPrompts() {
