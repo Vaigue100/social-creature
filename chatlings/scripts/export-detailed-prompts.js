@@ -11,16 +11,71 @@ const config = { ...require('./db-config'), database: 'chatlings' };
 // Detailed prompt templates for variety
 const promptTemplates = {
   poses: {
-    'Roaring stance': ['roaring with mouth open', 'fierce roar pose', 'roaring stance with raised head'],
-    'Sitting': ['sitting pose', 'sitting peacefully', 'seated position'],
-    'Floating': ['floating in air', 'hovering gently', 'levitating'],
-    'Bouncing': ['mid-bounce', 'jumping up', 'bouncing energetically'],
-    'Dancing': ['dancing pose', 'rhythmic movement', 'joyful dance'],
-    'Sleeping': ['sleeping peacefully', 'curled up sleeping', 'resting'],
-    'Playing': ['playful pose', 'playing energetically', 'having fun'],
-    'Spinning': ['spinning around', 'rotating pose', 'twirling'],
-    'Running': ['running pose', 'mid-run', 'running fast'],
-    'Waving': ['waving gesture', 'friendly wave', 'greeting wave']
+    'Beat loop': 'rhythmic beating motion',
+    'Blink & hover': 'blinking while hovering',
+    'Bobbing motion': 'bobbing up and down',
+    'Bounce loop': 'continuous bouncing',
+    'Bouncing': 'energetic bouncing',
+    'Branch sway': 'swaying like branches',
+    'Charging rush': 'charging forward powerfully',
+    'Coil & hiss': 'coiled and hissing',
+    'Coil & stretch': 'coiling and stretching',
+    'Color shift': 'shifting colors',
+    'Dancing': 'joyful dance',
+    'Dart & pause': 'darting then pausing',
+    'Data pulse': 'pulsing with data streams',
+    'Dive motion': 'diving downward',
+    'Drift & swirl': 'drifting and swirling',
+    'Echo pulse': 'pulsing with echoes',
+    'Fan display': 'displaying like a fan',
+    'Flame dance': 'dancing flames',
+    'Floating gently': 'gently floating',
+    'Fractal bloom': 'blooming fractal pattern',
+    'Gallop & glow': 'galloping while glowing',
+    'Glitch loop': 'glitching repeatedly',
+    'Ground rumble': 'rumbling the ground',
+    'Head rotation': 'rotating head',
+    'Jet roar': 'jetting with roar',
+    'Leaping arc': 'leaping in arc',
+    'Light pulse': 'pulsing light',
+    'Lightning dash': 'dashing like lightning',
+    'Mane shake': 'shaking mane',
+    'Orbit shimmer': 'shimmering orbit',
+    'Phase flicker': 'flickering between phases',
+    'Playing': 'playful pose',
+    'Pop-up animation': 'popping up',
+    'Pounce loop': 'pouncing repeatedly',
+    'Pulse & drift': 'pulsing while drifting',
+    'Reverse shimmer': 'reverse shimmering',
+    'Ripple motion': 'rippling motion',
+    'Rising burst': 'bursting upward',
+    'Roaring stance': 'fierce roar pose',
+    'Running': 'running fast',
+    'Shuffle & sprout': 'shuffling and sprouting',
+    'Sitting': 'sitting peacefully',
+    'Sleeping': 'sleeping peacefully',
+    'Slow orbit': 'slowly orbiting',
+    'Slow prowl': 'prowling slowly',
+    'Slow stomp': 'stomping slowly',
+    'Solar burst': 'bursting with solar energy',
+    'Sound ripple': 'rippling sound waves',
+    'Spinning': 'spinning around',
+    'Spiral drift': 'drifting in spiral',
+    'Spiral float': 'floating in spiral',
+    'Stalking motion': 'stalking prey',
+    'Symbol rotation': 'rotating symbols',
+    'Tail flick': 'flicking tail',
+    'Tentacle swirl': 'swirling tentacles',
+    'Territorial stance': 'territorial stance',
+    'Twitchy motion': 'twitchy movements',
+    'Veil drift': 'drifting veil',
+    'Waving': 'friendly wave',
+    'Web spin': 'spinning web',
+    'Wiggle motion': 'wiggling',
+    'Wing beat + roar': 'beating wings while roaring',
+    'Wing flutter': 'fluttering wings',
+    'Wing stretch': 'stretching wings',
+    'Wing sweep': 'sweeping wings'
   },
 
   materials: {
@@ -91,24 +146,31 @@ const promptTemplates = {
   },
 
   elementEffects: {
-    'Fire': 'subtle fire effects, warm glow, flame accents',
-    'Water': 'water droplets, flowing water elements, blue shimmer',
-    'Lightning': 'electric sparks, lightning details, energy crackling',
-    'Ice': 'frost crystals, icy effects, cold mist',
-    'Nature': 'small leaves, flower details, natural elements',
-    'Shadow': 'dark aura, shadow wisps, mysterious glow',
-    'Light': 'glowing aura, light rays, radiant effect',
-    'Magic': 'magical sparkles, mystical runes, arcane glow',
-    'Spirit': 'ethereal glow, spiritual wisps, ghostly aura',
+    'Air': 'swirling wind, air currents, gentle breeze effects',
+    'Chaos': 'chaotic energy swirls, unstable patterns',
     'Code': 'digital patterns, matrix code, tech patterns',
-    'Gravity': 'floating debris, gravity distortion effects',
-    'Electric': 'electrical sparks, energy bolts',
-    'Crystal': 'crystalline patterns, gem reflections',
-    'Sound': 'sound wave effects, musical notes',
-    'Dream': 'dreamy particles, soft nebula effects',
-    'Void': 'void energy, dark particles',
-    'Chaos': 'chaotic energy swirls',
-    'Order': 'geometric patterns, structured energy'
+    'Cosmic': 'cosmic dust, star particles, nebula wisps',
+    'Crystal': 'crystalline patterns, gem reflections, faceted light',
+    'Dream': 'dreamy particles, soft nebula effects, ethereal mist',
+    'Earth': 'rocky texture, stone fragments, earthen aura',
+    'Electric': 'electrical sparks, energy bolts, crackling power',
+    'Energy': 'pure energy waves, power surges, glowing essence',
+    'Fire': 'subtle fire effects, warm glow, flame accents',
+    'Gravity': 'floating debris, gravity distortion effects, spatial warping',
+    'Ice': 'frost crystals, icy effects, cold mist',
+    'Light': 'glowing aura, light rays, radiant effect',
+    'Lightning': 'electric sparks, lightning details, energy crackling',
+    'Magic': 'magical sparkles, mystical runes, arcane glow',
+    'Nature': 'small leaves, flower details, natural elements',
+    'Order': 'geometric patterns, structured energy, perfect symmetry',
+    'Shadow': 'dark aura, shadow wisps, mysterious glow',
+    'Sound': 'sound wave effects, musical notes, vibration lines',
+    'Space': 'stars, void background, cosmic emptiness',
+    'Spirit': 'ethereal glow, spiritual wisps, ghostly aura',
+    'Storm': 'storm clouds, lightning flashes, turbulent energy',
+    'Time': 'clock motifs, temporal distortion, time particles',
+    'Void': 'void energy, dark particles, emptiness aura',
+    'Water': 'water droplets, flowing water elements, blue shimmer'
   }
 };
 
@@ -133,9 +195,8 @@ function generateDetailedPrompt(creature) {
     parts.push(`${creature.colouring_name.toLowerCase()} colors`);
   }
 
-  // Pose - varied descriptions
-  const motionOptions = promptTemplates.poses[creature.motion_name] || [creature.motion_name.toLowerCase()];
-  const motion = motionOptions[Math.floor(Math.random() * motionOptions.length)];
+  // Pose/Motion
+  const motion = promptTemplates.poses[creature.motion_name] || creature.motion_name.toLowerCase();
   parts.push(motion);
 
   // Elemental effects
