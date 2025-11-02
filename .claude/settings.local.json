@@ -4,7 +4,9 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nAdd Stable Diffusion batch generation for gaming PC\n\n- Created batch_generate_images.py for RTX 4070\n- Reads creature_prompts_queue.csv (1,259 creatures)\n- Generates 9 images per creature = 11,331 total images\n- Tracks progress, can stop/resume anytime\n- Optimized settings for RTX 4070 (3-5 sec per image)\n- Added comprehensive gaming PC setup guide\n\nEstimated generation time: 10-16 hours total\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(node generate-diverse-creatures.js:*)",
       "Bash(node verify-diversity.js:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "WebFetch(domain:perchance.org)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []
