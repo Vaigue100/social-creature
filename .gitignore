@@ -25,7 +25,9 @@ ENV/
 chatlings/artwork/*.png
 chatlings/artwork/*.jpg
 chatlings/artwork/*.jpeg
+chatlings/artwork/creature_images_created.csv
 !chatlings/artwork/README.md
+!chatlings/artwork/creature_images_queue.csv
 
 # Database dumps
 *.sql.backup

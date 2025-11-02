@@ -33,7 +33,10 @@
       "Bash(git init:*)",
       "Bash(git check-ignore:*)",
       "Bash(git add:*)",
-      "Bash(node update-db-configs.js:*)"
+      "Bash(node update-db-configs.js:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(node export-creature-queue.js:*)"
     ],
     "deny": [],
     "ask": []
