@@ -90,6 +90,22 @@ def process_queue():
         reader = csv.DictReader(f)
         creatures = list(reader)
 
+    if not creatures:
+        print("[ERROR] No creatures found in CSV file!")
+        print(f"Check file: {QUEUE_FILE}")
+        return
+
+    # Check if required columns exist
+    required_cols = ['creature_id', 'creature_name', 'prompt', 'negative_prompt']
+    first_creature = creatures[0]
+    missing_cols = [col for col in required_cols if col not in first_creature]
+
+    if missing_cols:
+        print(f"[ERROR] Missing columns in CSV: {missing_cols}")
+        print(f"Available columns: {list(first_creature.keys())}")
+        print("\nMake sure you've run: git pull")
+        return
+
     total_creatures = len(creatures)
     remaining = [c for c in creatures if c['creature_id'] not in completed]
 
