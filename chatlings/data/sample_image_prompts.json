@@ -1,0 +1,92 @@
+[
+  {
+    "creature_id": "e62033dc-2b56-4093-96d0-ce8ebf1398d4",
+    "creature_name": "Eagle Chimera of Gold Gothic",
+    "creature_shortname": "AquilaChimeraAu",
+    "rarity": "Uncommon",
+    "prompt": "A aggressive eagle chimera, with dark gothic aesthetics, ornate details, and dramatic shadows, featuring gold and brown colors, in an aggressive roaring pose with mouth open, with magical runes and arcane energy, high in the clouds during golden hour, detailed, well-lit, clear",
+    "negative_prompt": "blurry, low quality, distorted, disfigured, ugly, bad anatomy, watermark, signature, text, human, person, realistic photo, deformed, mutated, extra limbs",
+    "style_tags": "Gothic, Aggressive, Magic, Uncommon"
+  },
+  {
+    "creature_id": "4dca9ba4-914e-438d-a2ce-c47206a9157d",
+    "creature_name": "Proud Gold Ice Dragon",
+    "creature_shortname": "OrgullosoAurumI",
+    "rarity": "Uncommon",
+    "prompt": "A proud ice dragon, rendered in a realistic, natural style with organic textures, featuring gold and brown colors, in an aggressive roaring pose with mouth open, with magical runes and arcane energy, in tower, detailed, well-lit, clear",
+    "negative_prompt": "blurry, low quality, distorted, disfigured, ugly, bad anatomy, watermark, signature, text, human, person, realistic photo, deformed, mutated, extra limbs",
+    "style_tags": "Naturalistic, Proud, Magic, Uncommon"
+  },
+  {
+    "creature_id": "3230870e-2124-4390-8839-ceb4af32c178",
+    "creature_name": "Basilisk of Gold Naturalistic",
+    "creature_shortname": "BasiliskAurumNa",
+    "rarity": "Legendary",
+    "prompt": "A proud basilisk, rendered in a realistic, natural style with organic textures, featuring gold and brown colors, in an aggressive roaring pose with mouth open, with magical runes and arcane energy, among ancient crumbling ruins overgrown with vines, masterpiece, highly detailed, 8k, dramatic cinematic lighting, epic composition, professional quality",
+    "negative_prompt": "blurry, low quality, distorted, disfigured, ugly, bad anatomy, watermark, signature, text, human, person, realistic photo, deformed, mutated, extra limbs",
+    "style_tags": "Naturalistic, Proud, Magic, Legendary"
+  },
+  {
+    "creature_id": "e7c9f417-f197-47a4-a990-03b9c55793e3",
+    "creature_name": "Eagle Chimera of Silver Gothic",
+    "creature_shortname": "AguilaChimeraPl",
+    "rarity": "Common",
+    "prompt": "A proud eagle chimera, with dark gothic aesthetics, ornate details, and dramatic shadows, featuring silver and gold colors, in an aggressive roaring pose with mouth open, crackling with electric bolts, in marsh, clean, clear, good quality",
+    "negative_prompt": "blurry, low quality, distorted, disfigured, ugly, bad anatomy, watermark, signature, text, human, person, realistic photo, deformed, mutated, extra limbs",
+    "style_tags": "Gothic, Proud, Lightning, Common"
+  },
+  {
+    "creature_id": "c93c8675-34f6-437d-9e4b-cc46da9469c2",
+    "creature_name": "Gothic Rune Sigil of Sigil",
+    "creature_shortname": "GothicRuneSigil",
+    "rarity": "Uncommon",
+    "prompt": "A aggressive rune sigil, with dark gothic aesthetics, ornate details, and dramatic shadows, featuring gold and flame colors, in an aggressive roaring pose with mouth open, pulsing with pure energy waves, in sacred grove, detailed, well-lit, clear",
+    "negative_prompt": "blurry, low quality, distorted, disfigured, ugly, bad anatomy, watermark, signature, text, human, person, realistic photo, deformed, mutated, extra limbs",
+    "style_tags": "Gothic, Aggressive, Energy, Uncommon"
+  },
+  {
+    "creature_id": "fb892fc3-9c25-406b-bcd0-b6005d557531",
+    "creature_name": "Proud Silver Shifting Spectra",
+    "creature_shortname": "SuperbusArgentu",
+    "rarity": "Common",
+    "prompt": "A proud shifting spectra, with dark gothic aesthetics, ornate details, and dramatic shadows, featuring silver and gold colors, in an aggressive roaring pose with mouth open, pulsing with pure energy waves, in marsh, clean, clear, good quality",
+    "negative_prompt": "blurry, low quality, distorted, disfigured, ugly, bad anatomy, watermark, signature, text, human, person, realistic photo, deformed, mutated, extra limbs",
+    "style_tags": "Gothic, Proud, Energy, Common"
+  },
+  {
+    "creature_id": "a4b92926-3c8a-4e30-98d5-2ab876fba7ec",
+    "creature_name": "The Proud Fox",
+    "creature_shortname": "SuperbusVulpes",
+    "rarity": "Common",
+    "prompt": "A proud fox, rendered in a realistic, natural style with organic textures, featuring gold and flame colors, in an aggressive roaring pose with mouth open, pulsing with pure energy waves, near an active volcano with lava flows, clean, clear, good quality",
+    "negative_prompt": "blurry, low quality, distorted, disfigured, ugly, bad anatomy, watermark, signature, text, human, person, realistic photo, deformed, mutated, extra limbs",
+    "style_tags": "Naturalistic, Proud, Energy, Common"
+  },
+  {
+    "creature_id": "db5b43f6-e73b-48df-93b6-4e9a55a88223",
+    "creature_name": "Crystal Dragon of Gold Naturalistic",
+    "creature_shortname": "CrystalDracoAur",
+    "rarity": "Uncommon",
+    "prompt": "A proud crystal dragon, rendered in a realistic, natural style with organic textures, featuring gold and brown colors, in an aggressive roaring pose with mouth open, emanating dark shadow tendrils, in cliffs, detailed, well-lit, clear",
+    "negative_prompt": "blurry, low quality, distorted, disfigured, ugly, bad anatomy, watermark, signature, text, human, person, realistic photo, deformed, mutated, extra limbs",
+    "style_tags": "Naturalistic, Proud, Shadow, Uncommon"
+  },
+  {
+    "creature_id": "541dbb8d-8337-4849-97c0-5b6623d4adfa",
+    "creature_name": "Gold Gothic Bat",
+    "creature_shortname": "AurumGothicBat",
+    "rarity": "Common",
+    "prompt": "A proud bat, with dark gothic aesthetics, ornate details, and dramatic shadows, featuring gold and brown colors, in an aggressive roaring pose with mouth open, in a time-warped landscape, clean, clear, good quality",
+    "negative_prompt": "blurry, low quality, distorted, disfigured, ugly, bad anatomy, watermark, signature, text, human, person, realistic photo, deformed, mutated, extra limbs",
+    "style_tags": "Gothic, Proud, Sound, Common"
+  },
+  {
+    "creature_id": "5c4bd534-8d63-4a2b-85b1-f182edc56441",
+    "creature_name": "Naturalistic Chrono Beast of Time",
+    "creature_shortname": "NaturalisticChr",
+    "rarity": "Common",
+    "prompt": "A aggressive chrono beast, rendered in a realistic, natural style with organic textures, featuring silver and gold colors, in an aggressive roaring pose with mouth open, with fire particles and ember effects, in marsh, clean, clear, good quality",
+    "negative_prompt": "blurry, low quality, distorted, disfigured, ugly, bad anatomy, watermark, signature, text, human, person, realistic photo, deformed, mutated, extra limbs",
+    "style_tags": "Naturalistic, Aggressive, Fire, Common"
+  }
+]

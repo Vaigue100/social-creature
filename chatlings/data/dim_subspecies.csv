@@ -1,0 +1,143 @@
+category,species,subspecies
+Real,Mammal,Lion
+Real,Mammal,Elephant
+Real,Mammal,Fox
+Real,Mammal,Bat
+Real,Mammal,Wolf
+Real,Mammal,Bear
+Real,Mammal,Tiger
+Real,Mammal,Leopard
+Real,Avian,Owl
+Real,Avian,Falcon
+Real,Avian,Peacock
+Real,Avian,Raven
+Real,Avian,Eagle
+Real,Avian,Hawk
+Real,Avian,Parrot
+Real,Avian,Hummingbird
+Real,Aquatic,Dolphin
+Real,Aquatic,Jellyfish
+Real,Aquatic,Octopus
+Real,Aquatic,Seahorse
+Real,Aquatic,Shark
+Real,Aquatic,Whale
+Real,Aquatic,Turtle
+Real,Aquatic,Stingray
+Real,Insect,Butterfly
+Real,Insect,Mantis
+Real,Insect,Firefly
+Real,Insect,Beetle
+Real,Insect,Dragonfly
+Real,Insect,Moth
+Real,Insect,Bee
+Real,Insect,Ant
+Mythical,Dragon,Fire Dragon
+Mythical,Dragon,Ice Dragon
+Mythical,Dragon,Storm Dragon
+Mythical,Dragon,Shadow Dragon
+Mythical,Dragon,Crystal Dragon
+Mythical,Dragon,Ancient Dragon
+Mythical,Phoenix,Flame Phoenix
+Mythical,Phoenix,Frost Phoenix
+Mythical,Phoenix,Thunder Phoenix
+Mythical,Phoenix,Solar Phoenix
+Mythical,Celestial Beast,Unicorn
+Mythical,Celestial Beast,Griffin
+Mythical,Celestial Beast,Kitsune
+Mythical,Celestial Beast,Qilin
+Mythical,Celestial Beast,Pegasus
+Mythical,Serpent,Basilisk
+Mythical,Serpent,Hydra
+Mythical,Serpent,Leviathan
+Mythical,Serpent,Wyrm
+Mythical,Chimera,Lion Chimera
+Mythical,Chimera,Eagle Chimera
+Mythical,Chimera,Serpent Chimera
+Cartoon,Blob,Blob Critter
+Cartoon,Blob,Slime Blob
+Cartoon,Blob,Jelly Blob
+Cartoon,Blob,Goo Blob
+Cartoon,Geometric,Cube Beast
+Cartoon,Geometric,Sphere Sprite
+Cartoon,Geometric,Pyramid Pet
+Cartoon,Geometric,Crystal Cube
+Cartoon,Stretchy,Stretchy Snake
+Cartoon,Stretchy,Elastic Cat
+Cartoon,Stretchy,Bendy Dog
+Cartoon,Stretchy,Flexy Fox
+Cartoon,Object,Talking Toaster
+Cartoon,Object,Dancing Book
+Cartoon,Object,Flying Chair
+Cartoon,Object,Singing Lamp
+Cartoon,Abstract,Floating Head
+Cartoon,Abstract,Googly-eyed Gremlin
+Cartoon,Abstract,Pixel Pet
+Cartoon,Abstract,Emoji Avatar
+Synthetic,AI Construct,Data Phantom
+Synthetic,AI Construct,Logic Beast
+Synthetic,AI Construct,Neural Network
+Synthetic,AI Construct,Algorithm Entity
+Synthetic,Glitch,Glitch Creature
+Synthetic,Glitch,Corrupted Sprite
+Synthetic,Glitch,Error Beast
+Synthetic,Glitch,Bug Monster
+Synthetic,Cyber,Cyber Dragon
+Synthetic,Cyber,Mecha Wolf
+Synthetic,Cyber,Holo Tiger
+Synthetic,Cyber,Digital Phoenix
+Synthetic,Code,Code Spider
+Synthetic,Code,Data Worm
+Synthetic,Code,Script Snake
+Synthetic,Code,Binary Bug
+Nature Spirit,Tree,Treefolk
+Nature Spirit,Tree,Ancient Oak
+Nature Spirit,Tree,Willow Spirit
+Nature Spirit,Tree,Cherry Blossom
+Nature Spirit,Elemental Plant,Mossling
+Nature Spirit,Elemental Plant,Vineborn
+Nature Spirit,Elemental Plant,Thornling
+Nature Spirit,Elemental Plant,Petalbeast
+Nature Spirit,Weather,Cloud Sprite
+Nature Spirit,Weather,Thunder Cub
+Nature Spirit,Weather,Frost Wisp
+Nature Spirit,Weather,Storm Child
+Nature Spirit,Seasonal,Autumn Fox
+Nature Spirit,Seasonal,Spring Bloom
+Nature Spirit,Seasonal,Summer Blaze
+Nature Spirit,Seasonal,Winter Shade
+Cosmic,Nebula,Nebula Serpent
+Cosmic,Nebula,Starcloud Dragon
+Cosmic,Nebula,Galaxy Wyrm
+Cosmic,Gravity,Gravity Whale
+Cosmic,Gravity,Void Leviathan
+Cosmic,Gravity,Singularity Beast
+Cosmic,Time,Time Phantom
+Cosmic,Time,Chrono Beast
+Cosmic,Time,Temporal Shadow
+Cosmic,Space,Asteroid Turtle
+Cosmic,Space,Comet Fox
+Cosmic,Space,Meteor Wolf
+Abstract,Echo,Echo Orb
+Abstract,Echo,Resonance Sprite
+Abstract,Echo,Sound Beast
+Abstract,Fractal,Fractal Beast
+Abstract,Fractal,Pattern Creature
+Abstract,Fractal,Geometric Spirit
+Abstract,Dimension,Dimensional Shadow
+Abstract,Dimension,Rift Walker
+Abstract,Dimension,Phase Shifter
+Elemental Mood,Radiance,Light Radiance
+Elemental Mood,Radiance,Golden Radiance
+Elemental Mood,Radiance,Prismatic Radiance
+Elemental Mood,Pulse,Heart Pulse
+Elemental Mood,Pulse,Energy Pulse
+Elemental Mood,Pulse,Rhythm Pulse
+Elemental Mood,Echo,Pale Echo
+Elemental Mood,Echo,Mirror Echo
+Elemental Mood,Echo,Fading Echo
+Elemental Mood,Spectra,Rainbow Spectra
+Elemental Mood,Spectra,Aurora Spectra
+Elemental Mood,Spectra,Shifting Spectra
+Elemental Mood,Sigil,Ancient Sigil
+Elemental Mood,Sigil,Rune Sigil
+Elemental Mood,Sigil,Mystic Sigil
