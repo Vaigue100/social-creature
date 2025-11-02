@@ -6,3 +6,4 @@ aiofiles>=23.2.1
 aiohttp>=3.13.2
 playwright>=1.55.0
 python-dotenv>=1.0.0
+requests>=2.31.0
