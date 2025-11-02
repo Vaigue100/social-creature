@@ -24,14 +24,14 @@ const promptTemplates = {
   },
 
   materials: {
-    'Cute Figurine': 'smooth vinyl material, collectible toy style, cute chibi proportions',
-    'Kawaii': 'super cute style, adorable proportions, sparkly eyes',
-    'Chibi': 'chibi proportions, oversized head, tiny body',
-    'Crystal': 'crystalline material, gemstone texture, translucent',
-    'Fluffy': 'soft fuzzy texture, plush toy style, fluffy fur',
-    'Steampunk': 'brass gears, Victorian mechanisms, mechanical parts',
-    'Cyberpunk': 'neon lights, cybernetic parts, futuristic tech',
-    'Gothic': 'dark ornate details, elegant gothic style'
+    'Cute Figurine': 'cute living creature, natural texture, animated style',
+    'Kawaii': 'adorable living creature, expressive features, vibrant colors',
+    'Chibi': 'cute living creature, chibi style proportions, big expressive eyes',
+    'Crystal': 'crystalline creature, gemstone texture, translucent living being',
+    'Fluffy': 'soft fluffy creature, natural fur texture, living animal',
+    'Steampunk': 'steampunk creature with brass gears, Victorian mechanisms, mechanical living being',
+    'Cyberpunk': 'cyberpunk creature with neon lights, cybernetic parts, futuristic living being',
+    'Gothic': 'gothic creature, dark ornate details, elegant living being'
   },
 
   lighting: {
@@ -77,7 +77,7 @@ function generateDetailedPrompt(creature) {
 
   // Base description
   const style = creature.style_name;
-  const material = promptTemplates.materials[style] || 'cute figurine style';
+  const material = promptTemplates.materials[style] || 'cute living creature, natural style';
   parts.push(material);
 
   // Subject with mood
@@ -121,13 +121,13 @@ function generateDetailedPrompt(creature) {
   }
 
   // Always add these
-  parts.push('white background', 'centered composition', '3D render style');
+  parts.push('natural environment', 'dynamic pose', 'stylized 3D art', 'no stand', 'no base', 'no pedestal');
 
   return parts.join(', ');
 }
 
 function generateNegativePrompt() {
-  return 'blurry, low quality, distorted, ugly, bad anatomy, text, watermark, realistic photo, scary, creepy, horror, human, person, nsfw, deformed, mutated, extra limbs, bad proportions';
+  return 'blurry, low quality, distorted, ugly, bad anatomy, text, watermark, realistic photo, scary, creepy, horror, human, person, nsfw, deformed, mutated, extra limbs, bad proportions, stand, pedestal, platform, base, display stand, statue base, mounted, toy stand, figurine base';
 }
 
 async function exportDetailedPrompts() {

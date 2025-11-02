@@ -22,8 +22,8 @@ IMAGES_PER_CREATURE = 9
 
 # Stable Diffusion settings (optimized for RTX 4070)
 SD_SETTINGS = {
-    "steps": 30,
-    "sampler_name": "DPM++ 2M Karras",
+    "steps": 35,  # Slightly more steps for better quality
+    "sampler_name": "DPM++ SDE Karras",  # Better quality for creatures
     "cfg_scale": 7,
     "width": 512,
     "height": 512,
