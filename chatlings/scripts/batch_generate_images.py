@@ -20,15 +20,15 @@ SD_API_URL = "http://localhost:7860"
 QUEUE_FILE = Path(__file__).parent.parent / 'artwork' / 'creature_prompts_queue.csv'
 OUTPUT_DIR = Path(__file__).parent.parent / 'artwork'
 TRACKING_FILE = OUTPUT_DIR / 'creature_images_created.csv'
-IMAGES_PER_CREATURE = 9
+IMAGES_PER_CREATURE = 4  # Changed from 9 to 4
 
 # Stable Diffusion settings (optimized for RTX 4070)
 SD_SETTINGS = {
     "steps": 35,  # Slightly more steps for better quality
     "sampler_name": "DPM++ SDE Karras",  # Better quality for creatures
     "cfg_scale": 7,
-    "width": 512,
-    "height": 512,
+    "width": 1024,  # Changed from 512 to 1024
+    "height": 1024,  # Changed from 512 to 1024
     "batch_size": 1,
     "n_iter": 1,
     "seed": -1,  # Random seed each time
