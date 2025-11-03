@@ -12,6 +12,8 @@ import base64
 import os
 from pathlib import Path
 import time
+from PIL import Image
+import io
 
 # Configuration
 SD_API_URL = "http://localhost:7860"
@@ -142,14 +144,26 @@ def process_queue():
                 image_data = generate_image(prompt, negative_prompt)
                 elapsed = time.time() - start_time
 
-                # Save image
-                filename = f"{creature_id}_{i}.png"
+                # Convert PNG to JPEG with compression
+                filename = f"{creature_id}_{i}.jpg"
                 filepath = OUTPUT_DIR / filename
 
-                with open(filepath, 'wb') as f:
-                    f.write(image_data)
+                # Decode PNG image data
+                png_image = Image.open(io.BytesIO(image_data))
 
-                file_size = len(image_data)
+                # Convert to RGB (JPEG doesn't support transparency)
+                if png_image.mode in ('RGBA', 'LA', 'P'):
+                    rgb_image = Image.new('RGB', png_image.size, (255, 255, 255))
+                    if png_image.mode == 'P':
+                        png_image = png_image.convert('RGBA')
+                    rgb_image.paste(png_image, mask=png_image.split()[-1] if png_image.mode in ('RGBA', 'LA') else None)
+                else:
+                    rgb_image = png_image.convert('RGB')
+
+                # Save as JPEG with quality 85 (good quality, much smaller size)
+                rgb_image.save(filepath, 'JPEG', quality=85, optimize=True)
+
+                file_size = os.path.getsize(filepath)
                 print(f"[OK] {elapsed:.1f}s ({file_size:,} bytes)")
 
                 generated_files.append(filename)

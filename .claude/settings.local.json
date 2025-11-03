@@ -6,7 +6,9 @@
       "Bash(node verify-diversity.js:*)",
       "Bash(git commit:*)",
       "WebFetch(domain:perchance.org)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(python:*)",
+      "Bash(timeout /t 30 /nobreak)"
     ],
     "deny": [],
     "ask": []

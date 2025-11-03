@@ -22,7 +22,7 @@ except ImportError:
 QUEUE_FILE = Path(__file__).parent.parent / 'artwork' / 'creature_prompts_queue.csv'
 OUTPUT_DIR = Path(__file__).parent.parent / 'artwork'
 TRACKING_FILE = OUTPUT_DIR / 'perchance_images_created.csv'
-IMAGES_PER_CREATURE = 9
+IMAGES_PER_CREATURE = 4
 
 async def generate_image(generator, prompt, negative_prompt):
     """Generate one image using Perchance"""
@@ -163,6 +163,7 @@ if __name__ == '__main__':
     print("\n" + "="*80)
     print("Chatlings Batch Image Generation - Perchance AI")
     print("Free & Unlimited - No API Key Required")
+    print(f"Generating {IMAGES_PER_CREATURE} images per creature")
     print("="*80 + "\n")
 
     try:
