@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Batch Generate Creature Images using Stable Diffusion WebUI
-Reads from creature_prompts_queue.csv and generates 9 images per creature
+Reads from creature_prompts_queue.csv and generates 4 images per creature
 Uses local Stable Diffusion API (RTX 4070)
 """
 
@@ -14,6 +14,9 @@ from pathlib import Path
 import time
 from PIL import Image
 import io
+
+# Version
+VERSION = "2.0.0"  # v2.0.0: 1024x1024, 4 images, JPEG compression
 
 # Configuration
 SD_API_URL = "http://localhost:7860"
@@ -164,7 +167,8 @@ def process_queue():
                 rgb_image.save(filepath, 'JPEG', quality=85, optimize=True)
 
                 file_size = os.path.getsize(filepath)
-                print(f"[OK] {elapsed:.1f}s ({file_size:,} bytes)")
+                file_size_kb = file_size / 1024
+                print(f"[OK] {elapsed:.1f}s ({file_size:,} bytes = {file_size_kb:.0f} KB)")
 
                 generated_files.append(filename)
 
@@ -191,8 +195,10 @@ def process_queue():
 
 if __name__ == '__main__':
     print("\n" + "="*80)
-    print("Chatlings Batch Image Generation")
+    print(f"Chatlings Batch Image Generation v{VERSION}")
     print("Powered by Stable Diffusion + RTX 4070")
+    print(f"Settings: {IMAGES_PER_CREATURE} images/creature @ {SD_SETTINGS['width']}x{SD_SETTINGS['height']}")
+    print("Format: JPEG (quality 85, optimized)")
     print("="*80 + "\n")
 
     try:
