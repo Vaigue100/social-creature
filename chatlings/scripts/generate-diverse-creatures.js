@@ -33,14 +33,13 @@ async function generateDiverseCreatures(targetCount = 10000) {
   console.log('Loading all dimension options...\n');
 
   // Get ALL options from each dimension
-  const subspecies = (await client.query('SELECT id, subspecies_name FROM dim_subspecies')).rows;
+  const subspecies = (await client.query('SELECT id, subspecies_name, species_id FROM dim_subspecies WHERE species_id IS NOT NULL')).rows;
   const colors = (await client.query('SELECT id, colouring_name FROM dim_colouring')).rows;
   const styles = (await client.query('SELECT id, style_name FROM dim_style')).rows;
   const moods = (await client.query('SELECT id, mood_name FROM dim_mood')).rows;
   const motions = (await client.query('SELECT id, motion_name FROM dim_motion_type')).rows;
   const elements = (await client.query('SELECT id, affinity_name FROM dim_elemental_affinity')).rows;
   const environments = (await client.query('SELECT id, environment_name FROM dim_environment')).rows;
-  const species = (await client.query('SELECT id FROM dim_species LIMIT 1')).rows[0];
 
   console.log('Available options:');
   console.log(`  Subspecies: ${subspecies.length}`);
@@ -83,7 +82,7 @@ async function generateDiverseCreatures(targetCount = 10000) {
       id: uuidv4(),
       name,
       shortname,
-      species_id: species.id,
+      species_id: subspeciesChoice.species_id, // Get from subspecies
       subspecies_id: subspeciesChoice.id,
       colouring_id: colorChoice.id,
       style_id: styleChoice.id,

@@ -182,10 +182,19 @@ function generateDetailedPrompt(creature) {
   const material = promptTemplates.materials[style] || 'cute living creature, natural style';
   parts.push(material);
 
-  // Subject with mood - emphasize it's a creature
+  // Subject with mood - use description if available
   const mood = creature.mood_name.toLowerCase();
   const subspecies = creature.subspecies_name.toLowerCase();
-  parts.push(`${mood} ${subspecies} creature character`, 'full body visible', 'complete creature');
+
+  if (creature.subspecies_description) {
+    // Use detailed description
+    parts.push(`${mood} ${creature.subspecies_description}`, 'single creature only', 'one creature');
+  } else {
+    // Fallback to subspecies name
+    parts.push(`${mood} ${subspecies} creature character`, 'single creature only', 'one creature');
+  }
+
+  parts.push('full body visible', 'complete creature');
 
   // Colors - more descriptive
   const colors = creature.colouring_name.toLowerCase().split(' & ');
@@ -228,7 +237,7 @@ function generateDetailedPrompt(creature) {
 }
 
 function generateNegativePrompt() {
-  return 'blurry, low quality, distorted, ugly, bad anatomy, text, watermark, realistic photo, scary, creepy, horror, human, person, nsfw, deformed, mutated, extra limbs, bad proportions, stand, pedestal, platform, base, display stand, statue base, mounted, toy stand, figurine base, cropped, cut off, partial view, close up, zoomed in, body cut off, out of frame, abstract, object, item, tool, weapon, inanimate object, not a creature';
+  return 'blurry, low quality, distorted, ugly, bad anatomy, text, watermark, realistic photo, scary, creepy, horror, human, person, nsfw, deformed, mutated, extra limbs, bad proportions, stand, pedestal, platform, base, display stand, statue base, mounted, toy stand, figurine base, cropped, cut off, partial view, close up, zoomed in, body cut off, out of frame, abstract, object, item, tool, weapon, inanimate object, not a creature, multiple creatures, two creatures, three creatures, many creatures, several creatures, crowd, group, duplicate';
 }
 
 async function exportDetailedPrompts() {
@@ -238,7 +247,7 @@ async function exportDetailedPrompts() {
     await client.connect();
     console.log('Connected to database...\n');
 
-    // Get all creatures
+    // Get all creatures with subspecies descriptions
     const result = await client.query(`
       SELECT
         c.id,
@@ -246,6 +255,7 @@ async function exportDetailedPrompts() {
         c.creature_shortname,
         c.rarity_tier,
         dss.subspecies_name,
+        dss.description as subspecies_description,
         dc.colouring_name,
         dst.style_name,
         dm.mood_name,
