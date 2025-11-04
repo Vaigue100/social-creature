@@ -230,14 +230,14 @@ function generateDetailedPrompt(creature) {
     parts.push(details);
   }
 
-  // Always add these - ensure full creature in frame
-  parts.push('natural environment', 'dynamic pose', 'stylized 3D art', 'no stand', 'no base', 'no pedestal', 'full body shot', 'creature centered', 'entire creature visible');
+  // Always add these - ensure full creature in frame, NOT HUMAN
+  parts.push('animal creature', 'non-human', 'beast', 'monster design', 'natural environment', 'dynamic pose', 'stylized 3D art', 'no stand', 'no base', 'no pedestal', 'full body shot', 'creature centered', 'entire creature visible');
 
   return parts.join(', ');
 }
 
 function generateNegativePrompt() {
-  return 'blurry, low quality, distorted, ugly, bad anatomy, text, watermark, realistic photo, scary, creepy, horror, human, person, nsfw, deformed, mutated, extra limbs, bad proportions, stand, pedestal, platform, base, display stand, statue base, mounted, toy stand, figurine base, cropped, cut off, partial view, close up, zoomed in, body cut off, out of frame, abstract, object, item, tool, weapon, inanimate object, not a creature, multiple creatures, two creatures, three creatures, many creatures, several creatures, crowd, group, duplicate';
+  return 'blurry, low quality, distorted, ugly, bad anatomy, text, watermark, realistic photo, scary, creepy, horror, human, person, people, man, woman, child, human face, human body, humanoid, anthropomorphic, human features, facial features, person in costume, cosplay, fursuit, mascot costume, suit, costume, human wearing, human skin, hands, fingers, human eyes, human nose, human mouth, nsfw, deformed, mutated, extra limbs, bad proportions, stand, pedestal, platform, base, display stand, statue base, mounted, toy stand, figurine base, cropped, cut off, partial view, close up, zoomed in, body cut off, out of frame, abstract, object, item, tool, weapon, inanimate object, not a creature, multiple creatures, two creatures, three creatures, many creatures, several creatures, crowd, group, duplicate';
 }
 
 async function exportDetailedPrompts() {

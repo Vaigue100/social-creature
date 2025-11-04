@@ -14,9 +14,10 @@ from pathlib import Path
 import time
 from PIL import Image
 import io
+import textwrap
 
 # Version
-VERSION = "2.0.0"  # v2.0.0: 1024x1024, 4 images, JPEG compression
+VERSION = "2.1.0"  # v2.1.0: No humans fix, full prompt display
 
 # Configuration
 SD_API_URL = "http://localhost:7860"
@@ -133,7 +134,14 @@ def process_queue():
         print(f"[{idx}/{len(remaining)}] {creature_name}")
         print(f"ID: {creature_id}")
         print("="*80)
-        print(f"Prompt: {prompt[:100]}...")
+        print("FULL PROMPT:")
+        # Wrap prompt at 76 characters for readability
+        wrapped_prompt = textwrap.fill(prompt, width=76, initial_indent='  ', subsequent_indent='  ')
+        print(wrapped_prompt)
+        print()
+        print("NEGATIVE PROMPT:")
+        wrapped_negative = textwrap.fill(negative_prompt, width=76, initial_indent='  ', subsequent_indent='  ')
+        print(wrapped_negative)
         print()
 
         generated_files = []
