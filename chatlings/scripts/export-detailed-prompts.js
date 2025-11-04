@@ -230,8 +230,8 @@ function generateDetailedPrompt(creature) {
     parts.push(details);
   }
 
-  // Always add these - ensure full creature in frame, NOT HUMAN
-  parts.push('animal creature', 'non-human', 'beast', 'monster design', 'natural environment', 'dynamic pose', 'stylized 3D art', 'no stand', 'no base', 'no pedestal', 'full body shot', 'creature centered', 'entire creature visible');
+  // Always add these - ensure full creature in frame, NOT HUMAN but CUTE
+  parts.push('cute creature', 'adorable', 'friendly', 'charming', 'animal creature', 'non-human', 'natural environment', 'dynamic pose', 'stylized 3D art', 'no stand', 'no base', 'no pedestal', 'full body shot', 'creature centered', 'entire creature visible');
 
   return parts.join(', ');
 }

@@ -17,7 +17,7 @@ import io
 import textwrap
 
 # Version
-VERSION = "2.1.0"  # v2.1.0: No humans fix, full prompt display
+VERSION = "2.2.0"  # v2.2.0: Cute not scary - replaced beast/monster with cute/adorable/friendly
 
 # Configuration
 SD_API_URL = "http://localhost:7860"
