@@ -35,6 +35,7 @@ app.get('/api/next-creature', async (req, res) => {
         c.creature_name,
         c.creature_shortname,
         c.rarity_tier,
+        ds.species_name,
         dss.subspecies_name,
         dc.colouring_name,
         dst.style_name,
@@ -44,6 +45,7 @@ app.get('/api/next-creature', async (req, res) => {
         de.environment_name,
         c.selected_image
       FROM creatures c
+      JOIN dim_species ds ON c.species_id = ds.id
       JOIN dim_subspecies dss ON c.subspecies_id = dss.id
       JOIN dim_colouring dc ON c.colouring_id = dc.id
       JOIN dim_style dst ON c.style_id = dst.id
