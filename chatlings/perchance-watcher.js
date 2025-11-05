@@ -83,16 +83,39 @@ const CHATLING_NAMES = [
 // Track used names to ensure uniqueness
 const usedNames = new Set();
 
-function getRandomName() {
+async function getRandomName(client) {
   // If we've used all names, reset (unlikely with 200+ names)
   if (usedNames.size >= CHATLING_NAMES.length) {
     usedNames.clear();
   }
 
   let name;
+  let attempts = 0;
+  const maxAttempts = 100;
+
   do {
     name = CHATLING_NAMES[Math.floor(Math.random() * CHATLING_NAMES.length)];
-  } while (usedNames.has(name));
+    attempts++;
+
+    // Check if name exists in database
+    const result = await client.query(
+      'SELECT COUNT(*) as count FROM creatures WHERE creature_name = $1',
+      [name]
+    );
+
+    const nameExists = parseInt(result.rows[0].count) > 0;
+
+    if (!nameExists && !usedNames.has(name)) {
+      break;
+    }
+
+    // If we've tried too many times, add a number suffix
+    if (attempts >= maxAttempts) {
+      const timestamp = Date.now();
+      name = `${name}${timestamp.toString().slice(-3)}`;
+      break;
+    }
+  } while (true);
 
   usedNames.add(name);
   return name;
@@ -232,7 +255,7 @@ async function processZipFile(zipFile) {
       const promptId = promptResult.rows[0].id;
 
       // Generate a unique name for this creature
-      const newName = getRandomName();
+      const newName = await getRandomName(client);
 
       // Create new creature record (dimensions are stored in creature_prompts, not creatures)
       const creatureResult = await client.query(`
@@ -269,7 +292,26 @@ async function processZipFile(zipFile) {
     const processedPath = path.join(PROCESSED_DIR, zipFile);
     try {
       fs.copyFileSync(zipPath, processedPath);
-      fs.unlinkSync(zipPath);
+
+      // Try to delete with retries (Windows file locking)
+      let deleted = false;
+      for (let i = 0; i < 3; i++) {
+        try {
+          fs.unlinkSync(zipPath);
+          deleted = true;
+          break;
+        } catch (err) {
+          if (i < 2) {
+            // Wait 1 second before retry
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+      }
+
+      if (!deleted) {
+        log(`   ⚠️  ZIP copied to processed_zips/ but couldn't delete original (Windows file lock)`);
+        log(`   ℹ️  You can manually delete: ${zipFile}`);
+      }
     } catch (err) {
       log(`   ⚠️  Could not archive ZIP: ${err.message}`);
     }
