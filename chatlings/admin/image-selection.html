@@ -68,6 +68,7 @@
             display: grid;
             grid-template-columns: 300px 1fr;
             gap: 20px;
+            height: calc(100vh - 200px);
         }
 
         .creature-info {
@@ -75,9 +76,22 @@
             padding: 25px;
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            height: fit-content;
-            position: sticky;
-            top: 20px;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .creature-info::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .creature-info::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .creature-info::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
         }
 
         .creature-info h2 {
@@ -95,16 +109,16 @@
         .info-label {
             font-weight: bold;
             color: #555;
-            font-size: 12px;
+            font-size: 14px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 3px;
+            margin-bottom: 5px;
         }
 
         .info-value {
-            font-size: 16px;
+            font-size: 20px;
             color: #333;
-            padding: 5px 0;
+            padding: 8px 0;
         }
 
         .rarity-badge {
@@ -123,9 +137,30 @@
         .rarity-Common { background: #e0e0e0; color: #666; }
 
         .image-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            display: flex;
+            flex-direction: column;
             gap: 20px;
+            overflow-y: auto;
+            height: 100%;
+            padding-right: 10px;
+        }
+
+        .image-grid::-webkit-scrollbar {
+            width: 16px;
+        }
+
+        .image-grid::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .image-grid::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        .image-grid::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
         }
 
         .image-card {
@@ -136,10 +171,12 @@
             transition: all 0.3s ease;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             position: relative;
+            flex-shrink: 0;
+            min-height: 400px;
         }
 
         .image-card:hover {
-            transform: translateY(-5px);
+            transform: translateX(5px);
             box-shadow: 0 8px 15px rgba(0,0,0,0.2);
         }
 
@@ -147,22 +184,24 @@
             width: 100%;
             height: auto;
             display: block;
+            object-fit: contain;
         }
 
         .image-number {
             position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(102, 126, 234, 0.9);
+            top: 15px;
+            left: 15px;
+            background: rgba(102, 126, 234, 0.95);
             color: white;
-            width: 40px;
-            height: 40px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            font-size: 18px;
+            font-size: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
 
         .loading {
@@ -214,6 +253,31 @@
 
         .keyboard-hint strong {
             color: #667eea;
+        }
+
+        .skip-button {
+            width: 100%;
+            padding: 15px;
+            margin-top: 15px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .skip-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+            background: linear-gradient(135deg, #ee5a6f 0%, #ff6b6b 100%);
+        }
+
+        .skip-button:active {
+            transform: translateY(0);
         }
     </style>
 </head>
@@ -345,8 +409,13 @@
 
                         <div class="keyboard-hint">
                             <strong>Keyboard shortcuts:</strong><br>
-                            Press <strong>1, 2, 3, or 4</strong> to select image
+                            Press <strong>1, 2, 3, or 4</strong> to select image<br>
+                            Press <strong>S</strong> to skip all images
                         </div>
+
+                        <button class="skip-button" onclick="skipAllImages()">
+                            ❌ Skip All Images
+                        </button>
                     </div>
 
                     <div class="image-grid">
@@ -389,12 +458,41 @@
             }
         }
 
+        async function skipAllImages() {
+            if (!currentCreature) return;
+
+            try {
+                const response = await fetch('/api/skip-images', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        creatureId: currentCreature.creature.id
+                    })
+                });
+
+                if (response.ok) {
+                    // Auto-advance to next creature
+                    loadNextCreature();
+                } else {
+                    alert('Error skipping images');
+                }
+
+            } catch (error) {
+                console.error('Error skipping images:', error);
+                alert('Error skipping images. Check console for details.');
+            }
+        }
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.key >= '1' && e.key <= '4') {
                 const index = parseInt(e.key) - 1;
                 if (currentCreature && currentCreature.images[index]) {
                     selectImage(index);
+                }
+            } else if (e.key.toLowerCase() === 's') {
+                if (currentCreature) {
+                    skipAllImages();
                 }
             }
         });
