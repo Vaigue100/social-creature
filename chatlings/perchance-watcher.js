@@ -31,6 +31,62 @@ const PROCESSED_DIR = path.join(ARTWORK_DIR, 'processed_zips');
 // Track files being processed to avoid duplicates
 const processing = new Set();
 
+// Curated list of easy-to-pronounce names from various languages
+const CHATLING_NAMES = [
+  // English/European
+  'Luna', 'Leo', 'Milo', 'Zoe', 'Max', 'Ruby', 'Felix', 'Lily', 'Oscar', 'Maya',
+  'Finn', 'Cleo', 'Hugo', 'Nora', 'Theo', 'Zara', 'Kai', 'Mia', 'Nico', 'Aria',
+  'Eli', 'Ivy', 'Owen', 'Emma', 'Rio', 'Ella', 'Axel', 'Nova', 'Cole', 'Stella',
+  // Japanese
+  'Hana', 'Kimi', 'Sora', 'Momo', 'Yuki', 'Koko', 'Niko', 'Mika', 'Tomo', 'Aki',
+  'Hoshi', 'Nami', 'Riko', 'Hiro', 'Suki', 'Kiko', 'Yori', 'Mai', 'Ren', 'Kai',
+  // Spanish/Italian
+  'Luca', 'Rosa', 'Marco', 'Nina', 'Diego', 'Sofia', 'Enzo', 'Bella', 'Carlo', 'Lucia',
+  'Dante', 'Luna', 'Pablo', 'Elena', 'Rico', 'Mila', 'Nico', 'Alma', 'Paulo', 'Gia',
+  // French
+  'Luc', 'Coco', 'Remy', 'Mimi', 'Jules', 'Amelie', 'Pierre', 'Belle', 'Louis', 'Chloe',
+  // German/Nordic
+  'Lars', 'Freya', 'Erik', 'Astrid', 'Klaus', 'Greta', 'Otto', 'Inga', 'Hans', 'Elsa',
+  'Thor', 'Sven', 'Olaf', 'Liv', 'Bo', 'Nils', 'Asa', 'Kari', 'Leif', 'Maja',
+  // Greek/Latin
+  'Atlas', 'Athena', 'Apollo', 'Iris', 'Orion', 'Venus', 'Zeus', 'Diana', 'Nike', 'Echo',
+  // Various easy names
+  'Momo', 'Coco', 'Kiki', 'Pipo', 'Nono', 'Dodo', 'Mimi', 'Zuzu', 'Bobo', 'Lolo',
+  'Titi', 'Fifi', 'Gigi', 'Pepe', 'Bibi', 'Pipi', 'Nana', 'Papa', 'Toto', 'Sisi',
+  // More from various languages
+  'Ari', 'Bea', 'Chi', 'Dee', 'Emi', 'Flo', 'Gia', 'Ida', 'Jo', 'Kit',
+  'Lee', 'Mel', 'Nia', 'Ora', 'Pip', 'Qui', 'Rae', 'Sam', 'Tai', 'Uma',
+  'Val', 'Wes', 'Xia', 'Yara', 'Zen', 'Ali', 'Blu', 'Cruz', 'Dax', 'Era',
+  // Cute duplicates
+  'Koko', 'Lilo', 'Momo', 'Nana', 'Riri', 'Sisi', 'Toto', 'Yoyo', 'Zizi', 'Bobo',
+  // More single syllables
+  'Ace', 'Bay', 'Sky', 'Jay', 'Ray', 'Mae', 'Rue', 'Sage', 'Star', 'Wren',
+  'Ash', 'Briar', 'Cedar', 'Dawn', 'Fern', 'Glen', 'Heath', 'Iris', 'Lake', 'Moss',
+  // Musical names
+  'Aria', 'Lyra', 'Viola', 'Alto', 'Jazz', 'Blues', 'Echo', 'Harmony', 'Melody', 'Tempo',
+  // Nature themed easy names
+  'Sunny', 'Rain', 'Cloud', 'Storm', 'River', 'Ocean', 'Forest', 'Meadow', 'Willow', 'Clover',
+  'Petal', 'Daisy', 'Poppy', 'Maple', 'Birch', 'Pine', 'Holly', 'Jasmine', 'Rose', 'Sage'
+];
+
+// Track used names to ensure uniqueness
+const usedNames = new Set();
+
+function getRandomName() {
+  // If we've used all names, reset (unlikely with 200+ names)
+  if (usedNames.size >= CHATLING_NAMES.length) {
+    usedNames.clear();
+  }
+
+  let name;
+  do {
+    name = CHATLING_NAMES[Math.floor(Math.random() * CHATLING_NAMES.length)];
+  } while (usedNames.has(name));
+
+  usedNames.add(name);
+  return name;
+}
+
 function ensureDirectories() {
   if (!fs.existsSync(LINKED_DIR)) fs.mkdirSync(LINKED_DIR, { recursive: true });
   if (!fs.existsSync(EXTRACTED_DIR)) fs.mkdirSync(EXTRACTED_DIR, { recursive: true });
@@ -155,7 +211,9 @@ async function processZipFile(zipFile) {
 
       const creature = creaturesResult.rows[0];
       const creatureId = creature.id;
-      const creatureName = creature.creature_name;
+
+      // Generate a unique name for this creature
+      const newName = getRandomName();
 
       // Rename JPEG to creature_id.jpg and move to linked folder
       const newFilename = `${creatureId}.jpg`;
@@ -163,13 +221,13 @@ async function processZipFile(zipFile) {
 
       fs.copyFileSync(jpegPath, newPath);
 
-      // Update database
+      // Update database with both image and name
       await client.query(
-        'UPDATE creatures SET selected_image = $1 WHERE id = $2',
-        [newFilename, creatureId]
+        'UPDATE creatures SET selected_image = $1, creature_name = $2 WHERE id = $3',
+        [newFilename, newName, creatureId]
       );
 
-      log(`   ✅ Assigned: ${creatureName}`);
+      log(`   ✅ Assigned: ${newName}`);
       assignedCount++;
     }
 
