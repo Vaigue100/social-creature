@@ -209,10 +209,10 @@ async function processZipFile(zipFile) {
         continue;
       }
 
-      // Match prompt to database and get dimension info
+      // Match prompt to database
       // Use fuzzy matching since Perchance may add extra text
       const promptResult = await client.query(
-        `SELECT id, body_type_id, activity_id, mood_id, color_scheme_id, quirk_id, size_id, prompt
+        `SELECT id, prompt
          FROM creature_prompts
          WHERE $1 LIKE '%' || prompt || '%'
          ORDER BY length(prompt) DESC
@@ -229,27 +229,20 @@ async function processZipFile(zipFile) {
 
       log(`   ✓ Matched prompt: ${promptResult.rows[0].prompt.substring(0, 60)}...`);
 
-      const promptData = promptResult.rows[0];
-      const promptId = promptData.id;
+      const promptId = promptResult.rows[0].id;
 
       // Generate a unique name for this creature
       const newName = getRandomName();
 
-      // Create new creature record with dimension info
+      // Create new creature record (dimensions are stored in creature_prompts, not creatures)
       const creatureResult = await client.query(`
         INSERT INTO creatures
-          (creature_name, prompt_id, body_type_id, activity_id, mood_id, color_scheme_id, quirk_id, size_id, selected_image, rarity_tier)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          (creature_name, prompt_id, selected_image, rarity_tier)
+        VALUES ($1, $2, $3, $4)
         RETURNING id
       `, [
         newName,
         promptId,
-        promptData.body_type_id,
-        promptData.activity_id,
-        promptData.mood_id,
-        promptData.color_scheme_id,
-        promptData.quirk_id,
-        promptData.size_id,
         null,  // selected_image - will set after copying file
         'Common'
       ]);
