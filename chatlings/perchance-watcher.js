@@ -2,13 +2,24 @@
  * Perchance ZIP File Watcher Service
  *
  * Automatically watches the artwork folder for new Perchance ZIP files
- * and processes them immediately when they appear.
+ * and creates creature records when images are processed.
  *
  * Features:
  * - Auto-detects new ZIP files in artwork folder
- * - Processes variable number of creatures per family
+ * - Recursively searches for images in subfolders (e.g., galleries/general)
+ * - Creates new creature records with unique names and dimension info
+ * - Assigns creature to correct prompt family
  * - Moves processed ZIPs to archive folder
  * - Logs all activity
+ *
+ * Workflow:
+ * 1. ZIP file appears in artwork folder
+ * 2. Extract and find all JSON/JPG pairs
+ * 3. Match prompt to database prompt family
+ * 4. Generate unique name from curated list
+ * 5. Create new creature record with all dimension info
+ * 6. Copy image to linked folder with creature ID
+ * 7. Archive ZIP to processed_zips folder
  *
  * Usage:
  *   node perchance-watcher.js
@@ -98,6 +109,27 @@ function log(message) {
   console.log(`[${timestamp}] ${message}`);
 }
 
+function findFilesRecursively(dir, extension) {
+  const files = [];
+
+  function search(currentDir) {
+    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = path.join(currentDir, entry.name);
+
+      if (entry.isDirectory()) {
+        search(fullPath);
+      } else if (entry.isFile() && entry.name.endsWith(extension)) {
+        files.push(fullPath);
+      }
+    }
+  }
+
+  search(dir);
+  return files;
+}
+
 async function processZipFile(zipFile) {
   const zipPath = path.join(ARTWORK_DIR, zipFile);
 
@@ -136,24 +168,22 @@ async function processZipFile(zipFile) {
       return;
     }
 
-    // Find all JSON files
-    const extractedFiles = fs.readdirSync(extractPath);
-    const jsonFiles = extractedFiles.filter(f => f.endsWith('.json'));
+    // Find all JSON files recursively (handles subfolders like galleries/general)
+    const jsonFiles = findFilesRecursively(extractPath, '.json');
 
     log(`   Found ${jsonFiles.length} image(s) in ZIP`);
 
     let assignedCount = 0;
     let skippedCount = 0;
 
-    for (const jsonFile of jsonFiles) {
-      const jsonPath = path.join(extractPath, jsonFile);
-      const baseName = path.basename(jsonFile, '.json');
+    for (const jsonPath of jsonFiles) {
+      const baseName = path.basename(jsonPath, '.json');
       const jpegFile = baseName + '.jpg';
-      const jpegPath = path.join(extractPath, jpegFile);
+      const jpegPath = path.join(path.dirname(jsonPath), jpegFile);
 
       // Check if corresponding JPEG exists
       if (!fs.existsSync(jpegPath)) {
-        log(`   ⚠️  No matching JPEG for ${jsonFile}`);
+        log(`   ⚠️  No matching JPEG for ${baseName}.json`);
         skippedCount++;
         continue;
       }
@@ -164,7 +194,7 @@ async function processZipFile(zipFile) {
         const jsonContent = fs.readFileSync(jsonPath, 'utf8');
         promptData = JSON.parse(jsonContent);
       } catch (error) {
-        log(`   ❌ Failed to parse ${jsonFile}: ${error.message}`);
+        log(`   ❌ Failed to parse ${baseName}.json: ${error.message}`);
         skippedCount++;
         continue;
       }
@@ -178,9 +208,9 @@ async function processZipFile(zipFile) {
         continue;
       }
 
-      // Match prompt to database
+      // Match prompt to database and get dimension info
       const promptResult = await client.query(
-        'SELECT id FROM creature_prompts WHERE prompt = $1',
+        'SELECT id, body_type_id, activity_id, mood_id, color_scheme_id, quirk_id, size_id FROM creature_prompts WHERE prompt = $1',
         [prompt]
       );
 
@@ -191,29 +221,32 @@ async function processZipFile(zipFile) {
         continue;
       }
 
-      const promptId = promptResult.rows[0].id;
-
-      // Find next creature for this prompt that doesn't have an image yet
-      const creaturesResult = await client.query(`
-        SELECT id, creature_name
-        FROM creatures
-        WHERE prompt_id = $1
-          AND selected_image IS NULL
-        ORDER BY id
-        LIMIT 1
-      `, [promptId]);
-
-      if (creaturesResult.rows.length === 0) {
-        log(`   ⚠️  All creatures for this prompt already have images`);
-        skippedCount++;
-        continue;
-      }
-
-      const creature = creaturesResult.rows[0];
-      const creatureId = creature.id;
+      const promptData = promptResult.rows[0];
+      const promptId = promptData.id;
 
       // Generate a unique name for this creature
       const newName = getRandomName();
+
+      // Create new creature record with dimension info
+      const creatureResult = await client.query(`
+        INSERT INTO creatures
+          (creature_name, prompt_id, body_type_id, activity_id, mood_id, color_scheme_id, quirk_id, size_id, selected_image, rarity_tier)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING id
+      `, [
+        newName,
+        promptId,
+        promptData.body_type_id,
+        promptData.activity_id,
+        promptData.mood_id,
+        promptData.color_scheme_id,
+        promptData.quirk_id,
+        promptData.size_id,
+        null,  // selected_image - will set after copying file
+        'Common'
+      ]);
+
+      const creatureId = creatureResult.rows[0].id;
 
       // Rename JPEG to creature_id.jpg and move to linked folder
       const newFilename = `${creatureId}.jpg`;
@@ -221,13 +254,13 @@ async function processZipFile(zipFile) {
 
       fs.copyFileSync(jpegPath, newPath);
 
-      // Update database with both image and name
+      // Update creature with image filename
       await client.query(
-        'UPDATE creatures SET selected_image = $1, creature_name = $2 WHERE id = $3',
-        [newFilename, newName, creatureId]
+        'UPDATE creatures SET selected_image = $1 WHERE id = $2',
+        [newFilename, creatureId]
       );
 
-      log(`   ✅ Assigned: ${newName}`);
+      log(`   ✅ Created: ${newName}`);
       assignedCount++;
     }
 
@@ -235,7 +268,7 @@ async function processZipFile(zipFile) {
     const processedPath = path.join(PROCESSED_DIR, zipFile);
     fs.renameSync(zipPath, processedPath);
 
-    log(`   ✓ Completed: ${assignedCount} assigned, ${skippedCount} skipped`);
+    log(`   ✓ Completed: ${assignedCount} creatures created, ${skippedCount} skipped`);
     log(`   ✓ Archived to: processed_zips/${zipFile}\n`);
 
     await client.end();
