@@ -19,7 +19,8 @@
       "Bash(node clear-and-regenerate.js:*)",
       "Bash(git restore:*)",
       "Bash(node perchance-watcher.js:*)",
-      "Bash(powershell -command:*)"
+      "Bash(powershell -command:*)",
+      "Bash(node add-new-dimensions.js:*)"
     ],
     "deny": [],
     "ask": []
