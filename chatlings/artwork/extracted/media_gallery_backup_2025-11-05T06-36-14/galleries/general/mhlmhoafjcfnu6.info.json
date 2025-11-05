@@ -1,0 +1,16 @@
+{
+  "meta": {
+    "id": "mhlmhoafjcfnu6",
+    "date": 1762324475754,
+    "rating": 0,
+    "w": 768,
+    "h": 768
+  },
+  "info": {
+    "prompt": "cute fluffy round creature, ultra soft puffy body, cozy neutral grey and soft blue colors, typing on tiny laptop at desk, focused work mode, energetic and buzzing expression, energy sparkles, tiny comfort blanket nearby, pocket-sized, fits in palm, single creature only, full body visible, stylized 3D art, charming friendly, cute living creature, simple clean background, soft lighting, 3D isometric render of cute cute fluffy round creature, ultra soft puffy body, cozy neutral grey and soft blue colors, typing on tiny laptop at desk, focused work mode, energetic and buzzing expression, energy sparkles, tiny comfort blanket nearby, pocket-sized, fits in palm, single creature only, full body visible, stylized 3D art, charming friendly, cute living creature, simple clean background, soft lighting, 3D app icon, clean isometric design, beautiful design, soft gradient background, soft colors, centered, 3D blender render, masterpiece, best quality, high resolution, 8k octane render, beautiful color scheme, soft smooth lighting, physically based rendering, square image, high polycount",
+    "negativePrompt": "blurry, low quality, distorted, ugly, bad anatomy, text, watermark, realistic photo, scary, creepy, horror, human, person, people, man, woman, child, human face, human body, humanoid, anthropomorphic, human features, facial features, person in costume, cosplay, fursuit, mascot costume, suit, costume, human wearing, human skin, hands, fingers, human eyes, human nose, human mouth, nsfw, deformed, mutated, extra limbs, bad proportions, stand, pedestal, platform, base, display stand, statue base, mounted, toy stand, figurine base, cropped, cut off, partial view, close up, zoomed in, body cut off, out of frame, abstract, object, item, tool, weapon, inanimate object, not a creature, multiple creatures, two creatures, three creatures, many creatures, several creatures, crowd, group, duplicate",
+    "seed": "595713868",
+    "guidanceScale": "7"
+  },
+  "mime": "image/jpeg"
+}

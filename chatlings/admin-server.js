@@ -278,6 +278,118 @@ app.post('/api/skip-images', async (req, res) => {
 });
 
 /**
+ * Get all dimension options for tabbed navigation
+ */
+app.get('/api/dimensions', async (req, res) => {
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Get all dimension tables
+    const bodyTypes = await client.query('SELECT id, body_type_name FROM dim_body_type ORDER BY id');
+    const activities = await client.query('SELECT id, activity_name FROM dim_social_activity ORDER BY id');
+    const moods = await client.query('SELECT id, mood_name FROM dim_social_mood ORDER BY id');
+    const colorSchemes = await client.query('SELECT id, scheme_name FROM dim_color_scheme ORDER BY id');
+    const quirks = await client.query('SELECT id, quirk_name FROM dim_special_quirk ORDER BY id');
+    const sizes = await client.query('SELECT id, size_name FROM dim_size_category ORDER BY id');
+
+    res.json({
+      bodyTypes: bodyTypes.rows,
+      activities: activities.rows,
+      moods: moods.rows,
+      colorSchemes: colorSchemes.rows,
+      quirks: quirks.rows,
+      sizes: sizes.rows
+    });
+
+  } catch (error) {
+    console.error('Error fetching dimensions:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Get creatures by dimension filters
+ */
+app.get('/api/creatures-by-dimensions', async (req, res) => {
+  const client = new Client(config);
+  const { body_type_id, activity_id, mood_id, color_scheme_id, quirk_id, size_id } = req.query;
+
+  try {
+    await client.connect();
+
+    // Build query based on provided filters
+    const filters = [];
+    const params = [];
+    let paramIndex = 1;
+
+    if (body_type_id) {
+      filters.push(`cp.body_type_id = $${paramIndex++}`);
+      params.push(body_type_id);
+    }
+    if (activity_id) {
+      filters.push(`cp.activity_id = $${paramIndex++}`);
+      params.push(activity_id);
+    }
+    if (mood_id) {
+      filters.push(`cp.mood_id = $${paramIndex++}`);
+      params.push(mood_id);
+    }
+    if (color_scheme_id) {
+      filters.push(`cp.color_scheme_id = $${paramIndex++}`);
+      params.push(color_scheme_id);
+    }
+    if (quirk_id) {
+      filters.push(`cp.quirk_id = $${paramIndex++}`);
+      params.push(quirk_id);
+    }
+    if (size_id) {
+      filters.push(`cp.size_id = $${paramIndex++}`);
+      params.push(size_id);
+    }
+
+    const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
+
+    const result = await client.query(`
+      SELECT
+        c.id,
+        c.creature_name,
+        c.selected_image,
+        c.rarity_tier,
+        cp.id as prompt_id,
+        bt.body_type_name,
+        sa.activity_name,
+        sm.mood_name,
+        cs.scheme_name as color_scheme,
+        sq.quirk_name,
+        sc.size_name
+      FROM creatures c
+      JOIN creature_prompts cp ON c.prompt_id = cp.id
+      JOIN dim_body_type bt ON cp.body_type_id = bt.id
+      JOIN dim_social_activity sa ON cp.activity_id = sa.id
+      JOIN dim_social_mood sm ON cp.mood_id = sm.id
+      JOIN dim_color_scheme cs ON cp.color_scheme_id = cs.id
+      JOIN dim_special_quirk sq ON cp.quirk_id = sq.id
+      JOIN dim_size_category sc ON cp.size_id = sc.id
+      ${whereClause}
+      ORDER BY c.id
+      LIMIT 9
+    `, params);
+
+    res.json({ creatures: result.rows });
+
+  } catch (error) {
+    console.error('Error fetching creatures:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
  * Get overall progress statistics
  */
 app.get('/api/stats', async (req, res) => {
