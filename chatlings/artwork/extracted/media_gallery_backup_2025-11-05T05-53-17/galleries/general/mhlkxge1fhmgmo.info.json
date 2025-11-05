@@ -1,0 +1,16 @@
+{
+  "meta": {
+    "id": "mhlkxge1fhmgmo",
+    "date": 1762321852779,
+    "rating": 0,
+    "w": 768,
+    "h": 768
+  },
+  "info": {
+    "prompt": "3D cartoon Disney character portrait render. cute fluffy round creature, ultra soft puffy body, warm friendly orange and cream colors, in tiny car with snacks and music, adventure vibes, content and happy expression, satisfied, tiny hearts floating behind, desktop buddy size, fits on keyboard, single creature only, full body visible, stylized 3D art, charming friendly, cute living creature, simple clean background, soft lighting, bokeh, 4k, highly detailed, Pixar render, CGI Animation, Disney, cute big circular reflective eyes, dof, cinematic film, Disney realism, subtle details, breathtaking Pixar short, fine details, close up, sharp focus, HDR, Disney-style octane render, incredible composition, superb lighting and detail, cute fluffy round creature, ultra soft puffy body, warm friendly orange and cream colors, in tiny car with snacks and music, adventure vibes, content and happy expression, satisfied, tiny hearts floating behind, desktop buddy size, fits on keyboard, single creature only, full body visible, stylized 3D art, charming friendly, cute living creature, simple clean background, soft lighting.\n\nOverall, it's an absolute world-class masterpiece 3D Disney-inspired Character. It's an aesthetically pleasing 3D Disney-inspired piece with impeccable attention to detail and impressive composition.",
+    "negativePrompt": "blurry, low quality, distorted, ugly, bad anatomy, text, watermark, realistic photo, scary, creepy, horror, human, person, people, man, woman, child, human face, human body, humanoid, anthropomorphic, human features, facial features, person in costume, cosplay, fursuit, mascot costume, suit, costume, human wearing, human skin, hands, fingers, human eyes, human nose, human mouth, nsfw, deformed, mutated, extra limbs, bad proportions, stand, pedestal, platform, base, display stand, statue base, mounted, toy stand, figurine base, cropped, cut off, partial view, close up, zoomed in, body cut off, out of frame, abstract, object, item, tool, weapon, inanimate object, not a creature, multiple creatures, two creatures, three creatures, many creatures, several creatures, crowd, group, duplicate",
+    "seed": "536414797",
+    "guidanceScale": "7"
+  },
+  "mime": "image/jpeg"
+}

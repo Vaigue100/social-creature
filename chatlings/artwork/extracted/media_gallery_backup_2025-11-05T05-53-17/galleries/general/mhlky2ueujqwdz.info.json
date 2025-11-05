@@ -1,0 +1,16 @@
+{
+  "meta": {
+    "id": "mhlky2ueujqwdz",
+    "date": 1762321881882,
+    "rating": 0,
+    "w": 768,
+    "h": 768
+  },
+  "info": {
+    "prompt": "masterpiece cute spiky but soft creature, gentle textured body, warm friendly orange and cream colors, avoiding tasks playfully, tiny distractions around, sleepy and cozy expression, drowsy and comfortable, wearing tiny cute hat, cushion friend size, medium pillow size, single creature only, full body visible, stylized 3D art, charming friendly, cute living creature, simple clean background, soft lighting cartoon 3D emoji concept render, close-up, facing forward, matte finish, 3D emoji render, app icon, simple design, new iOS 18.4 style cute spiky but soft creature, gentle textured body, warm friendly orange and cream colors, avoiding tasks playfully, tiny distractions around, sleepy and cozy expression, drowsy and comfortable, wearing tiny cute hat, cushion friend size, medium pillow size, single creature only, full body visible, stylized 3D art, charming friendly, cute living creature, simple clean background, soft lighting emoji render, simple background, centered, world-class masterpiece work of art, crisp render, sharp focus, charmingly aesthetic design, 4k, soft lighting, masterpiece emoji-style figurine 3D render, pure white background",
+    "negativePrompt": "blurry, low quality, distorted, ugly, bad anatomy, text, watermark, realistic photo, scary, creepy, horror, human, person, people, man, woman, child, human face, human body, humanoid, anthropomorphic, human features, facial features, person in costume, cosplay, fursuit, mascot costume, suit, costume, human wearing, human skin, hands, fingers, human eyes, human nose, human mouth, nsfw, deformed, mutated, extra limbs, bad proportions, stand, pedestal, platform, base, display stand, statue base, mounted, toy stand, figurine base, cropped, cut off, partial view, close up, zoomed in, body cut off, out of frame, abstract, object, item, tool, weapon, inanimate object, not a creature, multiple creatures, two creatures, three creatures, many creatures, several creatures, crowd, group, duplicate",
+    "seed": "43781255",
+    "guidanceScale": "7"
+  },
+  "mime": "image/jpeg"
+}

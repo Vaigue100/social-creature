@@ -200,7 +200,8 @@ async function processZipFile(zipFile) {
       }
 
       // Extract prompt (try multiple possible fields)
-      const prompt = jsonData.prompt || jsonData.text || jsonData.description || jsonData.input;
+      // Perchance format: info.prompt
+      const prompt = jsonData.info?.prompt || jsonData.prompt || jsonData.text || jsonData.description || jsonData.input;
 
       if (!prompt) {
         log(`   ⚠️  No prompt found in ${baseName}.json`);
@@ -264,9 +265,14 @@ async function processZipFile(zipFile) {
       assignedCount++;
     }
 
-    // Move ZIP to processed folder
+    // Move ZIP to processed folder (use copy+delete for Windows reliability)
     const processedPath = path.join(PROCESSED_DIR, zipFile);
-    fs.renameSync(zipPath, processedPath);
+    try {
+      fs.copyFileSync(zipPath, processedPath);
+      fs.unlinkSync(zipPath);
+    } catch (err) {
+      log(`   ⚠️  Could not archive ZIP: ${err.message}`);
+    }
 
     log(`   ✓ Completed: ${assignedCount} creatures created, ${skippedCount} skipped`);
     log(`   ✓ Archived to: processed_zips/${zipFile}\n`);

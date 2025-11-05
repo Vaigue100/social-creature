@@ -1,0 +1,16 @@
+{
+  "meta": {
+    "id": "mhll06nf4mzw4x",
+    "date": 1762321980124,
+    "rating": 0,
+    "w": 768,
+    "h": 768
+  },
+  "info": {
+    "prompt": "An incredibly perfect high-quality 3D render of a pokemon creature, cute spiky but soft creature, gentle textured body, warm friendly orange and cream colors, in tiny car with snacks and music, adventure vibes, giggly and silly expression, playful vibes, tiny phone in hand, cushion friend size, medium pillow size, single creature only, full body visible, stylized 3D art, charming friendly, cute living creature, simple clean background, soft lighting, 8k render, beautiful pokemon digital art, fakemon, pokemon creature, cryptid, fakemon, masterpiece, soft focus, best quality, high quality. Perfect soft lighting, beautiful composition. It's an impressive CGI image from the upcoming Pokemon Movie \\(2026\\).\n\nOverall, it's an absolute world-class masterpiece 3D-rendered Pokemon-inspired creature. It's an aesthetically pleasing 3D Pokemon-inspired piece with impeccable attention to detail and impressive composition.",
+    "negativePrompt": "blurry, low quality, distorted, ugly, bad anatomy, text, watermark, realistic photo, scary, creepy, horror, human, person, people, man, woman, child, human face, human body, humanoid, anthropomorphic, human features, facial features, person in costume, cosplay, fursuit, mascot costume, suit, costume, human wearing, human skin, hands, fingers, human eyes, human nose, human mouth, nsfw, deformed, mutated, extra limbs, bad proportions, stand, pedestal, platform, base, display stand, statue base, mounted, toy stand, figurine base, cropped, cut off, partial view, close up, zoomed in, body cut off, out of frame, abstract, object, item, tool, weapon, inanimate object, not a creature, multiple creatures, two creatures, three creatures, many creatures, several creatures, crowd, group, duplicate",
+    "seed": "247825110",
+    "guidanceScale": "7"
+  },
+  "mime": "image/jpeg"
+}
