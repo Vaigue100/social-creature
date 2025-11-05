@@ -18,7 +18,8 @@
       "Bash(node export-prompts-for-perchance.js:*)",
       "Bash(node clear-and-regenerate.js:*)",
       "Bash(git restore:*)",
-      "Bash(node perchance-watcher.js:*)"
+      "Bash(node perchance-watcher.js:*)",
+      "Bash(powershell -command:*)"
     ],
     "deny": [],
     "ask": []
