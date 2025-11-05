@@ -169,7 +169,7 @@ async function processZipFile(zipFile) {
     }
 
     // Find all JSON files recursively (handles subfolders like galleries/general)
-    const jsonFiles = findFilesRecursively(extractPath, '.json');
+    const jsonFiles = findFilesRecursively(extractPath, '.info.json');
 
     log(`   Found ${jsonFiles.length} image(s) in ZIP`);
 
@@ -177,22 +177,22 @@ async function processZipFile(zipFile) {
     let skippedCount = 0;
 
     for (const jsonPath of jsonFiles) {
-      const baseName = path.basename(jsonPath, '.json');
-      const jpegFile = baseName + '.jpg';
+      const baseName = path.basename(jsonPath, '.info.json');
+      const jpegFile = baseName + '.jpeg';
       const jpegPath = path.join(path.dirname(jsonPath), jpegFile);
 
       // Check if corresponding JPEG exists
       if (!fs.existsSync(jpegPath)) {
-        log(`   ⚠️  No matching JPEG for ${baseName}.json`);
+        log(`   ⚠️  No matching JPEG for ${baseName}.info.json`);
         skippedCount++;
         continue;
       }
 
       // Read JSON to get prompt
-      let promptData;
+      let jsonData;
       try {
         const jsonContent = fs.readFileSync(jsonPath, 'utf8');
-        promptData = JSON.parse(jsonContent);
+        jsonData = JSON.parse(jsonContent);
       } catch (error) {
         log(`   ❌ Failed to parse ${baseName}.json: ${error.message}`);
         skippedCount++;
@@ -200,10 +200,10 @@ async function processZipFile(zipFile) {
       }
 
       // Extract prompt (try multiple possible fields)
-      const prompt = promptData.prompt || promptData.text || promptData.description || promptData.input;
+      const prompt = jsonData.prompt || jsonData.text || jsonData.description || jsonData.input;
 
       if (!prompt) {
-        log(`   ⚠️  No prompt found in ${jsonFile}`);
+        log(`   ⚠️  No prompt found in ${baseName}.json`);
         skippedCount++;
         continue;
       }

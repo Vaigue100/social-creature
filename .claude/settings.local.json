@@ -11,7 +11,14 @@
       "Bash(timeout /t 30 /nobreak)",
       "Bash(node admin-server.js:*)",
       "Bash(move:*)",
-      "Bash(node scan-artwork-folder.js:*)"
+      "Bash(node scan-artwork-folder.js:*)",
+      "Bash(psql:*)",
+      "Bash(node run-migration-13.js:*)",
+      "Bash(node generate-social-chatlings.js:*)",
+      "Bash(node export-prompts-for-perchance.js:*)",
+      "Bash(node clear-and-regenerate.js:*)",
+      "Bash(git restore:*)",
+      "Bash(node perchance-watcher.js:*)"
     ],
     "deny": [],
     "ask": []
