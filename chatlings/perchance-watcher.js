@@ -210,8 +210,13 @@ async function processZipFile(zipFile) {
       }
 
       // Match prompt to database and get dimension info
+      // Use fuzzy matching since Perchance may add extra text
       const promptResult = await client.query(
-        'SELECT id, body_type_id, activity_id, mood_id, color_scheme_id, quirk_id, size_id FROM creature_prompts WHERE prompt = $1',
+        `SELECT id, body_type_id, activity_id, mood_id, color_scheme_id, quirk_id, size_id, prompt
+         FROM creature_prompts
+         WHERE $1 LIKE '%' || prompt || '%'
+         ORDER BY length(prompt) DESC
+         LIMIT 1`,
         [prompt]
       );
 
@@ -221,6 +226,8 @@ async function processZipFile(zipFile) {
         skippedCount++;
         continue;
       }
+
+      log(`   ✓ Matched prompt: ${promptResult.rows[0].prompt.substring(0, 60)}...`);
 
       const promptData = promptResult.rows[0];
       const promptId = promptData.id;
