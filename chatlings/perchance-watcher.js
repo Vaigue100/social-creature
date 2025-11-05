@@ -1,0 +1,269 @@
+/**
+ * Perchance ZIP File Watcher Service
+ *
+ * Automatically watches the artwork folder for new Perchance ZIP files
+ * and processes them immediately when they appear.
+ *
+ * Features:
+ * - Auto-detects new ZIP files in artwork folder
+ * - Processes variable number of creatures per family
+ * - Moves processed ZIPs to archive folder
+ * - Logs all activity
+ *
+ * Usage:
+ *   node perchance-watcher.js
+ *
+ * Then just download Perchance ZIPs to the artwork folder and they'll
+ * be processed automatically!
+ */
+
+const { Client } = require('pg');
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+const config = { ...require('./scripts/db-config'), database: 'chatlings' };
+
+const ARTWORK_DIR = path.join(__dirname, 'artwork');
+const LINKED_DIR = path.join(ARTWORK_DIR, 'linked');
+const EXTRACTED_DIR = path.join(ARTWORK_DIR, 'extracted');
+const PROCESSED_DIR = path.join(ARTWORK_DIR, 'processed_zips');
+
+// Track files being processed to avoid duplicates
+const processing = new Set();
+
+function ensureDirectories() {
+  if (!fs.existsSync(LINKED_DIR)) fs.mkdirSync(LINKED_DIR, { recursive: true });
+  if (!fs.existsSync(EXTRACTED_DIR)) fs.mkdirSync(EXTRACTED_DIR, { recursive: true });
+  if (!fs.existsSync(PROCESSED_DIR)) fs.mkdirSync(PROCESSED_DIR, { recursive: true });
+}
+
+function log(message) {
+  const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+  console.log(`[${timestamp}] ${message}`);
+}
+
+async function processZipFile(zipFile) {
+  const zipPath = path.join(ARTWORK_DIR, zipFile);
+
+  // Skip if already processing
+  if (processing.has(zipFile)) {
+    return;
+  }
+
+  // Skip if in processed folder
+  if (zipPath.includes('processed_zips')) {
+    return;
+  }
+
+  processing.add(zipFile);
+  log(`📦 Processing: ${zipFile}`);
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const extractPath = path.join(EXTRACTED_DIR, path.basename(zipFile, '.zip'));
+
+    // Extract ZIP
+    if (!fs.existsSync(extractPath)) fs.mkdirSync(extractPath, { recursive: true });
+
+    try {
+      execSync(`powershell -command "Expand-Archive -Path '${zipPath}' -DestinationPath '${extractPath}' -Force"`, {
+        stdio: 'ignore'
+      });
+      log(`   ✓ Extracted to: ${path.basename(extractPath)}`);
+    } catch (error) {
+      log(`   ❌ Failed to extract ${zipFile}: ${error.message}`);
+      processing.delete(zipFile);
+      await client.end();
+      return;
+    }
+
+    // Find all JSON files
+    const extractedFiles = fs.readdirSync(extractPath);
+    const jsonFiles = extractedFiles.filter(f => f.endsWith('.json'));
+
+    log(`   Found ${jsonFiles.length} image(s) in ZIP`);
+
+    let assignedCount = 0;
+    let skippedCount = 0;
+
+    for (const jsonFile of jsonFiles) {
+      const jsonPath = path.join(extractPath, jsonFile);
+      const baseName = path.basename(jsonFile, '.json');
+      const jpegFile = baseName + '.jpg';
+      const jpegPath = path.join(extractPath, jpegFile);
+
+      // Check if corresponding JPEG exists
+      if (!fs.existsSync(jpegPath)) {
+        log(`   ⚠️  No matching JPEG for ${jsonFile}`);
+        skippedCount++;
+        continue;
+      }
+
+      // Read JSON to get prompt
+      let promptData;
+      try {
+        const jsonContent = fs.readFileSync(jsonPath, 'utf8');
+        promptData = JSON.parse(jsonContent);
+      } catch (error) {
+        log(`   ❌ Failed to parse ${jsonFile}: ${error.message}`);
+        skippedCount++;
+        continue;
+      }
+
+      // Extract prompt (try multiple possible fields)
+      const prompt = promptData.prompt || promptData.text || promptData.description || promptData.input;
+
+      if (!prompt) {
+        log(`   ⚠️  No prompt found in ${jsonFile}`);
+        skippedCount++;
+        continue;
+      }
+
+      // Match prompt to database
+      const promptResult = await client.query(
+        'SELECT id FROM creature_prompts WHERE prompt = $1',
+        [prompt]
+      );
+
+      if (promptResult.rows.length === 0) {
+        log(`   ⚠️  Prompt not found in database`);
+        log(`      Prompt: ${prompt.substring(0, 80)}...`);
+        skippedCount++;
+        continue;
+      }
+
+      const promptId = promptResult.rows[0].id;
+
+      // Find next creature for this prompt that doesn't have an image yet
+      const creaturesResult = await client.query(`
+        SELECT id, creature_name
+        FROM creatures
+        WHERE prompt_id = $1
+          AND selected_image IS NULL
+        ORDER BY id
+        LIMIT 1
+      `, [promptId]);
+
+      if (creaturesResult.rows.length === 0) {
+        log(`   ⚠️  All creatures for this prompt already have images`);
+        skippedCount++;
+        continue;
+      }
+
+      const creature = creaturesResult.rows[0];
+      const creatureId = creature.id;
+      const creatureName = creature.creature_name;
+
+      // Rename JPEG to creature_id.jpg and move to linked folder
+      const newFilename = `${creatureId}.jpg`;
+      const newPath = path.join(LINKED_DIR, newFilename);
+
+      fs.copyFileSync(jpegPath, newPath);
+
+      // Update database
+      await client.query(
+        'UPDATE creatures SET selected_image = $1 WHERE id = $2',
+        [newFilename, creatureId]
+      );
+
+      log(`   ✅ Assigned: ${creatureName}`);
+      assignedCount++;
+    }
+
+    // Move ZIP to processed folder
+    const processedPath = path.join(PROCESSED_DIR, zipFile);
+    fs.renameSync(zipPath, processedPath);
+
+    log(`   ✓ Completed: ${assignedCount} assigned, ${skippedCount} skipped`);
+    log(`   ✓ Archived to: processed_zips/${zipFile}\n`);
+
+    await client.end();
+
+  } catch (error) {
+    log(`   ❌ Error: ${error.message}`);
+    await client.end();
+  } finally {
+    processing.delete(zipFile);
+  }
+}
+
+async function scanExistingZips() {
+  log('🔍 Scanning for existing ZIP files...');
+
+  const files = fs.readdirSync(ARTWORK_DIR);
+  const zipFiles = files.filter(f => f.endsWith('.zip'));
+
+  if (zipFiles.length === 0) {
+    log('   No ZIP files found\n');
+    return;
+  }
+
+  log(`   Found ${zipFiles.length} ZIP file(s)\n`);
+
+  for (const zipFile of zipFiles) {
+    await processZipFile(zipFile);
+  }
+}
+
+function startWatcher() {
+  log('👁️  Watching artwork folder for new ZIP files...');
+  log(`   Folder: ${ARTWORK_DIR}`);
+  log('   Drop Perchance ZIP files here and they will be processed automatically!\n');
+
+  // Debounce timer to handle rapid file system events
+  const debounceTimers = new Map();
+
+  fs.watch(ARTWORK_DIR, { recursive: false }, (eventType, filename) => {
+    if (!filename || !filename.endsWith('.zip')) {
+      return;
+    }
+
+    // Skip if in processed folder
+    const fullPath = path.join(ARTWORK_DIR, filename);
+    if (fullPath.includes('processed_zips')) {
+      return;
+    }
+
+    // Clear existing timer for this file
+    if (debounceTimers.has(filename)) {
+      clearTimeout(debounceTimers.get(filename));
+    }
+
+    // Set new timer - wait 1 second to ensure file is fully written
+    const timer = setTimeout(() => {
+      debounceTimers.delete(filename);
+
+      // Check if file still exists (might have been moved during processing)
+      if (fs.existsSync(fullPath)) {
+        processZipFile(filename);
+      }
+    }, 1000);
+
+    debounceTimers.set(filename, timer);
+  });
+}
+
+async function main() {
+  console.log('================================================================================');
+  console.log('Perchance ZIP Watcher Service');
+  console.log('================================================================================\n');
+
+  ensureDirectories();
+
+  // Process any existing ZIPs first
+  await scanExistingZips();
+
+  // Start watching for new files
+  startWatcher();
+
+  // Keep process alive
+  process.on('SIGINT', () => {
+    log('\n👋 Shutting down watcher...');
+    process.exit(0);
+  });
+}
+
+main();

@@ -12,7 +12,9 @@ const { Client } = require('pg');
 const config = { ...require('./db-config'), database: 'chatlings' };
 
 // Configuration
-const CREATURES_PER_PROMPT = 4; // How many creatures to create per prompt (siblings)
+const CREATURES_PER_PROMPT = 10; // How many creatures to create per prompt (siblings)
+                                  // You can keep fewer images per prompt in Perchance,
+                                  // any extras will remain without images until generated later
 const TARGET_PROMPTS = 100; // How many unique prompts to generate
 
 // Negative prompt (constant for all)
