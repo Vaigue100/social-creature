@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatlings - Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        input[type="text"] {
+            padding: 15px 20px;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            font-size: 1.1em;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            border-color: #764ba2;
+        }
+
+        button {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .error {
+            background: #fee;
+            color: #c00;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .privacy-notice {
+            margin-top: 20px;
+            font-size: 0.85em;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>Chatlings</h1>
+        <p class="subtitle">Collect chatlings by liking YouTube videos!</p>
+
+        <div id="error" class="error"></div>
+
+        <form class="login-form" onsubmit="login(event)">
+            <input
+                type="text"
+                id="username"
+                placeholder="Enter username"
+                required
+                autocomplete="username"
+            />
+
+            <button type="submit" id="loginBtn">
+                Login / Sign Up
+            </button>
+        </form>
+
+        <div class="info-box">
+            <strong>Privacy-First Design</strong><br>
+            No passwords needed. Enter any username to start collecting chatlings!
+            Your liked videos are never stored - only the rewards you claim.
+        </div>
+
+        <div class="privacy-notice">
+            Session-based authentication • No long-term data storage
+        </div>
+    </div>
+
+    <script>
+        async function login(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('username').value.trim();
+            const errorEl = document.getElementById('error');
+            const loginBtn = document.getElementById('loginBtn');
+
+            if (!username) {
+                return;
+            }
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+            errorEl.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Store daily visit info if present
+                    if (data.dailyVisit) {
+                        sessionStorage.setItem('dailyVisit', JSON.stringify(data.dailyVisit));
+                    }
+
+                    // Redirect to user hub
+                    window.location.href = '/user/index.html';
+                } else {
+                    const error = await response.json();
+                    errorEl.textContent = error.error || 'Login failed';
+                    errorEl.style.display = 'block';
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Login / Sign Up';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                errorEl.textContent = 'Network error. Please try again.';
+                errorEl.style.display = 'block';
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login / Sign Up';
+            }
+        }
+
+        // Check if already logged in
+        async function checkSession() {
+            try {
+                const response = await fetch('/api/user/me');
+                if (response.ok) {
+                    // Already logged in, redirect
+                    window.location.href = '/user/index.html';
+                }
+            } catch (error) {
+                // Not logged in, stay on login page
+            }
+        }
+
+        checkSession();
+    </script>
+</body>
+</html>

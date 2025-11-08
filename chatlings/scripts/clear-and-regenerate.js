@@ -1,68 +1,111 @@
 /**
- * Clear creatures table and regenerate without names
- * Names will be assigned by the watcher when images are processed
+ * CLEAR DOWN ALL CREATURE DATA AND START FRESH
+ *
+ * This script will:
+ * 1. Delete all creatures from database
+ * 2. Delete all images from artwork/linked folder
+ * 3. Clear artwork/extracted folder
+ * 4. Clear artwork/processed_zips folder
+ * 5. Clear artwork/discarded folder
  */
 
 const { Client } = require('pg');
+const fs = require('fs');
+const path = require('path');
 const config = { ...require('./db-config'), database: 'chatlings' };
 
-const TARGET_PROMPTS = 100;
-const CREATURES_PER_PROMPT = 10;
+const CHATLINGS_DIR = path.join(__dirname, '..');
+const LINKED_DIR = path.join(CHATLINGS_DIR, 'artwork', 'linked');
+const EXTRACTED_DIR = path.join(CHATLINGS_DIR, 'artwork', 'extracted');
+const PROCESSED_DIR = path.join(CHATLINGS_DIR, 'artwork', 'processed_zips');
+const DISCARDED_DIR = path.join(CHATLINGS_DIR, 'artwork', 'discarded');
 
-async function clearAndRegenerate() {
+function deleteFilesInDir(dir, description) {
+  if (!fs.existsSync(dir)) {
+    console.log(`   ${description} folder doesn't exist, skipping...`);
+    return 0;
+  }
+
+  const files = fs.readdirSync(dir);
+  let count = 0;
+
+  for (const file of files) {
+    const filePath = path.join(dir, file);
+
+    try {
+      const stat = fs.statSync(filePath);
+
+      if (stat.isDirectory()) {
+        // Recursively delete directory contents
+        deleteFilesInDir(filePath, file);
+        fs.rmdirSync(filePath);
+        count++;
+      } else {
+        fs.unlinkSync(filePath);
+        count++;
+      }
+    } catch (err) {
+      console.log(`   ⚠️  Could not delete ${filePath}: ${err.message}`);
+    }
+  }
+
+  console.log(`   ✓ Deleted ${count} items from ${description}`);
+  return count;
+}
+
+async function clearDown() {
+  console.log('='.repeat(80));
+  console.log('CLEAR DOWN AND REGENERATE');
+  console.log('='.repeat(80));
+  console.log('\n⚠️  WARNING: This will delete ALL creatures and images!');
+  console.log('Make sure you have your Perchance ZIPs backed up outside this project.\n');
+
   const client = new Client(config);
 
   try {
     await client.connect();
-    console.log('Connected to database...\n');
+    console.log('✓ Connected to database\n');
 
-    // Clear creatures table
-    console.log('Clearing creatures table...');
+    // Step 1: Count current data
+    console.log('Current state:');
+    const creatureCount = await client.query('SELECT COUNT(*) as count FROM creatures');
+    console.log(`   Creatures in database: ${creatureCount.rows[0].count}`);
+
+    // Step 2: Delete all creatures from database
+    console.log('\n1. Deleting creatures from database...');
     await client.query('DELETE FROM creatures');
-    console.log('✓ Creatures table cleared\n');
+    console.log('   ✓ All creatures deleted');
 
-    // Get all prompts
-    const promptsResult = await client.query('SELECT id FROM creature_prompts ORDER BY id');
-    console.log(`Found ${promptsResult.rows.length} prompts\n`);
+    // Step 3: Delete all images from linked folder
+    console.log('\n2. Deleting images from linked folder...');
+    deleteFilesInDir(LINKED_DIR, 'linked images');
 
-    let creaturesCreated = 0;
+    // Step 4: Clear extracted folder
+    console.log('\n3. Clearing extracted folder...');
+    deleteFilesInDir(EXTRACTED_DIR, 'extracted files');
 
-    for (const promptRow of promptsResult.rows) {
-      const promptId = promptRow.id;
+    // Step 5: Clear processed_zips folder
+    console.log('\n4. Clearing processed_zips folder...');
+    deleteFilesInDir(PROCESSED_DIR, 'processed ZIPs');
 
-      // Create 10 creatures for this prompt with no names yet
-      for (let i = 0; i < CREATURES_PER_PROMPT; i++) {
-        await client.query(`
-          INSERT INTO creatures (creature_name, prompt_id, rarity_tier)
-          VALUES ($1, $2, $3)
-        `, [`Unnamed Chatling ${creaturesCreated + 1}`, promptId, 'Common']);
-
-        creaturesCreated++;
-      }
-
-      if (creaturesCreated % 100 === 0) {
-        console.log(`Progress: ${creaturesCreated} creatures created...`);
-      }
-    }
+    // Step 6: Clear discarded folder
+    console.log('\n5. Clearing discarded folder...');
+    deleteFilesInDir(DISCARDED_DIR, 'discarded images');
 
     console.log('\n' + '='.repeat(80));
-    console.log('Regeneration Complete!');
+    console.log('✅ CLEANUP COMPLETE!');
     console.log('='.repeat(80));
-    console.log(`Creatures created: ${creaturesCreated}`);
-    console.log(`Prompts: ${promptsResult.rows.length}`);
-    console.log(`\nNames will be assigned automatically by the watcher when images are processed.`);
-    console.log('='.repeat(80));
+    console.log('\nDatabase and folders have been cleared.');
+    console.log('You can now drop your Perchance ZIPs into the artwork folder.');
+    console.log('The watcher will process them automatically.\n');
 
     await client.end();
 
   } catch (error) {
-    console.error('Error:', error.message);
+    console.error('\n❌ Error:', error.message);
+    console.error(error.stack);
     process.exit(1);
   }
 }
 
-console.log('================================================================================');
-console.log('Clear & Regenerate Creatures (Without Names)');
-console.log('================================================================================\n');
-
-clearAndRegenerate();
+clearDown();

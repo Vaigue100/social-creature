@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications - Chatlings</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        nav {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-links {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .nav-link {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .nav-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+
+        .content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            min-height: 400px;
+        }
+
+        .page-title {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .notifications-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .notification {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .notification:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .notification.unread {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+            border-left-color: #764ba2;
+            border-left-width: 6px;
+        }
+
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .notification-type {
+            font-size: 0.85em;
+            color: #667eea;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .notification-time {
+            font-size: 0.85em;
+            color: #999;
+        }
+
+        .notification-message {
+            color: #333;
+            font-size: 1em;
+            line-height: 1.5;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        .empty-state-text {
+            font-size: 1.2em;
+        }
+
+        .mark-all-read {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            transition: background 0.2s;
+        }
+
+        .mark-all-read:hover {
+            background: #5568d3;
+        }
+
+        .mark-all-read:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <img src="/admin/assets/logo.png" alt="Chatlings Logo" style="max-width: 200px; margin-bottom: 20px;">
+            <h1>Chatlings</h1>
+            <p class="subtitle">Your Notifications</p>
+        </header>
+
+        <nav>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="collections.html" class="nav-link">Collections</a>
+                <a href="achievements.html" class="nav-link">Achievements</a>
+                <a href="integrations.html" class="nav-link">Integrations</a>
+                <a href="notifications.html" class="nav-link active">Notifications</a>
+            </div>
+        </nav>
+
+        <div class="content">
+            <h2 class="page-title">Notifications</h2>
+
+            <button id="mark-all-read" class="mark-all-read" onclick="markAllAsRead()" style="display: none;">
+                Mark All as Read
+            </button>
+
+            <div id="loading" class="loading">
+                Loading notifications...
+            </div>
+
+            <div id="notifications-container" class="notifications-list" style="display: none;">
+                <!-- Notifications will be loaded here -->
+            </div>
+
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">🔔</div>
+                <div class="empty-state-text">No notifications yet</div>
+                <p style="margin-top: 10px; color: #bbb;">When you collect chatlings or earn achievements, you'll see notifications here!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadNotifications() {
+            const loading = document.getElementById('loading');
+            const container = document.getElementById('notifications-container');
+            const emptyState = document.getElementById('empty-state');
+            const markAllBtn = document.getElementById('mark-all-read');
+
+            try {
+                const response = await fetch('/api/user/notifications');
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        window.location.href = '/user/login.html';
+                        return;
+                    }
+                    throw new Error('Failed to load notifications');
+                }
+
+                const data = await response.json();
+                loading.style.display = 'none';
+
+                if (data.notifications && data.notifications.length > 0) {
+                    container.style.display = 'flex';
+                    emptyState.style.display = 'none';
+
+                    // Check if there are any unread notifications
+                    const hasUnread = data.notifications.some(n => !n.is_read);
+                    if (hasUnread) {
+                        markAllBtn.style.display = 'block';
+                    }
+
+                    container.innerHTML = data.notifications.map(notification => {
+                        const date = new Date(notification.created_at);
+                        const timeAgo = getTimeAgo(date);
+                        const typeLabel = getTypeLabel(notification.notification_type);
+                        const isUnread = !notification.is_read;
+
+                        return `
+                            <div class="notification ${isUnread ? 'unread' : ''}">
+                                <div class="notification-header">
+                                    <span class="notification-type">${typeLabel}</span>
+                                    <span class="notification-time">${timeAgo}</span>
+                                </div>
+                                <div class="notification-message">${notification.message}</div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    container.style.display = 'none';
+                    emptyState.style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+                loading.textContent = 'Failed to load notifications';
+            }
+        }
+
+        async function markAllAsRead() {
+            const markAllBtn = document.getElementById('mark-all-read');
+            markAllBtn.disabled = true;
+            markAllBtn.textContent = 'Marking as read...';
+
+            try {
+                const response = await fetch('/api/user/notifications/mark-read', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    // Reload notifications
+                    await loadNotifications();
+                } else {
+                    throw new Error('Failed to mark as read');
+                }
+
+            } catch (error) {
+                console.error('Error marking notifications as read:', error);
+                markAllBtn.disabled = false;
+                markAllBtn.textContent = 'Mark All as Read';
+            }
+        }
+
+        function getTypeLabel(type) {
+            const labels = {
+                'daily_visit': '🎉 Daily Visit',
+                'new_discovery': '✨ New Discovery',
+                'achievement_unlocked': '🏆 Achievement',
+                'chatling_evolved': '⭐ Evolution'
+            };
+            return labels[type] || '📌 Notification';
+        }
+
+        function getTimeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            const intervals = {
+                year: 31536000,
+                month: 2592000,
+                week: 604800,
+                day: 86400,
+                hour: 3600,
+                minute: 60
+            };
+
+            for (const [unit, secondsInUnit] of Object.entries(intervals)) {
+                const interval = Math.floor(seconds / secondsInUnit);
+                if (interval >= 1) {
+                    return `${interval} ${unit}${interval > 1 ? 's' : ''} ago`;
+                }
+            }
+
+            return 'Just now';
+        }
+
+        // Load notifications on page load
+        loadNotifications();
+    </script>
+</body>
+</html>

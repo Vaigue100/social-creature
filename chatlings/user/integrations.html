@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatlings - Integrations</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        nav {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-links {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .nav-link {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .nav-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+
+        .content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        .integration-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .integration-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            flex-shrink: 0;
+        }
+
+        .integration-icon.youtube {
+            background: #FF0000;
+            color: white;
+        }
+
+        .integration-details {
+            flex: 1;
+        }
+
+        .integration-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .integration-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .integration-status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .status-connected {
+            background: #27ae60;
+            color: white;
+        }
+
+        .status-disconnected {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .integration-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .connection-info {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .connection-info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .connection-info-item:last-child {
+            border-bottom: none;
+        }
+
+        .connection-info-label {
+            font-weight: 600;
+            color: #666;
+        }
+
+        .connection-info-value {
+            color: #333;
+        }
+
+        .how-it-works {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            padding: 25px;
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+
+        .how-it-works h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .how-it-works ol {
+            margin-left: 20px;
+            line-height: 1.8;
+            color: #666;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Chatlings</h1>
+            <p class="subtitle">Collect chatlings as you explore YouTube!</p>
+        </header>
+
+        <nav>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="collections.html" class="nav-link">Collections</a>
+                <a href="achievements.html" class="nav-link">Achievements</a>
+                <a href="integrations.html" class="nav-link active">Integrations</a>
+            </div>
+        </nav>
+
+        <div class="content">
+            <h2>Integrations</h2>
+
+            <div class="integration-card">
+                <div class="integration-icon youtube">📺</div>
+                <div class="integration-details">
+                    <div class="integration-title">YouTube Likes</div>
+                    <div class="integration-description">
+                        Connect your YouTube account to claim chatlings from videos you've liked!
+                        Each video has a unique chatling that lasts for 24 hours. Privacy-first: no data is stored.
+                    </div>
+
+                    <div id="youtube-status-message" style="margin: 15px 0; padding: 15px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-radius: 10px; display: none;">
+                        <div style="font-weight: 600; margin-bottom: 5px;">Last Session</div>
+                        <div id="rewards-claimed-msg"></div>
+                    </div>
+
+                    <div class="integration-actions">
+                        <button id="connect-youtube-btn" class="btn btn-primary" onclick="connectYouTube()">
+                            Claim Rewards from Liked Videos
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 20px; padding: 15px; background: #f0f9ff; border-left: 4px solid #667eea; border-radius: 5px;">
+                        <strong style="color: #667eea;">🔒 Privacy Notice</strong>
+                        <p style="margin: 10px 0 0 0; font-size: 0.9em; color: #666;">
+                            Your YouTube access is session-only. We fetch your liked videos once,
+                            claim rewards, and immediately discard the access token.
+                            No user data or video history is ever stored.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="how-it-works">
+                <h3>How it works:</h3>
+                <ol>
+                    <li>Click "Claim Rewards from Liked Videos"</li>
+                    <li>Authorize with Google (read-only access to your liked videos)</li>
+                    <li>We fetch your 50 most recently liked videos</li>
+                    <li>Each video is assigned a unique chatling (valid for 24 hours)</li>
+                    <li>You claim the chatling - it's yours forever!</li>
+                    <li>If another user likes the same video within 24 hours, they get the same chatling</li>
+                    <li>After 24 hours, the video gets a new chatling</li>
+                </ol>
+
+                <h3 style="margin-top: 30px;">Privacy Features:</h3>
+                <ul style="line-height: 1.8; color: #666;">
+                    <li>No long-term OAuth tokens stored</li>
+                    <li>Access token discarded immediately after use</li>
+                    <li>No video history or user identity stored</li>
+                    <li>Only claimed rewards are kept (decoupled from videos)</li>
+                    <li>Video-chatling mappings auto-expire after 24 hours</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function connectYouTube() {
+            const btn = document.getElementById('connect-youtube-btn');
+            btn.disabled = true;
+            btn.textContent = 'Connecting...';
+
+            try {
+                // Initiate OAuth flow
+                const response = await fetch('/api/auth/youtube/authorize');
+                if (response.ok) {
+                    const data = await response.json();
+                    // Redirect to Google OAuth
+                    window.location.href = data.authUrl;
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Failed to initiate YouTube connection');
+                    btn.disabled = false;
+                    btn.textContent = 'Claim Rewards from Liked Videos';
+                }
+            } catch (error) {
+                console.error('Error connecting YouTube:', error);
+                alert('Error connecting to YouTube. Make sure you\'re logged in.');
+                btn.disabled = false;
+                btn.textContent = 'Claim Rewards from Liked Videos';
+            }
+        }
+
+        // Check for OAuth callback with results
+        const urlParams = new URLSearchParams(window.location.search);
+        const rewardsClaimed = urlParams.get('rewards_claimed');
+        const error = urlParams.get('error');
+
+        if (rewardsClaimed !== null) {
+            const statusMsg = document.getElementById('youtube-status-message');
+            const rewardsMsg = document.getElementById('rewards-claimed-msg');
+
+            if (parseInt(rewardsClaimed) > 0) {
+                rewardsMsg.innerHTML = `
+                    <strong style="color: #27ae60;">Success!</strong>
+                    You claimed <strong>${rewardsClaimed}</strong> new chatling${parseInt(rewardsClaimed) > 1 ? 's' : ''} from your liked videos!
+                    <br><a href="collections.html" style="color: #667eea; text-decoration: none;">View your collection →</a>
+                `;
+                statusMsg.style.display = 'block';
+            } else {
+                rewardsMsg.innerHTML = `
+                    <strong style="color: #f39c12;">No New Rewards</strong>
+                    You've already claimed rewards from your recently liked videos.
+                    Like more videos and try again!
+                `;
+                statusMsg.style.display = 'block';
+            }
+
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (error) {
+            alert('Error: ' + error);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        // Check if logged in
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/user/me');
+                if (!response.ok) {
+                    window.location.href = '/user/login.html';
+                }
+            } catch (error) {
+                window.location.href = '/user/login.html';
+            }
+        }
+
+        checkAuth();
+    </script>
+</body>
+</html>

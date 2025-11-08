@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatlings - Collections</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        nav {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-links {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .nav-link {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .nav-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+
+        .content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        .filter-bar {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            font-size: 0.9em;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .filter-group select {
+            padding: 8px 15px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 1em;
+            background: white;
+            cursor: pointer;
+        }
+
+        .collection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .chatling-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .chatling-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .chatling-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        }
+
+        .chatling-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .chatling-info {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .rarity-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .rarity-common {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .rarity-uncommon {
+            background: #27ae60;
+            color: white;
+        }
+
+        .rarity-rare {
+            background: #3498db;
+            color: white;
+        }
+
+        .rarity-epic {
+            background: #9b59b6;
+            color: white;
+        }
+
+        .rarity-legendary {
+            background: linear-gradient(135deg, #f39c12 0%, #e74c3c 100%);
+            color: white;
+        }
+
+        .encounter-count {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .empty-state p {
+            font-size: 1.1em;
+            margin-bottom: 20px;
+        }
+
+        .empty-state a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Chatlings</h1>
+            <p class="subtitle">Collect chatlings as you explore YouTube!</p>
+        </header>
+
+        <nav>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="collections.html" class="nav-link active">Collections</a>
+                <a href="achievements.html" class="nav-link">Achievements</a>
+                <a href="integrations.html" class="nav-link">Integrations</a>
+            </div>
+        </nav>
+
+        <div class="content">
+            <h2>My Collection</h2>
+
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label for="filter-rarity">Rarity</label>
+                    <select id="filter-rarity">
+                        <option value="">All Rarities</option>
+                        <option value="Common">Common</option>
+                        <option value="Uncommon">Uncommon</option>
+                        <option value="Rare">Rare</option>
+                        <option value="Epic">Epic</option>
+                        <option value="Legendary">Legendary</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="filter-platform">Platform</label>
+                    <select id="filter-platform">
+                        <option value="">All Platforms</option>
+                        <option value="YouTube">YouTube</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="sort-by">Sort By</label>
+                    <select id="sort-by">
+                        <option value="recent">Most Recent</option>
+                        <option value="rarity">Rarity</option>
+                        <option value="name">Name</option>
+                        <option value="encounters">Encounter Count</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="loading" class="loading">Loading your collection...</div>
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <h3>No Chatlings Yet!</h3>
+                <p>Start discovering chatlings by connecting your YouTube account and commenting on videos.</p>
+                <a href="integrations.html">Connect YouTube</a>
+            </div>
+            <div id="collection-grid" class="collection-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        let allChatlings = [];
+
+        async function loadCollection() {
+            try {
+                const response = await fetch('/api/user/collection');
+                if (response.ok) {
+                    allChatlings = await response.json();
+                    if (allChatlings.length === 0) {
+                        document.getElementById('loading').style.display = 'none';
+                        document.getElementById('empty-state').style.display = 'block';
+                    } else {
+                        document.getElementById('loading').style.display = 'none';
+                        displayChatlings(allChatlings);
+                    }
+                } else {
+                    // Not logged in - redirect
+                    window.location.href = '/user/login.html';
+                }
+            } catch (error) {
+                console.error('Error loading collection:', error);
+                window.location.href = '/user/login.html';
+            }
+        }
+
+        function displayChatlings(chatlings) {
+            const grid = document.getElementById('collection-grid');
+            grid.innerHTML = '';
+
+            chatlings.forEach(chatling => {
+                const card = document.createElement('div');
+                card.className = 'chatling-card';
+
+                const rarityClass = `rarity-${chatling.rarity_tier.toLowerCase()}`;
+
+                card.innerHTML = `
+                    <img src="/images/${chatling.selected_image}"
+                         alt="${chatling.creature_name}"
+                         class="chatling-image"
+                         onerror="this.style.display='none'">
+                    <div class="chatling-name">${chatling.creature_name}</div>
+                    <div class="chatling-info">${chatling.species_name}</div>
+                    <div class="rarity-badge ${rarityClass}">${chatling.rarity_tier}</div>
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
+        function filterAndSort() {
+            const rarity = document.getElementById('filter-rarity').value;
+            const platform = document.getElementById('filter-platform').value;
+            const sortBy = document.getElementById('sort-by').value;
+
+            let filtered = allChatlings;
+
+            // Filter by rarity
+            if (rarity) {
+                filtered = filtered.filter(c => c.rarity_tier === rarity);
+            }
+
+            // Filter by platform
+            if (platform) {
+                filtered = filtered.filter(c => c.platform === platform);
+            }
+
+            // Sort
+            filtered.sort((a, b) => {
+                switch (sortBy) {
+                    case 'recent':
+                        return new Date(b.claimed_at) - new Date(a.claimed_at);
+                    case 'rarity':
+                        const rarityOrder = { 'Legendary': 5, 'Epic': 4, 'Rare': 3, 'Uncommon': 2, 'Common': 1 };
+                        return (rarityOrder[b.rarity_tier] || 0) - (rarityOrder[a.rarity_tier] || 0);
+                    case 'name':
+                        return a.creature_name.localeCompare(b.creature_name);
+                    default:
+                        return 0;
+                }
+            });
+
+            displayChatlings(filtered);
+        }
+
+        // Event listeners
+        document.getElementById('filter-rarity').addEventListener('change', filterAndSort);
+        document.getElementById('filter-platform').addEventListener('change', filterAndSort);
+        document.getElementById('sort-by').addEventListener('change', filterAndSort);
+
+        // Load collection on page load
+        loadCollection();
+    </script>
+</body>
+</html>

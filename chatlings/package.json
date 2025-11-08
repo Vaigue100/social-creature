@@ -1,0 +1,29 @@
+{
+  "name": "chatlings",
+  "version": "1.0.0",
+  "description": "Chatlings - Collect creatures as you explore YouTube",
+  "main": "admin-server.js",
+  "scripts": {
+    "start": "node admin-server.js",
+    "dev": "node admin-server.js",
+    "migrate:likes": "node scripts/run-youtube-likes-migration.js",
+    "migrate:old": "node scripts/run-youtube-migration.js",
+    "setup-db": "node scripts/setup-database.js"
+  },
+  "keywords": [
+    "chatlings",
+    "youtube",
+    "collection",
+    "game"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "pg": "^8.11.0",
+    "googleapis": "^128.0.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {}
+}

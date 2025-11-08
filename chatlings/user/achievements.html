@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatlings - Achievements</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        nav {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-links {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .nav-link {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .nav-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+
+        .content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        .points-summary {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .total-points {
+            font-size: 3em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .points-label {
+            color: #666;
+            font-size: 1.2em;
+        }
+
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .achievement-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .achievement-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .achievement-card.locked {
+            opacity: 0.5;
+        }
+
+        .achievement-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 35px;
+            flex-shrink: 0;
+        }
+
+        .achievement-icon.unlocked {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .achievement-icon.locked {
+            background: #e0e0e0;
+            filter: grayscale(100%);
+        }
+
+        .achievement-details {
+            flex: 1;
+        }
+
+        .achievement-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .achievement-description {
+            font-size: 0.95em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .achievement-points {
+            display: inline-block;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .achievement-date {
+            font-size: 0.85em;
+            color: #999;
+            margin-top: 8px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .progress-bar {
+            margin-top: 10px;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Chatlings</h1>
+            <p class="subtitle">Collect chatlings as you explore YouTube!</p>
+        </header>
+
+        <nav>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="collections.html" class="nav-link">Collections</a>
+                <a href="achievements.html" class="nav-link active">Achievements</a>
+                <a href="integrations.html" class="nav-link">Integrations</a>
+            </div>
+        </nav>
+
+        <div class="content">
+            <h2>Achievements</h2>
+
+            <div class="points-summary">
+                <div class="total-points" id="total-points">0</div>
+                <div class="points-label">Total Points Earned</div>
+            </div>
+
+            <div id="loading" class="loading">Loading achievements...</div>
+            <div id="achievements-grid" class="achievements-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        async function loadAchievements() {
+            try {
+                const response = await fetch('/api/user/achievements');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('loading').style.display = 'none';
+                    displayAchievements(data.achievements, data.user_progress);
+                    updateTotalPoints(data.user_progress);
+                } else {
+                    // Not logged in - redirect
+                    window.location.href = '/user/login.html';
+                }
+            } catch (error) {
+                console.error('Error loading achievements:', error);
+                window.location.href = '/user/login.html';
+            }
+        }
+
+        function updateTotalPoints(userProgress) {
+            const totalPoints = userProgress.reduce((sum, p) => {
+                return sum + (p.unlocked ? p.points : 0);
+            }, 0);
+            document.getElementById('total-points').textContent = totalPoints;
+        }
+
+        function displayAchievements(achievements, userProgress) {
+            const grid = document.getElementById('achievements-grid');
+            grid.innerHTML = '';
+
+            achievements.forEach(achievement => {
+                const progress = userProgress.find(p => p.achievement_id === achievement.id) || {};
+                const isUnlocked = progress.unlocked || false;
+                const unlockedAt = progress.unlocked_at;
+
+                const card = document.createElement('div');
+                card.className = `achievement-card ${isUnlocked ? 'unlocked' : 'locked'}`;
+
+                let progressHTML = '';
+                if (!isUnlocked && achievement.requirement_type === 'reward_count') {
+                    const currentCount = progress.current_count || 0;
+                    const requiredCount = achievement.requirement_value;
+                    const percentage = Math.min((currentCount / requiredCount) * 100, 100);
+
+                    progressHTML = `
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="progress-text">${currentCount} / ${requiredCount}</div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div class="achievement-icon ${isUnlocked ? 'unlocked' : 'locked'}">
+                        ${getAchievementIcon(achievement.achievement_key, isUnlocked)}
+                    </div>
+                    <div class="achievement-details">
+                        <div class="achievement-title">${achievement.title}</div>
+                        <div class="achievement-description">${achievement.description}</div>
+                        <div class="achievement-points">${achievement.points} points</div>
+                        ${progressHTML}
+                        ${isUnlocked ? `<div class="achievement-date">Unlocked: ${new Date(unlockedAt).toLocaleDateString()}</div>` : ''}
+                    </div>
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
+        function getAchievementIcon(key, unlocked) {
+            const icons = {
+                'first_reward': '🎉',
+                'collector_10': '📦',
+                'collector_50': '🏆',
+                'collector_100': '👑',
+                'legendary_hunter': '⭐',
+                'epic_seeker': '💎'
+            };
+
+            const icon = icons[key] || '⭐';
+            return unlocked ? icon : '🔒';
+        }
+
+        // Load achievements on page load
+        loadAchievements();
+    </script>
+</body>
+</html>

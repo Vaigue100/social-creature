@@ -4,9 +4,12 @@
  */
 
 const express = require('express');
+const session = require('express-session');
 const { Client } = require('pg');
 const path = require('path');
 const fs = require('fs');
+const Services = require('./services');
+const dailyChatlingService = require('./services/daily-chatling-service');
 
 const app = express();
 const PORT = 3000;
@@ -14,9 +17,25 @@ const PORT = 3000;
 // Database config
 const config = { ...require('./scripts/db-config'), database: 'chatlings' };
 
+// Initialize services
+const services = new Services(config);
+
+// Session middleware (privacy-first - no long-term storage)
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'chatlings-session-secret-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: false, // Set to true in production with HTTPS
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
 // Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'admin')));
+app.use('/user', express.static(path.join(__dirname, 'user')));
 app.use('/artwork', express.static(path.join(__dirname, 'artwork')));
 app.use('/images', express.static(path.join(__dirname, 'artwork', 'linked')));
 
@@ -317,7 +336,7 @@ app.get('/api/creatures-by-dimensions', async (req, res) => {
       JOIN dim_size_category sc ON cp.size_id = sc.id
       ${whereClause}
       ORDER BY c.id
-      LIMIT 9
+      LIMIT 100
     `, params);
 
     res.json({ creatures: result.rows });
@@ -363,12 +382,578 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
+// ============================================================================
+// USER HUB API ENDPOINTS (Privacy-First, Session-Based)
+// ============================================================================
+
+/**
+ * Get current user info from session
+ */
+app.get('/api/user/me', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(
+      'SELECT id, username, email, created_at FROM users WHERE id = $1',
+      [req.session.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = result.rows[0];
+
+    // Get current chatling
+    const currentChatling = await dailyChatlingService.getCurrentChatling(req.session.userId);
+
+    res.json({
+      ...user,
+      currentChatling
+    });
+
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Get user stats (rewards claimed, achievements, etc.)
+ */
+app.get('/api/user/stats', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Get total rewards claimed
+    const rewards = await client.query(
+      'SELECT COUNT(DISTINCT creature_id) as count FROM user_rewards WHERE user_id = $1',
+      [req.session.userId]
+    );
+
+    // Get total achievements
+    const achievements = await client.query(
+      'SELECT COUNT(*) as count FROM user_achievements WHERE user_id = $1',
+      [req.session.userId]
+    );
+
+    // Get total points from achievements
+    const points = await client.query(`
+      SELECT COALESCE(SUM(a.points), 0) as total
+      FROM user_achievements ua
+      JOIN achievements a ON ua.achievement_id = a.id
+      WHERE ua.user_id = $1
+    `, [req.session.userId]);
+
+    // Get rarity breakdown
+    const rarityBreakdown = await client.query(`
+      SELECT
+        c.rarity_tier,
+        COUNT(*) as count
+      FROM user_rewards ur
+      JOIN creatures c ON ur.creature_id = c.id
+      WHERE ur.user_id = $1
+      GROUP BY c.rarity_tier
+      ORDER BY
+        CASE c.rarity_tier
+          WHEN 'Legendary' THEN 1
+          WHEN 'Epic' THEN 2
+          WHEN 'Rare' THEN 3
+          WHEN 'Uncommon' THEN 4
+          WHEN 'Common' THEN 5
+        END
+    `, [req.session.userId]);
+
+    // Get total available chatlings by rarity
+    const rarityTotals = await client.query(`
+      SELECT
+        c.rarity_tier,
+        COUNT(*) as total
+      FROM creatures c
+      WHERE c.selected_image IS NOT NULL
+      GROUP BY c.rarity_tier
+      ORDER BY
+        CASE c.rarity_tier
+          WHEN 'Legendary' THEN 1
+          WHEN 'Epic' THEN 2
+          WHEN 'Rare' THEN 3
+          WHEN 'Uncommon' THEN 4
+          WHEN 'Common' THEN 5
+        END
+    `);
+
+    // Merge rarity breakdown with totals
+    const rarityTotalsMap = {};
+    rarityTotals.rows.forEach(row => {
+      rarityTotalsMap[row.rarity_tier] = parseInt(row.total);
+    });
+
+    const rarityBreakdownWithTotals = rarityBreakdown.rows.map(row => ({
+      rarity_tier: row.rarity_tier,
+      count: parseInt(row.count),
+      total: rarityTotalsMap[row.rarity_tier] || 0
+    }));
+
+    res.json({
+      total_rewards: parseInt(rewards.rows[0].count) || 0,
+      total_achievements: parseInt(achievements.rows[0].count) || 0,
+      total_points: parseInt(points.rows[0].total) || 0,
+      rarity_breakdown: rarityBreakdownWithTotals,
+      rarity_totals: rarityTotalsMap
+    });
+
+  } catch (error) {
+    console.error('Error fetching user stats:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Get user's chatling collection (rewards claimed)
+ */
+app.get('/api/user/collection', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT
+        c.id,
+        c.creature_name,
+        c.selected_image,
+        c.rarity_tier,
+        s.species_name,
+        ur.claimed_at,
+        ur.platform
+      FROM user_rewards ur
+      JOIN creatures c ON ur.creature_id = c.id
+      JOIN dim_species s ON c.species_id = s.id
+      WHERE ur.user_id = $1
+      ORDER BY ur.claimed_at DESC
+    `, [req.session.userId]);
+
+    res.json(result.rows);
+
+  } catch (error) {
+    console.error('Error fetching collection:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Get achievements with user progress
+ */
+app.get('/api/user/achievements', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Get all achievements
+    const achievements = await client.query(`
+      SELECT * FROM achievements ORDER BY points ASC
+    `);
+
+    // Get user's unlocked achievements
+    const userAchievements = await client.query(`
+      SELECT achievement_id, unlocked_at FROM user_achievements WHERE user_id = $1
+    `, [req.session.userId]);
+
+    // Get user's current reward count
+    const rewardCount = await client.query(`
+      SELECT COUNT(DISTINCT creature_id) as count FROM user_rewards WHERE user_id = $1
+    `, [req.session.userId]);
+
+    const count = parseInt(rewardCount.rows[0].count) || 0;
+
+    // Build progress object
+    const userProgress = achievements.rows.map(achievement => {
+      const unlocked = userAchievements.rows.find(ua => ua.achievement_id === achievement.id);
+
+      const progress = {
+        achievement_id: achievement.id,
+        points: achievement.points,
+        unlocked: !!unlocked,
+        unlocked_at: unlocked?.unlocked_at
+      };
+
+      // Add current count for reward-based achievements
+      if (achievement.requirement_type === 'reward_count') {
+        progress.current_count = count;
+      }
+
+      return progress;
+    });
+
+    res.json({
+      achievements: achievements.rows,
+      user_progress: userProgress
+    });
+
+  } catch (error) {
+    console.error('Error fetching achievements:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Get YouTube session status (session-based, no long-term storage)
+ */
+app.get('/api/user/youtube-status', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  // In session-based approach, we only check if user has an active YouTube token in session
+  res.json({
+    connected: !!req.session.youtubeAccessToken,
+    session_active: !!req.session.youtubeAccessToken,
+    privacy_mode: 'session-only' // No long-term storage
+  });
+});
+
+/**
+ * Clear YouTube session (logout)
+ */
+app.post('/api/user/youtube-disconnect', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  // Clear YouTube access token from session (privacy-first)
+  delete req.session.youtubeAccessToken;
+
+  res.json({
+    success: true,
+    message: 'YouTube session cleared (no data was stored)'
+  });
+});
+
+/**
+ * YouTube OAuth - Initiate authorization (session-based)
+ */
+app.get('/api/auth/youtube/authorize', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    // Generate authorization URL with session ID as state
+    const authUrl = services.youtubeLikes.getAuthorizationUrl(req.session.id);
+
+    res.json({ authUrl });
+
+  } catch (error) {
+    console.error('Error initiating YouTube auth:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * YouTube OAuth - Callback (session-based, privacy-first)
+ */
+app.get('/api/auth/youtube/callback', async (req, res) => {
+  try {
+    const { code, state } = req.query;
+
+    if (!code) {
+      return res.status(400).send('Authorization failed - no code provided');
+    }
+
+    // Find session by ID (state parameter)
+    // Note: This is a simplified approach - in production, use a session store
+    const sessionId = state;
+
+    // Exchange code for access token (no refresh token - session only)
+    const accessToken = await services.youtubeLikes.getTokensFromCode(code);
+
+    // Store access token in session (temporary, no database)
+    req.session.youtubeAccessToken = accessToken;
+    req.session.youtubeConnectedAt = new Date();
+
+    // Process liked videos and claim rewards immediately
+    if (req.session.userId) {
+      const newRewards = await services.youtubeLikes.processLikesAndClaimRewards(
+        req.session.userId,
+        accessToken
+      );
+
+      console.log(`User ${req.session.userId} claimed ${newRewards.length} new rewards`);
+
+      // Clear token from session after processing (extra privacy)
+      // Token is only needed once per session
+      delete req.session.youtubeAccessToken;
+
+      // Redirect back with results
+      res.redirect(`/user/integrations.html?rewards_claimed=${newRewards.length}`);
+    } else {
+      res.redirect('/user/integrations.html?error=no_session');
+    }
+
+  } catch (error) {
+    console.error('Error in YouTube callback:', error);
+    res.status(500).send(`Error processing YouTube likes: ${error.message}`);
+  }
+});
+
+/**
+ * Get unread notifications
+ */
+app.get('/api/user/notifications', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT * FROM notifications
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT 20
+    `, [req.session.userId]);
+
+    res.json(result.rows);
+
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Mark notifications as read
+ */
+app.post('/api/user/notifications/mark-read', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    await client.query(`
+      UPDATE notifications
+      SET is_read = true
+      WHERE user_id = $1 AND is_read = false
+    `, [req.session.userId]);
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Error marking notifications read:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+// ============================================================================
+// TEMPORARY LOGIN ENDPOINT (For Testing)
+// TODO: Replace with proper authentication system
+// ============================================================================
+
+/**
+ * Simple login for testing (creates or finds user by username)
+ */
+app.post('/api/auth/login', async (req, res) => {
+  const { username } = req.body;
+
+  if (!username) {
+    return res.status(400).json({ error: 'Username required' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Find or create user
+    let user = await client.query(
+      'SELECT id, username, email FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (user.rows.length === 0) {
+      // Create new user
+      user = await client.query(
+        'INSERT INTO users (username, email) VALUES ($1, $2) RETURNING id, username, email',
+        [username, `${username}@example.com`]
+      );
+    }
+
+    // Set session
+    req.session.userId = user.rows[0].id;
+    req.session.username = user.rows[0].username;
+
+    // Trigger daily chatling visit (if needed)
+    let dailyVisit = null;
+    try {
+      const needsVisit = await dailyChatlingService.needsDailyVisit(user.rows[0].id);
+      if (needsVisit) {
+        dailyVisit = await dailyChatlingService.assignDailyChatling(user.rows[0].id);
+      }
+    } catch (visitError) {
+      console.error('Error assigning daily chatling:', visitError);
+      // Don't fail login if daily visit fails
+    }
+
+    res.json({
+      success: true,
+      user: user.rows[0],
+      dailyVisit
+    });
+
+  } catch (error) {
+    console.error('Error during login:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Logout
+ */
+/**
+ * Get user's current chatling
+ */
+app.get('/api/user/current-chatling', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const currentChatling = await dailyChatlingService.getCurrentChatling(req.session.userId);
+
+    if (!currentChatling) {
+      return res.json({ currentChatling: null });
+    }
+
+    res.json({ currentChatling });
+
+  } catch (error) {
+    console.error('Error fetching current chatling:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Trigger daily chatling visit
+ * This can be called manually or automatically when user logs in
+ */
+app.post('/api/user/daily-visit', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    // Check if user needs a daily visit
+    const needsVisit = await dailyChatlingService.needsDailyVisit(req.session.userId);
+
+    if (!needsVisit) {
+      const currentChatling = await dailyChatlingService.getCurrentChatling(req.session.userId);
+      return res.json({
+        alreadyVisitedToday: true,
+        currentChatling
+      });
+    }
+
+    // Assign daily chatling
+    const visit = await dailyChatlingService.assignDailyChatling(req.session.userId);
+
+    res.json({
+      success: true,
+      visit
+    });
+
+  } catch (error) {
+    console.error('Error assigning daily chatling:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get daily visit history
+ */
+app.get('/api/user/visit-history', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const history = await dailyChatlingService.getVisitHistory(req.session.userId, limit);
+
+    res.json({ history });
+
+  } catch (error) {
+    console.error('Error fetching visit history:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to logout' });
+    }
+    res.json({ success: true });
+  });
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log('\n' + '='.repeat(80));
-  console.log('Chatlings Admin Console');
-  console.log('Image Selection Interface');
+  console.log('Chatlings Server');
   console.log('='.repeat(80));
-  console.log(`\nServer running at: http://localhost:${PORT}`);
-  console.log('\nOpen this URL in your browser to start selecting images.\n');
+  console.log(`\nAdmin Console: http://localhost:${PORT}`);
+  console.log(`User Hub: http://localhost:${PORT}/user`);
+  console.log('\n');
+
+  // Start background services
+  services.start();
+});
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\nShutting down gracefully...');
+  services.stop();
+  process.exit(0);
 });

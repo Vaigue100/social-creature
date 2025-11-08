@@ -55,12 +55,52 @@
             font-size: 14px;
         }
 
+        .filter-toggle {
+            background: white;
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background 0.2s;
+        }
+
+        .filter-toggle:hover {
+            background: #f8f9fa;
+        }
+
+        .filter-toggle-text {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 16px;
+        }
+
+        .filter-toggle-icon {
+            font-size: 20px;
+            transition: transform 0.3s;
+        }
+
+        .filter-toggle-icon.collapsed {
+            transform: rotate(-90deg);
+        }
+
         .tab-container {
             background: white;
             border-radius: 10px;
             padding: 20px;
             margin-bottom: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-height: 800px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+        }
+
+        .tab-container.collapsed {
+            max-height: 0;
+            padding: 0 20px;
         }
 
         .tab-level {
@@ -107,26 +147,28 @@
             border-radius: 10px;
             padding: 30px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-height: 85vh;
+            overflow-y: auto;
         }
 
         .creature-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 10px;
             margin-bottom: 20px;
         }
 
         .creature-card {
             background: #f8f9fa;
-            border-radius: 10px;
+            border-radius: 6px;
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
             transition: all 0.3s;
         }
 
         .creature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
 
         .creature-image {
@@ -137,23 +179,31 @@
         }
 
         .creature-info {
-            padding: 12px;
+            padding: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 4px;
         }
 
         .creature-name {
             font-weight: bold;
             color: #667eea;
-            margin-bottom: 4px;
-            font-size: 16px;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
         }
 
         .creature-rarity {
-            font-size: 12px;
+            font-size: 11px;
             color: #666;
-            display: inline-block;
-            padding: 2px 8px;
+            font-weight: 600;
+            padding: 2px 6px;
             background: #e0e0e0;
-            border-radius: 12px;
+            border-radius: 10px;
+            white-space: nowrap;
         }
 
         .no-creatures {
@@ -195,6 +245,25 @@
             margin-top: 20px;
         }
 
+        .max-exceeded-warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .max-exceeded-warning h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .max-exceeded-warning p {
+            color: #856404;
+            font-size: 14px;
+        }
+
         .back-link {
             display: inline-block;
             color: #667eea;
@@ -218,6 +287,11 @@
                 <h1>Family Browser</h1>
                 <p>Navigate through creature families by dimensions</p>
             </div>
+        </div>
+
+        <div class="filter-toggle" id="filterToggle" onclick="toggleFilters()">
+            <span class="filter-toggle-text">Dimension Filters</span>
+            <span class="filter-toggle-icon" id="filterToggleIcon">▼</span>
         </div>
 
         <div class="tab-container" id="tabContainer">
@@ -247,6 +321,14 @@
             quirk_id: null,
             size_id: null
         };
+
+        function toggleFilters() {
+            const container = document.getElementById('tabContainer');
+            const icon = document.getElementById('filterToggleIcon');
+
+            container.classList.toggle('collapsed');
+            icon.classList.toggle('collapsed');
+        }
 
         async function loadDimensions() {
             try {
@@ -349,9 +431,21 @@
                             <p>Try selecting different dimension filters above</p>
                         </div>
                     `;
+                } else if (data.creatures.length > 81) {
+                    // More than 9x9 grid - show warning
+                    grid.innerHTML = `
+                        <div class="max-exceeded-warning">
+                            <h3>⚠️ Too Many Results</h3>
+                            <p>This selection contains ${data.creatures.length} creatures (maximum is 81).</p>
+                            <p>Please use the dimension filters above to narrow down your search.</p>
+                        </div>
+                    `;
                 } else {
+                    // Limit to 81 creatures (9x9 grid)
+                    const displayCreatures = data.creatures.slice(0, 81);
+
                     let html = '<div class="creature-grid">';
-                    data.creatures.forEach(creature => {
+                    displayCreatures.forEach(creature => {
                         const imagePath = creature.selected_image ? `/images/${creature.selected_image}` : '/assets/placeholder.png';
                         html += `
                             <div class="creature-card">
@@ -364,7 +458,7 @@
                         `;
                     });
                     html += '</div>';
-                    html += `<div class="family-count">Showing ${data.creatures.length} creature${data.creatures.length !== 1 ? 's' : ''} from this family</div>`;
+                    html += `<div class="family-count">Showing ${displayCreatures.length} creature${displayCreatures.length !== 1 ? 's' : ''} from this family</div>`;
                     grid.innerHTML = html;
                 }
             } catch (error) {
