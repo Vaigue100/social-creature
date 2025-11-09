@@ -171,11 +171,50 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
 
-        .creature-image {
+        .creature-card:hover .trash-button {
+            opacity: 1;
+        }
+
+        .creature-image-wrapper {
+            position: relative;
             width: 100%;
             aspect-ratio: 1;
+        }
+
+        .creature-image {
+            width: 100%;
+            height: 100%;
             object-fit: cover;
             background: #e0e0e0;
+        }
+
+        .trash-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255, 59, 48, 0.95);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            font-size: 16px;
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .trash-button:hover {
+            background: rgba(255, 59, 48, 1);
+            transform: scale(1.1);
+        }
+
+        .trash-button:active {
+            transform: scale(0.95);
         }
 
         .creature-info {
@@ -447,9 +486,13 @@
                     let html = '<div class="creature-grid">';
                     displayCreatures.forEach(creature => {
                         const imagePath = creature.selected_image ? `/images/${creature.selected_image}` : '/assets/placeholder.png';
+                        const hasImage = creature.selected_image !== null;
                         html += `
                             <div class="creature-card">
-                                <img src="${imagePath}" alt="${creature.creature_name}" class="creature-image" onerror="this.src='/assets/placeholder.png'">
+                                <div class="creature-image-wrapper">
+                                    <img src="${imagePath}" alt="${creature.creature_name}" class="creature-image" onerror="this.src='/assets/placeholder.png'">
+                                    ${hasImage ? `<button class="trash-button" onclick="trashImage(event, '${creature.id}', '${creature.selected_image}')" title="Trash this image">🗑️</button>` : ''}
+                                </div>
                                 <div class="creature-info">
                                     <div class="creature-name">${creature.creature_name}</div>
                                     <span class="creature-rarity">${creature.rarity_tier}</span>
@@ -464,6 +507,39 @@
             } catch (error) {
                 console.error('Error loading creatures:', error);
                 grid.innerHTML = '<div class="no-creatures"><p>Error loading creatures</p></div>';
+            }
+        }
+
+        async function trashImage(event, creatureId, imageFilename) {
+            event.stopPropagation();
+
+            if (!confirm(`Trash image for this creature?\n\nThe image will be moved to the trashed folder and unlinked from the database.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/trash-image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        creatureId: creatureId,
+                        imageFilename: imageFilename
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    console.log('Image trashed successfully');
+                    // Reload creatures to show updated state
+                    loadCreatures();
+                } else {
+                    alert(`Error trashing image: ${result.error}`);
+                }
+
+            } catch (error) {
+                console.error('Error trashing image:', error);
+                alert('Error trashing image. Check console for details.');
             }
         }
 

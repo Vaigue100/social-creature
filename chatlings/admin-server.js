@@ -238,6 +238,54 @@ app.post('/api/skip-images', async (req, res) => {
 });
 
 /**
+ * Trash an image - unlinks from database and moves to trashed folder
+ */
+app.post('/api/trash-image', async (req, res) => {
+  const { creatureId, imageFilename } = req.body;
+
+  if (!creatureId || !imageFilename) {
+    return res.status(400).json({ error: 'Missing creatureId or imageFilename' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Create trashed folder if it doesn't exist
+    const trashedDir = path.join(__dirname, 'artwork', 'trashed');
+    if (!fs.existsSync(trashedDir)) fs.mkdirSync(trashedDir, { recursive: true });
+
+    const linkedPath = path.join(__dirname, 'artwork', 'linked', imageFilename);
+    const trashedPath = path.join(trashedDir, imageFilename);
+
+    // Move image from linked to trashed folder
+    if (fs.existsSync(linkedPath)) {
+      fs.renameSync(linkedPath, trashedPath);
+      console.log(`Moved to trashed: ${imageFilename}`);
+    } else {
+      console.log(`Image not found in linked folder: ${imageFilename}`);
+    }
+
+    // Unlink image from database (set selected_image to NULL)
+    await client.query(
+      'UPDATE creatures SET selected_image = NULL WHERE id = $1',
+      [creatureId]
+    );
+
+    console.log(`[TRASHED] Creature ${creatureId}: ${imageFilename} moved to trashed/, database unlinked`);
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Error trashing image:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
  * Get all dimension options for tabbed navigation
  */
 app.get('/api/dimensions', async (req, res) => {

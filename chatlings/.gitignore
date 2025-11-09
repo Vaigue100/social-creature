@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database config (if contains sensitive info)
+# scripts/db-config.js
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Artwork folder (large image files, managed separately)
+artwork/
+
+# Database backups (large files, managed separately)
+backups/
+
+# Session store
+sessions/
+
+# Temp files
+tmp/
+temp/
+*.tmp
