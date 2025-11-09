@@ -10,6 +10,7 @@ const path = require('path');
 const fs = require('fs');
 const Services = require('./services');
 const dailyChatlingService = require('./services/daily-chatling-service');
+const SocialInteractionService = require('./services/social-interaction-service');
 
 const app = express();
 const PORT = 3000;
@@ -19,6 +20,7 @@ const config = { ...require('./scripts/db-config'), database: 'chatlings' };
 
 // Initialize services
 const services = new Services(config);
+const socialInteractionService = new SocialInteractionService(require('./scripts/db-config'));
 
 // Session middleware (privacy-first - no long-term storage)
 app.use(session({
@@ -984,6 +986,77 @@ app.post('/api/auth/logout', (req, res) => {
     }
     res.json({ success: true });
   });
+});
+
+/**
+ * Trigger social interaction between user's current chatling and another
+ */
+app.post('/api/user/social-interaction', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { chatlingId } = req.body;
+
+  if (!chatlingId) {
+    return res.status(400).json({ error: 'chatlingId required' });
+  }
+
+  try {
+    const result = await socialInteractionService.triggerInteraction(
+      req.session.userId,
+      chatlingId
+    );
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('Error in social interaction:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get user's friendship history
+ */
+app.get('/api/user/friendships', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT
+        cf.id,
+        cf.became_friends,
+        cf.interaction_date,
+        c1.creature_name as chatling_1_name,
+        c1.selected_image as chatling_1_image,
+        c2.creature_name as chatling_2_name,
+        c2.selected_image as chatling_2_image,
+        cf.interaction_story,
+        cf.combined_score,
+        cf.threshold_needed
+      FROM creature_friendships cf
+      JOIN creatures c1 ON cf.chatling_1_id = c1.id
+      JOIN creatures c2 ON cf.chatling_2_id = c2.id
+      WHERE cf.user_id = $1
+      ORDER BY cf.interaction_date DESC
+      LIMIT 50
+    `, [req.session.userId]);
+
+    res.json(result.rows);
+
+  } catch (error) {
+    console.error('Error fetching friendships:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
 });
 
 // Start server
