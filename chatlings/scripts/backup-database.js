@@ -8,6 +8,53 @@ const config = require('./db-config');
  * Creates a timestamped backup of the chatlings database using pg_dump
  */
 
+/**
+ * Find pg_dump executable
+ */
+function findPgDump() {
+  // Common PostgreSQL installation paths on Windows
+  const commonPaths = [
+    'C:\\Program Files\\PostgreSQL\\16\\bin\\pg_dump.exe',
+    'C:\\Program Files\\PostgreSQL\\15\\bin\\pg_dump.exe',
+    'C:\\Program Files\\PostgreSQL\\14\\bin\\pg_dump.exe',
+    'C:\\Program Files\\PostgreSQL\\13\\bin\\pg_dump.exe',
+    'C:\\Program Files (x86)\\PostgreSQL\\16\\bin\\pg_dump.exe',
+    'C:\\Program Files (x86)\\PostgreSQL\\15\\bin\\pg_dump.exe',
+    'C:\\Program Files (x86)\\PostgreSQL\\14\\bin\\pg_dump.exe',
+    'C:\\Program Files (x86)\\PostgreSQL\\13\\bin\\pg_dump.exe'
+  ];
+
+  // Try common paths
+  for (const pgPath of commonPaths) {
+    if (fs.existsSync(pgPath)) {
+      console.log(`Found pg_dump at: ${pgPath}\n`);
+      return `"${pgPath}"`;
+    }
+  }
+
+  // If not found in common paths, try to find PostgreSQL installation
+  const programFiles = [
+    'C:\\Program Files\\PostgreSQL',
+    'C:\\Program Files (x86)\\PostgreSQL'
+  ];
+
+  for (const basePath of programFiles) {
+    if (fs.existsSync(basePath)) {
+      const versions = fs.readdirSync(basePath);
+      for (const version of versions) {
+        const pgDumpPath = path.join(basePath, version, 'bin', 'pg_dump.exe');
+        if (fs.existsSync(pgDumpPath)) {
+          console.log(`Found pg_dump at: ${pgDumpPath}\n`);
+          return `"${pgDumpPath}"`;
+        }
+      }
+    }
+  }
+
+  // Default to assuming it's in PATH
+  return 'pg_dump';
+}
+
 async function backupDatabase() {
   const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\..+/, '');
   const backupDir = path.join(__dirname, '..', 'backups', 'database');
@@ -24,6 +71,9 @@ async function backupDatabase() {
   console.log(`Database: chatlings`);
   console.log(`Output: ${backupPath}\n`);
 
+  // Find pg_dump executable
+  const pgDumpPath = findPgDump();
+
   // Build pg_dump command
   // Set PGPASSWORD environment variable to avoid password prompt
   const env = {
@@ -31,13 +81,23 @@ async function backupDatabase() {
     PGPASSWORD: config.password
   };
 
-  const command = `pg_dump -h ${config.host} -p ${config.port} -U ${config.user} -d chatlings -F p -f "${backupPath}"`;
+  const command = `${pgDumpPath} -h ${config.host} -p ${config.port} -U ${config.user} -d chatlings -F p -f "${backupPath}"`;
+
+  console.log(`Using: ${pgDumpPath}\n`);
 
   return new Promise((resolve, reject) => {
     exec(command, { env }, (error, stdout, stderr) => {
       if (error) {
         console.error('❌ Backup failed:', error.message);
         if (stderr) console.error('Error details:', stderr);
+
+        if (error.message.includes('not recognized') || error.message.includes('not found')) {
+          console.error('\n💡 pg_dump not found. Please either:');
+          console.error('   1. Add PostgreSQL bin folder to your system PATH, or');
+          console.error('   2. Ensure PostgreSQL is installed at the default location\n');
+          console.error('   Common installation path: C:\\Program Files\\PostgreSQL\\[version]\\bin\n');
+        }
+
         reject(error);
         return;
       }
