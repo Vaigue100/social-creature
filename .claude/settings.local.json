@@ -20,7 +20,9 @@
       "Bash(git restore:*)",
       "Bash(node perchance-watcher.js:*)",
       "Bash(powershell -command:*)",
-      "Bash(node add-new-dimensions.js:*)"
+      "Bash(node add-new-dimensions.js:*)",
+      "Bash(tasklist:*)",
+      "Bash(node check-duplicates.js:*)"
     ],
     "deny": [],
     "ask": []

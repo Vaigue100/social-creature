@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Chatling</title>
+    <link rel="stylesheet" href="/user/components/creature-card-styles.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .back-button {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #667eea;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .back-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .creature-card-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+
+        .creature-title {
+            text-align: center;
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .error {
+            text-align: center;
+            color: #c00;
+            padding: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div style="max-width: 1200px; margin: 0 auto;">
+        <a href="collections.html" class="back-button">← Back to Collection</a>
+
+        <div class="creature-card-container">
+            <h1 class="creature-title" id="creature-name">Loading...</h1>
+            <p class="subtitle" id="subtitle">Loading chatling details...</p>
+
+            <div class="creature-display">
+                <div class="image-with-traits">
+                    <div class="rarity-badge" id="rarity-badge" style="display: none;"></div>
+                    <img id="creature-image" class="creature-image" src="" alt="Creature" style="display: none;">
+                    <div class="traits-column" id="traits-container">
+                        <div class="loading">Loading traits...</div>
+                    </div>
+                    <div class="loading" id="image-loading">Loading image...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/user/components/creature-card-script.js"></script>
+    <script>
+        async function loadChatling() {
+            try {
+                // Get creature ID from URL parameter
+                const urlParams = new URLSearchParams(window.location.search);
+                const creatureId = urlParams.get('id');
+
+                if (!creatureId) {
+                    document.getElementById('creature-name').textContent = 'No Chatling Selected';
+                    document.getElementById('subtitle').textContent = '';
+                    document.getElementById('image-loading').textContent = 'Please select a chatling from your collection.';
+                    document.getElementById('image-loading').className = 'error';
+                    return;
+                }
+
+                // Load creature details with traits
+                const creatureResponse = await fetch(`/api/creature/${creatureId}/details`);
+                if (!creatureResponse.ok) {
+                    throw new Error('Failed to fetch creature details');
+                }
+
+                const data = await creatureResponse.json();
+
+                // Update title
+                document.getElementById('creature-name').textContent = data.creature_name;
+                document.getElementById('subtitle').textContent = 'From your collection';
+
+                // Update rarity badge
+                const rarityBadge = document.getElementById('rarity-badge');
+                if (data.rarity_tier) {
+                    rarityBadge.textContent = data.rarity_tier;
+                    rarityBadge.className = 'rarity-badge rarity-' + data.rarity_tier.toLowerCase();
+                    rarityBadge.style.display = 'block';
+                }
+
+                // Update image
+                const img = document.getElementById('creature-image');
+                const imgLoading = document.getElementById('image-loading');
+                img.src = `/images/${data.selected_image}`;
+                img.style.display = 'block';
+                imgLoading.style.display = 'none';
+
+                // Render traits
+                window.renderTraitsVertical(data.traits, data.primary_color);
+
+            } catch (error) {
+                console.error('Error loading chatling:', error);
+                document.getElementById('creature-name').textContent = 'Error Loading Chatling';
+                document.getElementById('subtitle').textContent = '';
+                document.getElementById('image-loading').textContent = 'Failed to load chatling details.';
+                document.getElementById('image-loading').className = 'error';
+            }
+        }
+
+        // Load on page load
+        loadChatling();
+    </script>
+</body>
+</html>

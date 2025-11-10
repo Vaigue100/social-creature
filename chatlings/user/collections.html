@@ -241,6 +241,84 @@
             text-decoration: none;
             font-weight: 600;
         }
+
+        /* Trait Badges */
+        .trait-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+            justify-content: center;
+            padding: 10px 0;
+            border-top: 1px solid #eee;
+        }
+
+        .trait-badge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            padding: 8px 10px;
+            min-width: 50px;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .trait-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+        }
+
+        .trait-icon {
+            font-size: 1.3em;
+            margin-bottom: 2px;
+        }
+
+        .trait-score {
+            font-size: 0.95em;
+            font-weight: bold;
+            color: white;
+        }
+
+        .trait-name {
+            font-size: 0.7em;
+            color: rgba(255, 255, 255, 0.8);
+            text-align: center;
+            margin-top: 2px;
+        }
+
+        /* Loading state for traits */
+        .trait-badges-loading {
+            text-align: center;
+            padding: 10px;
+            color: #999;
+            font-size: 0.85em;
+            border-top: 1px solid #eee;
+            margin-top: 15px;
+        }
+
+        /* Tooltip for trait badges */
+        .trait-badge-tooltip {
+            position: relative;
+        }
+
+        .trait-badge-tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.75em;
+            white-space: nowrap;
+            margin-bottom: 5px;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
@@ -336,6 +414,8 @@
             chatlings.forEach(chatling => {
                 const card = document.createElement('div');
                 card.className = 'chatling-card';
+                card.style.cursor = 'pointer';
+                card.onclick = () => window.location.href = `view-chatling.html?id=${chatling.creature_id}`;
 
                 const rarityClass = `rarity-${chatling.rarity_tier.toLowerCase()}`;
 
@@ -347,9 +427,51 @@
                     <div class="chatling-name">${chatling.creature_name}</div>
                     <div class="chatling-info">${chatling.species_name}</div>
                     <div class="rarity-badge ${rarityClass}">${chatling.rarity_tier}</div>
+                    <div class="trait-badges-loading" id="traits-${chatling.creature_id}">
+                        Click to view details
+                    </div>
                 `;
 
                 grid.appendChild(card);
+
+                // Load trait scores asynchronously
+                loadTraitScores(chatling.creature_id);
+            });
+        }
+
+        async function loadTraitScores(creatureId) {
+            try {
+                const response = await fetch(`/api/creature/${creatureId}/traits`);
+                if (response.ok) {
+                    const traits = await response.json();
+                    displayTraitBadges(creatureId, traits);
+                } else {
+                    document.getElementById(`traits-${creatureId}`).style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error loading traits:', error);
+                document.getElementById(`traits-${creatureId}`).style.display = 'none';
+            }
+        }
+
+        function displayTraitBadges(creatureId, traits) {
+            const container = document.getElementById(`traits-${creatureId}`);
+            if (!container) return;
+
+            container.className = 'trait-badges';
+            container.innerHTML = '';
+
+            traits.forEach(trait => {
+                const badge = document.createElement('div');
+                badge.className = 'trait-badge trait-badge-tooltip';
+                badge.setAttribute('data-tooltip', `${trait.category_name}: ${trait.description}`);
+
+                badge.innerHTML = `
+                    <span class="trait-icon">${trait.icon}</span>
+                    <span class="trait-score">${trait.score}</span>
+                `;
+
+                container.appendChild(badge);
             });
         }
 

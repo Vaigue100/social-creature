@@ -1059,6 +1059,218 @@ app.get('/api/user/friendships', async (req, res) => {
   }
 });
 
+/**
+ * Get creature's social trait scores
+ */
+app.get('/api/creature/:creatureId/traits', async (req, res) => {
+  const { creatureId } = req.params;
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT
+        cst.score,
+        dstc.id as category_id,
+        dstc.category_name,
+        dstc.description,
+        dstc.icon
+      FROM creature_social_traits cst
+      JOIN dim_social_trait_category dstc ON cst.trait_category_id = dstc.id
+      WHERE cst.creature_id = $1
+      ORDER BY dstc.id
+    `, [creatureId]);
+
+    res.json(result.rows);
+
+  } catch (error) {
+    console.error('Error fetching creature traits:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Get random creature with traits and color scheme
+ */
+app.get('/api/random-creature-with-traits', async (req, res) => {
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Get random creature with image
+    const creature = await client.query(`
+      SELECT
+        c.id,
+        c.creature_name,
+        c.selected_image,
+        c.rarity_tier,
+        cp.color_scheme_id
+      FROM creatures c
+      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
+      WHERE c.selected_image IS NOT NULL
+      ORDER BY RANDOM()
+      LIMIT 1
+    `);
+
+    if (creature.rows.length === 0) {
+      return res.status(404).json({ error: 'No creatures found' });
+    }
+
+    const creatureData = creature.rows[0];
+
+    // Get color scheme primary color
+    let primaryColor = '#667eea'; // Default
+    if (creatureData.color_scheme_id) {
+      const colorScheme = await client.query(`
+        SELECT scheme_name FROM dim_color_scheme WHERE id = $1
+      `, [creatureData.color_scheme_id]);
+
+      if (colorScheme.rows.length > 0) {
+        // Extract color from scheme name or use predefined mapping
+        primaryColor = getColorFromScheme(colorScheme.rows[0].scheme_name);
+      }
+    }
+
+    // Get traits
+    const traits = await client.query(`
+      SELECT
+        cst.score,
+        dstc.id as category_id,
+        dstc.category_name,
+        dstc.description,
+        dstc.icon
+      FROM creature_social_traits cst
+      JOIN dim_social_trait_category dstc ON cst.trait_category_id = dstc.id
+      WHERE cst.creature_id = $1
+      ORDER BY dstc.id
+    `, [creatureData.id]);
+
+    res.json({
+      id: creatureData.id,
+      creature_name: creatureData.creature_name,
+      selected_image: creatureData.selected_image,
+      rarity_tier: creatureData.rarity_tier,
+      primary_color: primaryColor,
+      traits: traits.rows
+    });
+
+  } catch (error) {
+    console.error('Error fetching random creature:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Get specific creature with traits and details
+ */
+app.get('/api/creature/:creatureId/details', async (req, res) => {
+  const { creatureId } = req.params;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Get creature details
+    const creature = await client.query(`
+      SELECT
+        c.id,
+        c.creature_name,
+        c.selected_image,
+        c.rarity_tier,
+        cp.color_scheme_id
+      FROM creatures c
+      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
+      WHERE c.id = $1
+    `, [creatureId]);
+
+    if (creature.rows.length === 0) {
+      return res.status(404).json({ error: 'Creature not found' });
+    }
+
+    const creatureData = creature.rows[0];
+
+    // Get color scheme primary color
+    let primaryColor = '#667eea'; // Default
+    if (creatureData.color_scheme_id) {
+      const colorScheme = await client.query(`
+        SELECT scheme_name FROM dim_color_scheme WHERE id = $1
+      `, [creatureData.color_scheme_id]);
+
+      if (colorScheme.rows.length > 0) {
+        primaryColor = getColorFromScheme(colorScheme.rows[0].scheme_name);
+      }
+    }
+
+    // Get traits
+    const traits = await client.query(`
+      SELECT
+        cst.score,
+        dstc.id as category_id,
+        dstc.category_name,
+        dstc.description,
+        dstc.icon
+      FROM creature_social_traits cst
+      JOIN dim_social_trait_category dstc ON cst.trait_category_id = dstc.id
+      WHERE cst.creature_id = $1
+      ORDER BY dstc.id
+    `, [creatureData.id]);
+
+    res.json({
+      id: creatureData.id,
+      creature_name: creatureData.creature_name,
+      selected_image: creatureData.selected_image,
+      rarity_tier: creatureData.rarity_tier,
+      primary_color: primaryColor,
+      traits: traits.rows
+    });
+
+  } catch (error) {
+    console.error('Error fetching creature details:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Helper: Map color scheme name to hex color
+ */
+function getColorFromScheme(schemeName) {
+  const colorMap = {
+    'Pastel Dreams': '#FFB3D9',
+    'Bright & Poppy': '#FF6B9D',
+    'Cool & Calm': '#A8D8EA',
+    'Warm & Friendly': '#FFB84D',
+    'Cozy Neutrals': '#C4B5A0',
+    'Earthy Tones': '#A67C52',
+    'Mint Fresh': '#9BDEAC',
+    'Lavender Haze': '#C4A4D8',
+    'Peachy Keen': '#FFB088',
+    'Ocean Breeze': '#5DADE2',
+    'Metallic Silver': '#A8B8C8',
+    'Neon Tech': '#00FFFF',
+    'Dark Gunmetal': '#5C636A',
+    'Chrome Blue': '#4A90E2',
+    'Decay Green': '#7A9B4D',
+    'Rotting Purple': '#8B6F8B',
+    'Zombie Gray': '#8A8A8A',
+    'Flesh Tone': '#D4A5A5',
+    'Deep Black': '#1C1C1C',
+    'Blood Red': '#8B0000',
+    'Victorian Purple': '#663399',
+    'Ghostly White': '#F0F0F0'
+  };
+
+  return colorMap[schemeName] || '#667eea';
+}
+
 // Start server
 app.listen(PORT, () => {
   console.log('\n' + '='.repeat(80));

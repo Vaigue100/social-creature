@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trait Badges Component Demo</title>
+    <link rel="stylesheet" href="trait-badges.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 20px;
+            margin: 0;
+        }
+
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .description {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .code-block {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+
+        .card-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>Trait Badges Component Demo</h1>
+
+        <!-- Example 1: Default Badges -->
+        <div class="demo-section">
+            <h2>1. Default Trait Badges</h2>
+            <p class="description">
+                Standard trait badges with hover tooltips showing trait descriptions.
+            </p>
+            <div class="card">
+                <div class="card-title">Sample Creature</div>
+                <div id="example-1" class="trait-badges-loading">Loading...</div>
+            </div>
+            <div class="code-block">
+&lt;div id="traits-container"&gt;&lt;/div&gt;
+&lt;script&gt;
+  TraitBadges.load('creature-id', 'traits-container');
+&lt;/script&gt;
+            </div>
+        </div>
+
+        <!-- Example 2: Compact Variant -->
+        <div class="demo-section">
+            <h2>2. Compact Variant</h2>
+            <p class="description">
+                Smaller badges for use in tight spaces or mobile layouts.
+            </p>
+            <div class="card">
+                <div class="card-title">Compact Badge Example</div>
+                <div id="example-2" class="trait-badges-loading">Loading...</div>
+            </div>
+            <div class="code-block">
+TraitBadges.load('creature-id', 'container', { variant: 'compact' });
+            </div>
+        </div>
+
+        <!-- Example 3: Inline Variant -->
+        <div class="demo-section">
+            <h2>3. Inline Variant</h2>
+            <p class="description">
+                Horizontal scrolling badges that don't wrap to new lines.
+            </p>
+            <div class="card">
+                <div class="card-title">Inline Badge Example</div>
+                <div id="example-3" class="trait-badges-loading">Loading...</div>
+            </div>
+            <div class="code-block">
+TraitBadges.load('creature-id', 'container', { variant: 'inline' });
+            </div>
+        </div>
+
+        <!-- Example 4: Color-Coded by Score -->
+        <div class="demo-section">
+            <h2>4. Color-Coded by Score</h2>
+            <p class="description">
+                Badges colored by score level: Red (0-34), Orange (35-69), Green (70-100).
+            </p>
+            <div class="card">
+                <div class="card-title">Score-Based Colors</div>
+                <div id="example-4" class="trait-badges-loading">Loading...</div>
+            </div>
+            <div class="code-block">
+TraitBadges.load('creature-id', 'container', { colorByScore: true });
+            </div>
+        </div>
+
+        <!-- Example 5: Sorted by Score -->
+        <div class="demo-section">
+            <h2>5. Sorted by Score (Highest First)</h2>
+            <p class="description">
+                Display traits sorted by score to highlight strengths and weaknesses.
+            </p>
+            <div class="card">
+                <div class="card-title">Highest Traits First</div>
+                <div id="example-5" class="trait-badges-loading">Loading...</div>
+            </div>
+            <div class="code-block">
+TraitBadges.load('creature-id', 'container', { sortBy: 'score-desc' });
+            </div>
+        </div>
+
+        <!-- Example 6: With Trait Names -->
+        <div class="demo-section">
+            <h2>6. With Trait Names</h2>
+            <p class="description">
+                Show trait category names below the scores.
+            </p>
+            <div class="card">
+                <div class="card-title">Named Traits</div>
+                <div id="example-6" class="trait-badges-loading">Loading...</div>
+            </div>
+            <div class="code-block">
+TraitBadges.load('creature-id', 'container', { showName: true });
+            </div>
+        </div>
+
+        <!-- Example 7: Manual Rendering -->
+        <div class="demo-section">
+            <h2>7. Manual Rendering with Custom Data</h2>
+            <p class="description">
+                Render badges from existing data without making an API call.
+            </p>
+            <div class="card">
+                <div class="card-title">Custom Data Example</div>
+                <div id="example-7"></div>
+            </div>
+            <div class="code-block">
+const traits = [
+  { icon: '😊', category_name: 'Friendliness', score: 85, description: '...' },
+  { icon: '🎮', category_name: 'Playfulness', score: 72, description: '...' }
+];
+TraitBadges.render(traits, 'container');
+            </div>
+        </div>
+
+        <!-- Example 8: Click Handlers -->
+        <div class="demo-section">
+            <h2>8. With Click Handlers</h2>
+            <p class="description">
+                Add click handlers to badges for interactive functionality.
+            </p>
+            <div class="card">
+                <div class="card-title">Clickable Badges (Click a badge!)</div>
+                <div id="example-8" class="trait-badges-loading">Loading...</div>
+            </div>
+            <div id="click-output" style="margin-top: 15px; padding: 10px; background: #f0f0f0; border-radius: 5px; display: none;">
+                <strong>Last Clicked:</strong> <span id="clicked-trait"></span>
+            </div>
+            <div class="code-block">
+TraitBadges.load('creature-id', 'container', {
+  onClick: (trait) => {
+    console.log('Clicked:', trait.category_name, trait.score);
+  }
+});
+            </div>
+        </div>
+
+    </div>
+
+    <script src="trait-badges.js"></script>
+    <script>
+        // Real creature ID from database
+        const mockCreatureId = 'f4c21467-3cba-4703-8165-dbf0577f4698';
+
+        // Example 1: Default
+        TraitBadges.load(mockCreatureId, 'example-1');
+
+        // Example 2: Compact
+        TraitBadges.load(mockCreatureId, 'example-2', {
+            variant: 'compact'
+        });
+
+        // Example 3: Inline
+        TraitBadges.load(mockCreatureId, 'example-3', {
+            variant: 'inline'
+        });
+
+        // Example 4: Color-coded by score
+        TraitBadges.load(mockCreatureId, 'example-4', {
+            colorByScore: true
+        });
+
+        // Example 5: Sorted by score
+        TraitBadges.load(mockCreatureId, 'example-5', {
+            sortBy: 'score-desc'
+        });
+
+        // Example 6: With names
+        TraitBadges.load(mockCreatureId, 'example-6', {
+            showName: true
+        });
+
+        // Example 7: Manual rendering with mock data
+        const mockTraits = [
+            { icon: '😊', category_name: 'Friendliness', score: 85, description: 'How warm and welcoming' },
+            { icon: '🎮', category_name: 'Playfulness', score: 72, description: 'Love of games and fun' },
+            { icon: '🎨', category_name: 'Creativity', score: 91, description: 'Imaginative and artistic' },
+            { icon: '💝', category_name: 'Empathy', score: 67, description: 'Understanding and caring' },
+            { icon: '⚡', category_name: 'Energy Level', score: 45, description: 'Activity and enthusiasm' },
+            { icon: '💪', category_name: 'Confidence', score: 55, description: 'Self-assured and bold' },
+            { icon: '😄', category_name: 'Humor', score: 78, description: 'Funny and entertaining' },
+            { icon: '🔍', category_name: 'Curiosity', score: 88, description: 'Eager to explore' }
+        ];
+        TraitBadges.render(mockTraits, 'example-7');
+
+        // Example 8: With click handlers
+        TraitBadges.load(mockCreatureId, 'example-8', {
+            onClick: (trait) => {
+                const output = document.getElementById('click-output');
+                const clicked = document.getElementById('clicked-trait');
+                output.style.display = 'block';
+                clicked.textContent = `${trait.icon} ${trait.category_name} - Score: ${trait.score}`;
+            }
+        });
+    </script>
+</body>
+</html>
