@@ -593,20 +593,65 @@ app.get('/api/user/collection', async (req, res) => {
         c.creature_name,
         c.selected_image,
         c.rarity_tier,
-        s.species_name,
+        c.vibe as species_name,
+        bt.body_type_name,
         ur.claimed_at,
         ur.platform
       FROM user_rewards ur
       JOIN creatures c ON ur.creature_id = c.id
-      JOIN dim_species s ON c.species_id = s.id
+      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
+      LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
       WHERE ur.user_id = $1
       ORDER BY ur.claimed_at DESC
     `, [req.session.userId]);
 
-    res.json(result.rows);
+    // Calculate overall score for each creature
+    const creaturesWithScores = await Promise.all(result.rows.map(async (creature) => {
+      const traits = await client.query(`
+        SELECT score FROM creature_social_traits WHERE creature_id = $1
+      `, [creature.id]);
+
+      let overallScore = 0;
+      if (traits.rows.length > 0) {
+        const totalScore = traits.rows.reduce((sum, trait) => sum + trait.score, 0);
+        overallScore = Math.round(totalScore / traits.rows.length);
+      }
+
+      return {
+        ...creature,
+        overall_score: overallScore
+      };
+    }));
+
+    res.json(creaturesWithScores);
 
   } catch (error) {
     console.error('Error fetching collection:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Get all body types
+ */
+app.get('/api/body-types', async (req, res) => {
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT id, body_type_name as display_name
+      FROM dim_body_type
+      ORDER BY body_type_name
+    `);
+
+    res.json(result.rows);
+
+  } catch (error) {
+    console.error('Error fetching body types:', error);
     res.status(500).json({ error: error.message });
   } finally {
     await client.end();
@@ -1109,9 +1154,12 @@ app.get('/api/random-creature-with-traits', async (req, res) => {
         c.creature_name,
         c.selected_image,
         c.rarity_tier,
-        cp.color_scheme_id
+        cp.color_scheme_id,
+        cp.body_type_id,
+        bt.body_type_name
       FROM creatures c
       LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
+      LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
       WHERE c.selected_image IS NOT NULL
       ORDER BY RANDOM()
       LIMIT 1
@@ -1150,12 +1198,21 @@ app.get('/api/random-creature-with-traits', async (req, res) => {
       ORDER BY dstc.id
     `, [creatureData.id]);
 
+    // Calculate overall score (average of all traits)
+    let overallScore = 0;
+    if (traits.rows.length > 0) {
+      const totalScore = traits.rows.reduce((sum, trait) => sum + trait.score, 0);
+      overallScore = Math.round(totalScore / traits.rows.length);
+    }
+
     res.json({
       id: creatureData.id,
       creature_name: creatureData.creature_name,
       selected_image: creatureData.selected_image,
       rarity_tier: creatureData.rarity_tier,
+      body_type_name: creatureData.body_type_name,
       primary_color: primaryColor,
+      overall_score: overallScore,
       traits: traits.rows
     });
 
@@ -1184,9 +1241,12 @@ app.get('/api/creature/:creatureId/details', async (req, res) => {
         c.creature_name,
         c.selected_image,
         c.rarity_tier,
-        cp.color_scheme_id
+        cp.color_scheme_id,
+        cp.body_type_id,
+        bt.body_type_name
       FROM creatures c
       LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
+      LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
       WHERE c.id = $1
     `, [creatureId]);
 
@@ -1222,12 +1282,21 @@ app.get('/api/creature/:creatureId/details', async (req, res) => {
       ORDER BY dstc.id
     `, [creatureData.id]);
 
+    // Calculate overall score (average of all traits)
+    let overallScore = 0;
+    if (traits.rows.length > 0) {
+      const totalScore = traits.rows.reduce((sum, trait) => sum + trait.score, 0);
+      overallScore = Math.round(totalScore / traits.rows.length);
+    }
+
     res.json({
       id: creatureData.id,
       creature_name: creatureData.creature_name,
       selected_image: creatureData.selected_image,
       rarity_tier: creatureData.rarity_tier,
+      body_type_name: creatureData.body_type_name,
       primary_color: primaryColor,
+      overall_score: overallScore,
       traits: traits.rows
     });
 

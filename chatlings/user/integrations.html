@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chatlings - Integrations</title>
+    <link rel="stylesheet" href="/user/components/shared-header-styles.css">
     <style>
         * {
             margin: 0;
@@ -22,61 +23,6 @@
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-        }
-
-        header {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-
-        h1 {
-            color: #667eea;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-
-        .subtitle {
-            color: #666;
-            font-size: 1.1em;
-        }
-
-        nav {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-        }
-
-        .nav-links {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .nav-link {
-            padding: 15px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-decoration: none;
-            border-radius: 10px;
-            font-weight: 600;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .nav-link:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-        }
-
-        .nav-link.active {
-            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
         }
 
         .content {
@@ -253,20 +199,9 @@
     </style>
 </head>
 <body>
+    <script src="/user/components/shared-header.js"></script>
     <div class="container">
-        <header>
-            <h1>Chatlings</h1>
-            <p class="subtitle">Collect chatlings as you explore YouTube!</p>
-        </header>
-
-        <nav>
-            <div class="nav-links">
-                <a href="index.html" class="nav-link">Home</a>
-                <a href="collections.html" class="nav-link">Collections</a>
-                <a href="achievements.html" class="nav-link">Achievements</a>
-                <a href="integrations.html" class="nav-link active">Integrations</a>
-            </div>
-        </nav>
+        <script>initSharedHeader('integrations');</script>
 
         <div class="content">
             <h2>Integrations</h2>
@@ -325,6 +260,63 @@
             </div>
         </div>
     </div>
+
+    <!-- Guide Modal -->
+    <div id="guide-modal" class="modal" onclick="closeGuideModal(event)" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8);">
+        <div class="modal-content" onclick="event.stopPropagation()" style="position: relative; background: white; margin: 2% auto; padding: 30px; width: 90%; max-width: 800px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
+            <span class="modal-close" onclick="closeGuideModal()" style="position: absolute; top: 15px; right: 20px; color: #667eea; font-size: 35px; font-weight: bold; cursor: pointer;">&times;</span>
+            <h1 style="text-align: center; color: #667eea; font-size: 2em; margin-bottom: 30px;">Integrations Guide</h1>
+
+            <div style="max-height: 70vh; overflow-y: auto; padding-right: 10px;">
+                <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px;">Connecting Your YouTube Account</h3>
+                <p style="line-height: 1.6; color: #333; margin-bottom: 15px;">
+                    Connect your YouTube account to claim chatlings from the videos you've liked. This is a privacy-first, session-only connection.
+                </p>
+
+                <h3 style="color: #667eea; margin-top: 30px; margin-bottom: 15px;">How It Works</h3>
+                <ol style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
+                    <li>Click "Claim Rewards from Liked Videos"</li>
+                    <li>Authorize with Google (read-only access)</li>
+                    <li>We fetch your 50 most recently liked videos</li>
+                    <li>Each video generates a unique chatling (valid for 24 hours)</li>
+                    <li>You claim the chatlings - they're yours forever!</li>
+                </ol>
+
+                <h3 style="color: #667eea; margin-top: 30px; margin-bottom: 15px;">Privacy Features</h3>
+                <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
+                    <li><strong>Session-Only:</strong> Access tokens are never stored long-term</li>
+                    <li><strong>No History:</strong> We don't store your video history or identity</li>
+                    <li><strong>Auto-Expire:</strong> Video-chatling mappings expire after 24 hours</li>
+                    <li><strong>Decoupled:</strong> Only claimed rewards are kept, separate from videos</li>
+                </ul>
+
+                <h3 style="color: #667eea; margin-top: 30px; margin-bottom: 15px;">Shared Chatlings</h3>
+                <p style="line-height: 1.6; color: #333; margin-bottom: 15px;">
+                    If another user likes the same video within 24 hours, they get the same chatling! After 24 hours, that video generates a new chatling. This creates a fun shared experience while maintaining your privacy.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Guide modal functions
+        function openGuideModal() {
+            const modal = document.getElementById('guide-modal');
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeGuideModal(event) {
+            if (event && event.target.id !== 'guide-modal' && event.target.className !== 'modal-close') {
+                return;
+            }
+            const modal = document.getElementById('guide-modal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+    </script>
 
     <script>
         async function connectYouTube() {

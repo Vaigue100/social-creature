@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chatlings - Collections</title>
+    <link rel="stylesheet" href="/user/components/shared-header-styles.css">
     <style>
         * {
             margin: 0;
@@ -24,59 +25,10 @@
             padding: 20px;
         }
 
-        header {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-
         h1 {
             color: #667eea;
             font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-
-        .subtitle {
-            color: #666;
-            font-size: 1.1em;
-        }
-
-        nav {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-        }
-
-        .nav-links {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .nav-link {
-            padding: 15px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-decoration: none;
-            border-radius: 10px;
-            font-weight: 600;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .nav-link:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-        }
-
-        .nav-link.active {
-            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            margin: 0;
         }
 
         .content {
@@ -84,6 +36,62 @@
             border-radius: 15px;
             padding: 40px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            display: flex;
+            gap: 20px;
+        }
+
+        .sidebar {
+            min-width: 200px;
+            max-width: 200px;
+        }
+
+        .main-content {
+            flex: 1;
+        }
+
+        .body-type-filters {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .body-type-filters h3 {
+            color: #667eea;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .body-type-button {
+            display: block;
+            width: 100%;
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            background: white;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .body-type-button:hover {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: #667eea;
+        }
+
+        .body-type-button.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+
+        .body-type-button:last-child {
+            margin-bottom: 0;
         }
 
         h2 {
@@ -147,7 +155,7 @@
 
         .chatling-image {
             width: 100%;
-            height: 200px;
+            height: 100px;
             object-fit: cover;
             border-radius: 10px;
             margin-bottom: 15px;
@@ -322,74 +330,183 @@
     </style>
 </head>
 <body>
+    <script src="/user/components/shared-header.js"></script>
     <div class="container">
-        <header>
-            <h1>Chatlings</h1>
-            <p class="subtitle">Collect chatlings as you explore YouTube!</p>
-        </header>
-
-        <nav>
-            <div class="nav-links">
-                <a href="index.html" class="nav-link">Home</a>
-                <a href="collections.html" class="nav-link active">Collections</a>
-                <a href="achievements.html" class="nav-link">Achievements</a>
-                <a href="integrations.html" class="nav-link">Integrations</a>
-            </div>
-        </nav>
+        <script>initSharedHeader('collections');</script>
 
         <div class="content">
-            <h2>My Collection</h2>
-
-            <div class="filter-bar">
-                <div class="filter-group">
-                    <label for="filter-rarity">Rarity</label>
-                    <select id="filter-rarity">
-                        <option value="">All Rarities</option>
-                        <option value="Common">Common</option>
-                        <option value="Uncommon">Uncommon</option>
-                        <option value="Rare">Rare</option>
-                        <option value="Epic">Epic</option>
-                        <option value="Legendary">Legendary</option>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label for="filter-platform">Platform</label>
-                    <select id="filter-platform">
-                        <option value="">All Platforms</option>
-                        <option value="YouTube">YouTube</option>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label for="sort-by">Sort By</label>
-                    <select id="sort-by">
-                        <option value="recent">Most Recent</option>
-                        <option value="rarity">Rarity</option>
-                        <option value="name">Name</option>
-                        <option value="encounters">Encounter Count</option>
-                    </select>
+            <div class="sidebar">
+                <div class="body-type-filters">
+                    <h3>Body Types</h3>
+                    <button class="body-type-button active" onclick="filterByBodyType('')">All Types</button>
+                    <div id="body-type-buttons"></div>
                 </div>
             </div>
 
-            <div id="loading" class="loading">Loading your collection...</div>
-            <div id="empty-state" class="empty-state" style="display: none;">
-                <h3>No Chatlings Yet!</h3>
-                <p>Start discovering chatlings by connecting your YouTube account and commenting on videos.</p>
-                <a href="integrations.html">Connect YouTube</a>
+            <div class="main-content">
+                <h2>My Collection</h2>
+
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <label for="filter-rarity">Rarity</label>
+                        <select id="filter-rarity">
+                            <option value="">All Rarities</option>
+                            <option value="Common">Common</option>
+                            <option value="Uncommon">Uncommon</option>
+                            <option value="Rare">Rare</option>
+                            <option value="Epic">Epic</option>
+                            <option value="Legendary">Legendary</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="filter-score">Overall Score</label>
+                        <select id="filter-score">
+                            <option value="">All Scores</option>
+                            <option value="vlow">Very Low (0-20)</option>
+                            <option value="low">Low (21-40)</option>
+                            <option value="medium">Medium (41-60)</option>
+                            <option value="high">High (61-80)</option>
+                            <option value="vhigh">Very High (81-94)</option>
+                            <option value="max">Max (95-100)</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="filter-platform">Platform</label>
+                        <select id="filter-platform">
+                            <option value="">All Platforms</option>
+                            <option value="YouTube">YouTube</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="sort-by">Sort By</label>
+                        <select id="sort-by">
+                            <option value="recent">Most Recent</option>
+                            <option value="rarity">Rarity</option>
+                            <option value="score">Overall Score</option>
+                            <option value="name">Name</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="loading" class="loading">Loading your collection...</div>
+                <div id="empty-state" class="empty-state" style="display: none;">
+                    <h3>No Chatlings Yet!</h3>
+                    <p>Start discovering chatlings by connecting your YouTube account and commenting on videos.</p>
+                    <a href="integrations.html">Connect YouTube</a>
+                </div>
+                <div id="collection-grid" class="collection-grid"></div>
             </div>
-            <div id="collection-grid" class="collection-grid"></div>
+        </div>
+    </div>
+
+    <!-- Guide Modal -->
+    <div id="guide-modal" class="modal" onclick="closeGuideModal(event)" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8);">
+        <div class="modal-content" onclick="event.stopPropagation()" style="position: relative; background: white; margin: 2% auto; padding: 30px; width: 90%; max-width: 800px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
+            <span class="modal-close" onclick="closeGuideModal()" style="position: absolute; top: 15px; right: 20px; color: #667eea; font-size: 35px; font-weight: bold; cursor: pointer;">&times;</span>
+            <h1 style="text-align: center; color: #667eea; font-size: 2em; margin-bottom: 30px;">Collections Guide</h1>
+
+            <div style="max-height: 70vh; overflow-y: auto; padding-right: 10px;">
+                <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px;">Your Chatlings Collection</h3>
+                <p style="line-height: 1.6; color: #333; margin-bottom: 15px;">
+                    This is your personal collection of all the chatlings you've claimed. Each chatling is unique and represents a YouTube video you liked!
+                </p>
+
+                <h3 style="color: #667eea; margin-top: 30px; margin-bottom: 15px;">Filtering Your Collection</h3>
+                <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
+                    <li><strong>By Body Type:</strong> Use the sidebar to filter chatlings by their body type (Floofs, Noodles, Sleeks, etc.)</li>
+                    <li><strong>By Rarity:</strong> Filter by Common, Uncommon, Rare, Epic, or Legendary</li>
+                    <li><strong>By Platform:</strong> See which platform each chatling came from</li>
+                </ul>
+
+                <h3 style="color: #667eea; margin-top: 30px; margin-bottom: 15px;">Sorting Options</h3>
+                <p style="line-height: 1.6; color: #333; margin-bottom: 15px;">
+                    Sort your collection by:
+                </p>
+                <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
+                    <li><strong>Most Recent:</strong> See your latest additions first</li>
+                    <li><strong>Rarity:</strong> View your rarest chatlings at the top</li>
+                    <li><strong>Name:</strong> Alphabetical order by chatling name</li>
+                </ul>
+
+                <h3 style="color: #667eea; margin-top: 30px; margin-bottom: 15px;">Viewing Details</h3>
+                <p style="line-height: 1.6; color: #333; margin-bottom: 15px;">
+                    Click on any chatling card to view its full details, including all 8 social trait scores and a larger image.
+                </p>
+            </div>
         </div>
     </div>
 
     <script>
+        // Guide modal functions
+        function openGuideModal() {
+            const modal = document.getElementById('guide-modal');
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeGuideModal(event) {
+            if (event && event.target.id !== 'guide-modal' && event.target.className !== 'modal-close') {
+                return;
+            }
+            const modal = document.getElementById('guide-modal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+    </script>
+
+    <script>
         let allChatlings = [];
+        let selectedBodyType = '';
+
+        async function loadBodyTypes() {
+            try {
+                const response = await fetch('/api/body-types');
+                if (response.ok) {
+                    const bodyTypes = await response.json();
+                    const container = document.getElementById('body-type-buttons');
+                    container.innerHTML = '';
+
+                    bodyTypes.forEach(type => {
+                        const button = document.createElement('button');
+                        button.className = 'body-type-button';
+                        button.textContent = type.display_name;
+                        button.onclick = () => filterByBodyType(type.display_name);
+                        container.appendChild(button);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading body types:', error);
+            }
+        }
+
+        function filterByBodyType(bodyType) {
+            selectedBodyType = bodyType;
+
+            // Update button active states
+            const buttons = document.querySelectorAll('.body-type-button');
+            buttons.forEach(btn => {
+                if (btn.textContent === bodyType || (bodyType === '' && btn.textContent === 'All Types')) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            filterAndSort();
+        }
 
         async function loadCollection() {
             try {
                 const response = await fetch('/api/user/collection');
                 if (response.ok) {
                     allChatlings = await response.json();
+                    console.log('Loaded chatlings:', allChatlings);
+                    console.log('Sample chatling with score:', allChatlings[0]);
                     if (allChatlings.length === 0) {
                         document.getElementById('loading').style.display = 'none';
                         document.getElementById('empty-state').style.display = 'block';
@@ -415,7 +532,7 @@
                 const card = document.createElement('div');
                 card.className = 'chatling-card';
                 card.style.cursor = 'pointer';
-                card.onclick = () => window.location.href = `view-chatling.html?id=${chatling.creature_id}`;
+                card.onclick = () => window.location.href = `view-chatling.html?id=${chatling.id}`;
 
                 const rarityClass = `rarity-${chatling.rarity_tier.toLowerCase()}`;
 
@@ -426,16 +543,9 @@
                          onerror="this.style.display='none'">
                     <div class="chatling-name">${chatling.creature_name}</div>
                     <div class="chatling-info">${chatling.species_name}</div>
-                    <div class="rarity-badge ${rarityClass}">${chatling.rarity_tier}</div>
-                    <div class="trait-badges-loading" id="traits-${chatling.creature_id}">
-                        Click to view details
-                    </div>
                 `;
 
                 grid.appendChild(card);
-
-                // Load trait scores asynchronously
-                loadTraitScores(chatling.creature_id);
             });
         }
 
@@ -477,14 +587,38 @@
 
         function filterAndSort() {
             const rarity = document.getElementById('filter-rarity').value;
+            const scoreRange = document.getElementById('filter-score').value;
             const platform = document.getElementById('filter-platform').value;
             const sortBy = document.getElementById('sort-by').value;
 
             let filtered = allChatlings;
 
+            // Filter by body type
+            if (selectedBodyType) {
+                filtered = filtered.filter(c => c.body_type_name === selectedBodyType);
+            }
+
             // Filter by rarity
             if (rarity) {
                 filtered = filtered.filter(c => c.rarity_tier === rarity);
+            }
+
+            // Filter by overall score range
+            if (scoreRange) {
+                filtered = filtered.filter(c => {
+                    const score = c.overall_score || 0;
+                    console.log('Filtering chatling:', c.creature_name, 'Score:', score, 'Range:', scoreRange);
+                    switch (scoreRange) {
+                        case 'vlow': return score >= 0 && score <= 20;
+                        case 'low': return score >= 21 && score <= 40;
+                        case 'medium': return score >= 41 && score <= 60;
+                        case 'high': return score >= 61 && score <= 80;
+                        case 'vhigh': return score >= 81 && score <= 94;
+                        case 'max': return score >= 95 && score <= 100;
+                        default: return true;
+                    }
+                });
+                console.log('After score filter, remaining:', filtered.length);
             }
 
             // Filter by platform
@@ -500,6 +634,8 @@
                     case 'rarity':
                         const rarityOrder = { 'Legendary': 5, 'Epic': 4, 'Rare': 3, 'Uncommon': 2, 'Common': 1 };
                         return (rarityOrder[b.rarity_tier] || 0) - (rarityOrder[a.rarity_tier] || 0);
+                    case 'score':
+                        return (b.overall_score || 0) - (a.overall_score || 0);
                     case 'name':
                         return a.creature_name.localeCompare(b.creature_name);
                     default:
@@ -512,11 +648,13 @@
 
         // Event listeners
         document.getElementById('filter-rarity').addEventListener('change', filterAndSort);
+        document.getElementById('filter-score').addEventListener('change', filterAndSort);
         document.getElementById('filter-platform').addEventListener('change', filterAndSort);
         document.getElementById('sort-by').addEventListener('change', filterAndSort);
 
-        // Load collection on page load
+        // Load collection and body types on page load
         loadCollection();
+        loadBodyTypes();
     </script>
 </body>
 </html>

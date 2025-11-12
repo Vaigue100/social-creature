@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chatlings - User Hub</title>
+    <link rel="stylesheet" href="/user/components/shared-header-styles.css">
     <style>
         * {
             margin: 0;
@@ -24,61 +25,6 @@
             padding: 20px;
         }
 
-        header {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-
-        h1 {
-            color: #667eea;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-
-        .subtitle {
-            color: #666;
-            font-size: 1.1em;
-        }
-
-        nav {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-        }
-
-        .nav-links {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .nav-link {
-            padding: 15px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-decoration: none;
-            border-radius: 10px;
-            font-weight: 600;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .nav-link:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-        }
-
-        .nav-link.active {
-            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-        }
-
         .content {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
@@ -94,28 +40,108 @@
             border-radius: 10px;
         }
 
-        .user-info {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-            padding: 20px;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-            border-radius: 10px;
-            margin-bottom: 20px;
+
+        /* Guide Modal */
+        .guide-content {
+            max-height: 70vh;
+            overflow-y: auto;
+            padding-right: 10px;
         }
 
-        .user-avatar {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .guide-content h3 {
+            color: #667eea;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .guide-content h3:first-child {
+            margin-top: 0;
+        }
+
+        .guide-content p {
+            line-height: 1.6;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .guide-content ul {
+            margin-left: 20px;
+            margin-bottom: 20px;
+            line-height: 1.8;
+        }
+
+        .guide-content li {
+            margin-bottom: 10px;
+        }
+
+        .guide-image-placeholder {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            color: #667eea;
+            font-style: italic;
+            margin: 20px 0;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            position: relative;
+            background: white;
+            margin: 2% auto;
+            padding: 0;
+            width: 90%;
+            max-width: 1200px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
             color: white;
-            font-size: 24px;
+            font-size: 35px;
             font-weight: bold;
+            cursor: pointer;
+            z-index: 1001;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s;
+        }
+
+        .modal-close:hover {
+            transform: scale(1.2);
         }
 
         .welcome-section {
@@ -208,38 +234,9 @@
     </style>
 </head>
 <body>
+    <script src="/user/components/shared-header.js"></script>
     <div class="container">
-        <header>
-            <img src="/admin/assets/logo.png" alt="Chatlings Logo" style="max-width: 200px; margin-bottom: 20px;">
-            <h1>Chatlings</h1>
-            <p class="subtitle">Collect chatlings as you explore YouTube!</p>
-        </header>
-
-        <div id="user-info" class="user-info" style="display: none;">
-            <div class="user-avatar" id="user-avatar">?</div>
-            <div style="flex: 1;">
-                <strong id="username">Guest</strong>
-                <div style="font-size: 0.9em; color: #666;" id="current-chatling-text">
-                    Loading...
-                </div>
-            </div>
-            <div id="current-chatling-card" style="display: none; text-align: center; padding: 10px; background: rgba(255, 255, 255, 0.5); border-radius: 8px; min-width: 120px;">
-                <img id="chatling-image" src="" alt="Current Chatling" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; margin-bottom: 5px;">
-                <div style="font-size: 0.85em; font-weight: bold; color: #667eea;" id="chatling-name">-</div>
-                <div style="font-size: 0.75em; color: #999;" id="chatling-rarity">-</div>
-                <a href="current-chatling.html" style="display: inline-block; margin-top: 8px; padding: 5px 12px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; font-size: 0.75em;">View Details</a>
-            </div>
-        </div>
-
-        <nav>
-            <div class="nav-links">
-                <a href="index.html" class="nav-link active">Home</a>
-                <a href="collections.html" class="nav-link">Collections</a>
-                <a href="achievements.html" class="nav-link">Achievements</a>
-                <a href="integrations.html" class="nav-link">Integrations</a>
-                <a href="notifications.html" class="nav-link">Notifications</a>
-            </div>
-        </nav>
+        <script>initSharedHeader('home');</script>
 
         <!-- Daily Visit Notification -->
         <div id="daily-visit-notification" style="display: none; background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%); border: 2px solid #667eea; border-radius: 15px; padding: 20px; margin-bottom: 20px; text-align: center;">
@@ -257,11 +254,6 @@
         <div class="content">
             <div class="welcome-section">
                 <h2>Welcome to Chatlings!</h2>
-                <p>
-                    Discover and collect unique chatlings from your liked YouTube videos!
-                    Each video has its own chatling that lasts for 24 hours.
-                    Like videos on YouTube, then connect to claim your rewards!
-                </p>
 
                 <div class="quick-stats">
                     <div class="stat-card">
@@ -308,14 +300,240 @@
         </div>
     </div>
 
+    <!-- Modal for Current Chatling -->
+    <div id="chatling-modal" class="modal" onclick="closeChatlingModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeChatlingModal()">&times;</span>
+            <div style="padding: 30px;">
+                <h1 style="text-align: center; color: #667eea; font-size: 2em; margin-bottom: 30px;" id="modal-creature-name">Your Current Chatling</h1>
+
+                <div class="creature-display">
+                    <div class="image-with-traits">
+                        <div class="rarity-badge" id="modal-rarity-badge" style="display: none;"></div>
+                        <img id="modal-creature-image" class="creature-image" src="" alt="Creature" style="display: none;">
+                        <div class="traits-column" id="modal-traits-container">
+                            <div class="loading">Loading traits...</div>
+                        </div>
+                        <div class="loading" id="modal-image-loading">Loading image...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guide Modal -->
+    <div id="guide-modal" class="modal" onclick="closeGuideModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeGuideModal()">&times;</span>
+            <div style="padding: 30px;">
+                <h1 style="text-align: center; color: #667eea; font-size: 2em; margin-bottom: 30px;">How Chatlings Works</h1>
+
+                <div class="guide-content">
+                    <h3>🎯 Getting Started</h3>
+                    <p>Chatlings is a unique creature collection game that rewards you for engaging with YouTube content. Each liked video generates a special chatling that you can claim and add to your collection.</p>
+
+                    <h3>🔗 Step 1: Connect Your YouTube Account</h3>
+                    <p>Navigate to the <strong>Integrations</strong> page and connect your YouTube account. This allows Chatlings to monitor your liked videos and generate rewards for you.</p>
+                    <div class="guide-image-placeholder">[Image: Integrations page showing YouTube connect button]</div>
+
+                    <h3>❤️ Step 2: Like Videos on YouTube</h3>
+                    <p>Browse YouTube as you normally would and like videos that you enjoy. Each liked video will generate a unique chatling based on the video's content and metadata.</p>
+                    <ul>
+                        <li>Each video creates a unique chatling</li>
+                        <li>Chatlings are available to claim for 24 hours</li>
+                        <li>The same video can generate different chatlings over time</li>
+                    </ul>
+
+                    <h3>🎁 Step 3: Claim Your Rewards</h3>
+                    <p>Return to the Chatlings dashboard to see your available rewards. Click on the <strong>Integrations</strong> page to check for new chatlings and claim them to add them to your collection.</p>
+                    <div class="guide-image-placeholder">[Image: Rewards page showing claimable chatlings]</div>
+
+                    <h3>👾 Understanding Your Chatlings</h3>
+                    <p>Each chatling is unique and has several key attributes:</p>
+                    <ul>
+                        <li><strong>Name & Species:</strong> Every chatling has a unique name and belongs to a specific species</li>
+                        <li><strong>Rarity:</strong> Ranges from Common to Legendary, affecting how special your chatling is</li>
+                        <li><strong>Trait Scores:</strong> 8 social dimensions that define your chatling's personality</li>
+                        <li><strong>Appearance:</strong> A unique AI-generated image representing your chatling</li>
+                    </ul>
+                    <div class="guide-image-placeholder">[Image: Chatling card showing name, rarity, and traits]</div>
+
+                    <h3>📊 The 8 Social Traits</h3>
+                    <p>Each chatling has scores (0-10) across 8 social dimensions that reflect the video's content:</p>
+                    <ul>
+                        <li><strong>🎭 Theatricality:</strong> How dramatic and expressive the chatling is</li>
+                        <li><strong>💡 Intellect:</strong> Knowledge and analytical thinking</li>
+                        <li><strong>🎨 Creativity:</strong> Innovation and artistic expression</li>
+                        <li><strong>👥 Social:</strong> Friendliness and social engagement</li>
+                        <li><strong>⚡ Energy:</strong> Activity level and enthusiasm</li>
+                        <li><strong>😌 Calm:</strong> Composure and tranquility</li>
+                        <li><strong>🎯 Focus:</strong> Concentration and determination</li>
+                        <li><strong>🌈 Quirky:</strong> Uniqueness and unconventional behavior</li>
+                    </ul>
+
+                    <h3>🏆 Rarity Tiers</h3>
+                    <p>Chatlings come in five rarity tiers, each with different levels of uniqueness:</p>
+                    <ul>
+                        <li><strong>⭐ Legendary:</strong> Extremely rare and special</li>
+                        <li><strong>💎 Epic:</strong> Very uncommon with exceptional traits</li>
+                        <li><strong>💠 Rare:</strong> Notable and harder to find</li>
+                        <li><strong>✨ Uncommon:</strong> Less common with interesting features</li>
+                        <li><strong>Common:</strong> Standard chatlings that are easier to find</li>
+                    </ul>
+
+                    <h3>📚 Your Collection</h3>
+                    <p>Visit the <strong>Collections</strong> page to view all your claimed chatlings. You can:</p>
+                    <ul>
+                        <li>Filter by rarity and platform</li>
+                        <li>Sort by most recent, rarity, name, or encounter count</li>
+                        <li>Click on any chatling to view its full details</li>
+                        <li>See trait scores and personality breakdown</li>
+                    </ul>
+                    <div class="guide-image-placeholder">[Image: Collections page showing grid of chatlings]</div>
+
+                    <h3>🎖️ Achievements</h3>
+                    <p>Complete challenges and milestones to earn achievements. Track your progress on the <strong>Achievements</strong> page.</p>
+
+                    <h3>💬 Current Chatling</h3>
+                    <p>Your current chatling appears in the header next to your avatar. Click on it to view its full details, including its complete trait breakdown and high-resolution image.</p>
+                    <div class="guide-image-placeholder">[Image: Current chatling modal with full view]</div>
+
+                    <h3>🔔 Notifications</h3>
+                    <p>Click the bell icon in the header to view your notifications, including daily visits and new chatlings available to claim.</p>
+
+                    <h3>❓ Need Help?</h3>
+                    <p>If you have questions or encounter issues, check back here or reach out through the support channels. Happy collecting!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <link rel="stylesheet" href="/user/components/creature-card-styles.css">
+    <script src="/user/components/creature-card-script.js"></script>
+
     <script>
+        let currentCreatureId = null;
+
+        // Modal functions
+        function openChatlingModal() {
+            if (!currentCreatureId) return;
+
+            const modal = document.getElementById('chatling-modal');
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+
+            // Load creature details
+            loadChatlingDetails(currentCreatureId);
+        }
+
+        function closeChatlingModal(event) {
+            if (event && event.target.className !== 'modal' && event.target.className !== 'modal-close') {
+                return;
+            }
+            const modal = document.getElementById('chatling-modal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        async function loadChatlingDetails(creatureId) {
+            try {
+                const response = await fetch(`/api/creature/${creatureId}/details`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch creature details');
+                }
+
+                const data = await response.json();
+
+                // Update modal title
+                document.getElementById('modal-creature-name').textContent = data.creature_name;
+
+                // Update rarity badge
+                const rarityBadge = document.getElementById('modal-rarity-badge');
+                if (data.rarity_tier) {
+                    rarityBadge.textContent = data.rarity_tier;
+                    rarityBadge.className = 'rarity-badge rarity-' + data.rarity_tier.toLowerCase();
+                    rarityBadge.style.display = 'block';
+                }
+
+                // Update image
+                const img = document.getElementById('modal-creature-image');
+                const imgLoading = document.getElementById('modal-image-loading');
+                img.src = `/images/${data.selected_image}`;
+                img.style.display = 'block';
+                imgLoading.style.display = 'none';
+
+                // Render traits using the reusable component
+                const container = document.getElementById('modal-traits-container');
+                container.id = 'traits-container';
+                const tempImgId = document.getElementById('modal-creature-image').id;
+                document.getElementById('modal-creature-image').id = 'creature-image';
+                document.getElementById('modal-image-loading').id = 'image-loading';
+
+                // Add overall score badge before rendering traits
+                const imageWithTraits = document.querySelector('#chatling-modal .image-with-traits');
+                console.log('Image with traits container:', imageWithTraits);
+                console.log('Overall score from API:', data.overall_score);
+
+                if (imageWithTraits && data.overall_score !== undefined) {
+                    // Remove existing overall score badge if any
+                    const existingBadge = imageWithTraits.querySelector('.overall-score-badge');
+                    if (existingBadge) {
+                        existingBadge.remove();
+                    }
+
+                    const scoreBadge = document.createElement('div');
+                    scoreBadge.className = 'overall-score-badge ' + getScoreClassForBadge(data.overall_score);
+                    scoreBadge.innerHTML = `<span>⭐</span><span>${data.overall_score}</span>`;
+                    imageWithTraits.appendChild(scoreBadge);
+                    console.log('Score badge added:', scoreBadge);
+                    console.log('Badge classes:', scoreBadge.className);
+                } else {
+                    console.log('Failed to add badge - imageWithTraits:', !!imageWithTraits, 'score:', data.overall_score);
+                }
+
+                window.renderTraitsVertical(data.traits, data.primary_color);
+
+                // Restore IDs
+                document.getElementById('creature-image').id = tempImgId;
+                document.getElementById('image-loading').id = 'modal-image-loading';
+                container.id = 'modal-traits-container';
+
+            } catch (error) {
+                console.error('Error loading chatling details:', error);
+            }
+        }
+
+        function getScoreClassForBadge(score) {
+            if (score >= 95) return 'score-max';
+            if (score >= 81) return 'score-vhigh';
+            if (score >= 61) return 'score-high';
+            if (score >= 41) return 'score-medium';
+            if (score >= 21) return 'score-low';
+            return 'score-vlow';
+        }
+
+        // Guide modal functions - Home page version
+        function openGuideModal() {
+            const modal = document.getElementById('guide-modal');
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeGuideModal(event) {
+            if (event && event.target.className !== 'modal' && event.target.className !== 'modal-close') {
+                return;
+            }
+            const modal = document.getElementById('guide-modal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
         // Check if user is logged in and load their stats
         async function loadUserData() {
             try {
                 const response = await fetch('/api/user/me');
                 if (response.ok) {
                     const user = await response.json();
-                    updateUserInfo(user);
                     loadUserStats();
                     checkDailyVisitNotification();
                 } else {
@@ -345,32 +563,14 @@
             }
         }
 
-        function updateUserInfo(user) {
-            document.getElementById('user-info').style.display = 'flex';
-            document.getElementById('username').textContent = user.username;
-            document.getElementById('user-avatar').textContent = user.username.charAt(0).toUpperCase();
-
-            // Update current chatling display
-            if (user.currentChatling) {
-                const chatling = user.currentChatling;
-                document.getElementById('current-chatling-text').textContent = `Your current chatling: ${chatling.name}`;
-
-                // Show chatling card
-                document.getElementById('current-chatling-card').style.display = 'block';
-                document.getElementById('chatling-image').src = `/images/${chatling.image}`;
-                document.getElementById('chatling-name').textContent = chatling.shortName || chatling.name;
-                document.getElementById('chatling-rarity').textContent = chatling.rarityTier || 'Unknown';
-            } else {
-                document.getElementById('current-chatling-text').textContent = 'No chatling assigned yet';
-                document.getElementById('current-chatling-card').style.display = 'none';
-            }
-        }
-
         async function loadUserStats() {
             try {
                 const response = await fetch('/api/user/stats');
                 if (response.ok) {
                     const stats = await response.json();
+
+                    // Store stats globally for dropdown
+                    window.currentUserStats = stats;
 
                     // Update top stats
                     document.getElementById('total-discovered').textContent = stats.total_rewards || 0;

@@ -16,8 +16,9 @@
     align-items: stretch;
     gap: 0;
     flex-direction: row-reverse;
+    flex-wrap: wrap;
     max-width: 100%;
-    max-height: 80vh;
+    max-height: none;
     width: fit-content;
     margin: 0 auto;
     position: relative;
@@ -28,14 +29,118 @@
     position: absolute;
     top: 10px;
     right: 10px;
-    padding: 8px 16px;
+    padding: 10px 20px; /* 25% bigger */
     border-radius: 20px;
-    font-size: 0.9em;
+    font-size: 1.125em; /* 25% bigger */
     font-weight: bold;
     color: white;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     z-index: 10;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Overall score badge in top left corner of image */
+.overall-score-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 1.125em;
+    font-weight: bold;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.overall-score-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Name badge in bottom left corner of image */
+.name-badge {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 1.125em;
+    font-weight: bold;
+    color: white;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Body type badge in bottom right corner */
+.bodytype-badge {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 1.125em;
+    font-weight: bold;
+    color: white;
+    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.bodytype-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Creature lore section attached to bottom */
+.creature-lore-section {
+    width: 100%;
+    padding: 20px;
+    background: rgba(155, 89, 182, 0.1);
+    border-radius: 0 0 15px 15px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+    order: 3;
+    backdrop-filter: blur(5px);
+}
+
+/* Score range color backgrounds */
+.score-vlow {
+    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+}
+
+.score-low {
+    background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+}
+
+.score-medium {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+}
+
+.score-high {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+}
+
+.score-vhigh {
+    background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+}
+
+.score-max {
+    background: linear-gradient(135deg, #f39c12 0%, #e74c3c 100%);
+    animation: scoreGlow 2s ease-in-out infinite;
+}
+
+@keyframes scoreGlow {
+    0%, 100% { box-shadow: 0 4px 12px rgba(243, 156, 18, 0.5); }
+    50% { box-shadow: 0 4px 20px rgba(243, 156, 18, 0.8); }
 }
 
 .rarity-common {
@@ -64,109 +169,16 @@
     50% { box-shadow: 0 4px 20px rgba(243, 156, 18, 0.8); }
 }
 
-/* Traits column on left side with unified background */
-.traits-column {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    width: 210px;
-    min-width: 160px;
-    max-width: 210px;
-    padding: 15px;
-    flex-shrink: 1;
-    border-radius: 15px 0 0 15px;
-    box-shadow: -5px 0 20px rgba(0, 0, 0, 0.2);
-    /* Background gradient will be set via JavaScript */
-}
-
 .creature-image {
     display: block;
-    width: auto;
+    width: 100%;
     height: auto;
-    max-width: calc(100% - 210px);
+    max-width: 800px;
     max-height: 80vh;
-    min-width: 200px;
-    border-radius: 0 15px 15px 0;
-    box-shadow: 5px 0 20px rgba(0, 0, 0, 0.2);
+    min-width: 300px;
+    border-radius: 15px 15px 0 0;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
     object-fit: contain;
-    flex-shrink: 2;
-}
-
-/* Individual trait badge - no background */
-.trait-badge-horizontal {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 10px;
-    transition: transform 0.2s, padding 0.2s;
-    cursor: pointer;
-    position: relative;
-    margin: 0;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 8px;
-    backdrop-filter: blur(5px);
-}
-
-.trait-badge-horizontal:hover {
-    transform: translateX(-3px);
-    background: rgba(255, 255, 255, 0.25);
-}
-
-/* Compact mode - hide trait names and reduce column width */
-.traits-column.compact-mode {
-    width: 105px;
-    min-width: 80px;
-    max-width: 105px;
-    padding: 10px;
-}
-
-.trait-badge-horizontal.compact .trait-name {
-    display: none;
-}
-
-.trait-badge-horizontal.compact {
-    padding: 6px 8px;
-    justify-content: space-between;
-    gap: 10px;
-}
-
-.trait-badge-horizontal.compact .trait-left {
-    gap: 10px;
-    flex: 0;
-}
-
-.trait-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-    min-width: 0;
-}
-
-.trait-icon {
-    font-size: 1.2em;
-    flex-shrink: 0;
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-}
-
-.trait-name {
-    color: white;
-    font-weight: 600;
-    font-size: 0.85em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-.trait-score {
-    color: white;
-    font-weight: bold;
-    font-size: 1em;
-    min-width: 28px;
-    text-align: right;
-    flex-shrink: 0;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .loading {
@@ -175,138 +187,120 @@
     color: #666;
 }
 
-/* Tooltip - appears below badge */
-.trait-badge-horizontal::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    top: calc(100% + 5px);
-    left: 0;
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 0.85em;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s;
-    z-index: 1000;
-}
-
-.trait-badge-horizontal:hover::after {
-    opacity: 1;
-}
-
-/* Hide loading when traits are displayed */
-.traits-column:not(:empty) ~ .loading {
-    display: none;
-}
-
 /* Responsive */
-@media (max-width: 1024px) {
-    .traits-column {
-        width: 180px;
-        min-width: 140px;
-        max-width: 180px;
-        padding: 12px;
-    }
-
-    .traits-column.compact-mode {
-        width: 90px;
-        min-width: 70px;
-        max-width: 90px;
-    }
-
-    .creature-image {
-        max-width: calc(100% - 180px);
-    }
-
-    .trait-badge-horizontal {
-        padding: 6px 8px;
-    }
-
-    .trait-name {
-        font-size: 0.8em;
-    }
-}
-
 @media (max-width: 768px) {
     .creature-display {
         padding: 10px;
     }
 
-    .traits-column {
-        width: 140px;
-        min-width: 120px;
-        max-width: 140px;
-        padding: 10px;
-    }
-
-    .traits-column.compact-mode {
-        width: 70px;
-        min-width: 60px;
-        max-width: 70px;
-    }
-
     .creature-image {
-        max-width: calc(100% - 140px);
-        min-width: 150px;
+        max-width: 600px;
+        min-width: 250px;
     }
 
-    .trait-badge-horizontal {
-        padding: 5px 7px;
-    }
-
-    .trait-name {
-        font-size: 0.7em;
-    }
-
-    .trait-icon {
+    .overall-score-badge {
+        padding: 8px 16px;
         font-size: 1em;
     }
 
-    .trait-score {
-        font-size: 0.85em;
+    .rarity-badge {
+        padding: 8px 16px;
+        font-size: 1em;
+    }
+
+    .name-badge {
+        padding: 8px 16px;
+        font-size: 1em;
+    }
+
+    .bodytype-badge {
+        padding: 8px 16px;
+        font-size: 1em;
     }
 }
 
 @media (max-width: 480px) {
-    .traits-column {
-        width: 100px;
-        min-width: 100px;
-        max-width: 100px;
-        padding: 8px;
-    }
-
-    .traits-column.compact-mode {
-        width: 50px;
-        min-width: 50px;
-        max-width: 50px;
-        padding: 6px;
-    }
-
     .creature-image {
-        max-width: calc(100% - 100px);
-        min-width: 120px;
+        max-width: 400px;
+        min-width: 200px;
     }
 
-    .trait-badge-horizontal {
-        padding: 4px 6px;
+    .overall-score-badge {
+        padding: 6px 12px;
+        font-size: 0.85em;
     }
 
-    .trait-badge-horizontal.compact {
-        padding: 3px 5px;
+    .rarity-badge {
+        padding: 6px 12px;
+        font-size: 0.85em;
     }
 
-    .trait-name {
-        font-size: 0.65em;
+    .name-badge {
+        padding: 6px 12px;
+        font-size: 0.85em;
     }
 
-    .trait-icon {
-        font-size: 0.9em;
+    .bodytype-badge {
+        padding: 6px 12px;
+        font-size: 0.85em;
     }
+}
 
-    .trait-score {
-        font-size: 0.75em;
+/* Lore Modal Styles */
+.lore-modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.lore-modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease-in-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
     }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.lore-modal-close {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 28px;
+    font-weight: bold;
+    color: #999;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.lore-modal-close:hover {
+    color: #333;
 }

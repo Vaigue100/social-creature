@@ -66,17 +66,46 @@
         <a href="collections.html" class="back-button">← Back to Collection</a>
 
         <div class="creature-card-container">
-            <h1 class="creature-title" id="creature-name">Loading...</h1>
-            <p class="subtitle" id="subtitle">Loading chatling details...</p>
-
             <div class="creature-display">
                 <div class="image-with-traits">
                     <div class="rarity-badge" id="rarity-badge" style="display: none;"></div>
+                    <div class="overall-score-badge" id="overall-score-badge" style="display: none; cursor: pointer;" title="Click to view traits"></div>
+                    <div class="name-badge" id="name-badge" style="display: none;"></div>
+                    <div class="bodytype-badge" id="bodytype-badge" style="display: none; cursor: pointer;" title="Click to view body type lore"></div>
                     <img id="creature-image" class="creature-image" src="" alt="Creature" style="display: none;">
-                    <div class="traits-column" id="traits-container">
-                        <div class="loading">Loading traits...</div>
-                    </div>
                     <div class="loading" id="image-loading">Loading image...</div>
+
+                    <!-- Creature Lore attached to bottom -->
+                    <div class="creature-lore-section" id="creature-lore-section" style="display: none;">
+                        <h3 style="color: #9b59b6; margin-bottom: 10px; font-size: 1.1em;">📖 <span id="creature-lore-title">Tale</span></h3>
+                        <p id="creature-lore" style="color: #666; line-height: 1.6; margin: 0;">
+                            Loading creature lore...
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Body Type Lore Modal -->
+        <div id="bodytype-modal" class="lore-modal" style="display: none;">
+            <div class="lore-modal-content">
+                <span class="lore-modal-close" data-modal="bodytype-modal">&times;</span>
+                <h2 style="color: #2ecc71; margin-bottom: 15px;">🎨 <span id="bodytype-modal-title">Body Type</span> Lineage</h2>
+                <p id="bodytype-modal-lore" style="color: #666; line-height: 1.8;">
+                    Loading body type lore...
+                </p>
+            </div>
+        </div>
+
+        <!-- Traits Modal -->
+        <div id="traits-modal" class="lore-modal" style="display: none;">
+            <div class="lore-modal-content">
+                <span class="lore-modal-close" data-modal="traits-modal">&times;</span>
+                <h2 style="color: #667eea; margin-bottom: 20px; text-align: center;">
+                    <span id="traits-modal-title">Chatling</span> Traits
+                </h2>
+                <div id="traits-modal-container" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Traits will be loaded here -->
                 </div>
             </div>
         </div>
@@ -106,16 +135,39 @@
 
                 const data = await creatureResponse.json();
 
-                // Update title
-                document.getElementById('creature-name').textContent = data.creature_name;
-                document.getElementById('subtitle').textContent = 'From your collection';
-
-                // Update rarity badge
+                // Update rarity badge (top-right)
                 const rarityBadge = document.getElementById('rarity-badge');
                 if (data.rarity_tier) {
                     rarityBadge.textContent = data.rarity_tier;
                     rarityBadge.className = 'rarity-badge rarity-' + data.rarity_tier.toLowerCase();
                     rarityBadge.style.display = 'block';
+                }
+
+                // Update name badge (bottom-left)
+                const nameBadge = document.getElementById('name-badge');
+                if (data.creature_name) {
+                    nameBadge.textContent = data.creature_name;
+                    nameBadge.style.display = 'block';
+                }
+
+                // Update body type badge (bottom-right)
+                const bodytypeBadge = document.getElementById('bodytype-badge');
+                if (data.body_type_name) {
+                    bodytypeBadge.textContent = data.body_type_name;
+                    bodytypeBadge.style.display = 'block';
+
+                    // Store body type lore in modal (for popup)
+                    document.getElementById('bodytype-modal-title').textContent = data.body_type_name;
+                    document.getElementById('bodytype-modal-lore').textContent = `The ${data.body_type_name} are a fascinating lineage of Chatlings known for their unique characteristics. These creatures embody specific traits that make them stand out in the world of Social Streams. Their distinctive form reflects the type of content and community energy from which they emerged.`;
+                }
+
+                // Update creature-specific lore with trait-based content
+                if (data.creature_name) {
+                    document.getElementById('creature-lore-title').textContent = `${data.creature_name}'s`;
+                    document.getElementById('creature-lore').textContent = `${data.creature_name} is a unique Chatling with an overall power level of ${data.overall_score || 'unknown'}. This remarkable being possesses a distinctive combination of social traits that define its personality and behavior in the realm of Social Streams. Born from the energy of its source content, ${data.creature_name} carries the essence of that moment forever.`;
+
+                    // Show the creature lore section
+                    document.getElementById('creature-lore-section').style.display = 'block';
                 }
 
                 // Update image
@@ -125,8 +177,20 @@
                 img.style.display = 'block';
                 imgLoading.style.display = 'none';
 
-                // Render traits
-                window.renderTraitsVertical(data.traits, data.primary_color);
+                // Update overall score badge (top-left)
+                const scoreBadge = document.getElementById('overall-score-badge');
+                if (data.overall_score !== undefined) {
+                    scoreBadge.className = 'overall-score-badge ' + getScoreClassForBadge(data.overall_score);
+                    scoreBadge.innerHTML = `<span>⭐</span><span>${data.overall_score}</span>`;
+                    scoreBadge.style.display = 'block';
+                }
+
+                // Store traits data for modal
+                window.currentCreatureData = {
+                    name: data.creature_name,
+                    traits: data.traits,
+                    primaryColor: data.primary_color
+                };
 
             } catch (error) {
                 console.error('Error loading chatling:', error);
@@ -135,6 +199,84 @@
                 document.getElementById('image-loading').textContent = 'Failed to load chatling details.';
                 document.getElementById('image-loading').className = 'error';
             }
+        }
+
+        function getScoreClassForBadge(score) {
+            if (score >= 95) return 'score-max';
+            if (score >= 81) return 'score-vhigh';
+            if (score >= 61) return 'score-high';
+            if (score >= 41) return 'score-medium';
+            if (score >= 21) return 'score-low';
+            return 'score-vlow';
+        }
+
+        // Modal click handlers
+        document.addEventListener('click', (e) => {
+            const bodytypeBadge = document.getElementById('bodytype-badge');
+            const bodytypeModal = document.getElementById('bodytype-modal');
+            const scoreBadge = document.getElementById('overall-score-badge');
+            const traitsModal = document.getElementById('traits-modal');
+
+            // Open body type modal when badge is clicked
+            if (e.target === bodytypeBadge) {
+                bodytypeModal.style.display = 'flex';
+            }
+
+            // Open traits modal when score badge is clicked
+            if (e.target === scoreBadge || e.target.parentElement === scoreBadge) {
+                openTraitsModal();
+            }
+
+            // Close modal when X is clicked
+            if (e.target.classList.contains('lore-modal-close')) {
+                const modalId = e.target.getAttribute('data-modal');
+                document.getElementById(modalId).style.display = 'none';
+            }
+
+            // Close modal when clicking outside the content
+            if (e.target.classList.contains('lore-modal')) {
+                e.target.style.display = 'none';
+            }
+        });
+
+        // Function to open traits modal and render traits
+        function openTraitsModal() {
+            if (!window.currentCreatureData) return;
+
+            const modal = document.getElementById('traits-modal');
+            const container = document.getElementById('traits-modal-container');
+            const title = document.getElementById('traits-modal-title');
+
+            // Update title
+            title.textContent = window.currentCreatureData.name || 'Chatling';
+
+            // Clear previous traits
+            container.innerHTML = '';
+
+            // Render traits in modal
+            const traits = window.currentCreatureData.traits || [];
+            traits.forEach(trait => {
+                const traitDiv = document.createElement('div');
+                traitDiv.className = 'trait-modal-item';
+                traitDiv.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(102, 126, 234, 0.08); border-radius: 10px; transition: background 0.2s;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 1.5em;">${trait.icon || '⭐'}</span>
+                            <div>
+                                <div style="font-weight: 600; color: #333; font-size: 1em;">${trait.category_name}</div>
+                                <div style="font-size: 0.85em; color: #666; margin-top: 2px;">${trait.description || ''}</div>
+                            </div>
+                        </div>
+                        <div style="font-weight: bold; font-size: 1.2em; color: #667eea; min-width: 40px; text-align: right;">
+                            ${trait.score}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(traitDiv);
+            });
+
+            // Show modal
+            modal.style.display = 'flex';
         }
 
         // Load on page load
