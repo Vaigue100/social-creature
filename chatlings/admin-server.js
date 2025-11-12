@@ -40,6 +40,7 @@ app.use(express.static(path.join(__dirname, 'admin')));
 app.use('/user', express.static(path.join(__dirname, 'user')));
 app.use('/artwork', express.static(path.join(__dirname, 'artwork')));
 app.use('/images', express.static(path.join(__dirname, 'artwork', 'linked')));
+app.use('/thumbs', express.static(path.join(__dirname, 'artwork', 'thumbs')));
 
 // Handle favicon requests (just return 204 No Content to avoid 404 errors)
 app.get('/favicon.ico', (req, res) => res.status(204).end());
@@ -269,13 +270,13 @@ app.post('/api/trash-image', async (req, res) => {
       console.log(`Image not found in linked folder: ${imageFilename}`);
     }
 
-    // Unlink image from database (set selected_image to NULL)
+    // Unlink image from database (set selected_image to NULL and soft delete)
     await client.query(
-      'UPDATE creatures SET selected_image = NULL WHERE id = $1',
+      'UPDATE creatures SET selected_image = NULL, is_active = false WHERE id = $1',
       [creatureId]
     );
 
-    console.log(`[TRASHED] Creature ${creatureId}: ${imageFilename} moved to trashed/, database unlinked`);
+    console.log(`[TRASHED] Creature ${creatureId}: ${imageFilename} moved to trashed/, creature marked as inactive`);
 
     res.json({ success: true });
 
@@ -326,7 +327,7 @@ app.get('/api/dimensions', async (req, res) => {
  */
 app.get('/api/creatures-by-dimensions', async (req, res) => {
   const client = new Client(config);
-  const { body_type_id, activity_id, mood_id, color_scheme_id, quirk_id, size_id } = req.query;
+  const { body_type_id, activity_id, mood_id, color_scheme_id, quirk_id, size_id, show_inactive } = req.query;
 
   try {
     await client.connect();
@@ -335,6 +336,11 @@ app.get('/api/creatures-by-dimensions', async (req, res) => {
     const filters = [];
     const params = [];
     let paramIndex = 1;
+
+    // Always filter by is_active unless show_inactive is true (for admin)
+    if (show_inactive !== 'true') {
+      filters.push('c.is_active = true');
+    }
 
     if (body_type_id) {
       filters.push(`cp.body_type_id = $${paramIndex++}`);
@@ -369,6 +375,7 @@ app.get('/api/creatures-by-dimensions', async (req, res) => {
         c.creature_name,
         c.selected_image,
         c.rarity_tier,
+        c.is_active,
         cp.id as prompt_id,
         bt.body_type_name,
         sa.activity_name,
@@ -385,7 +392,7 @@ app.get('/api/creatures-by-dimensions', async (req, res) => {
       JOIN dim_special_quirk sq ON cp.quirk_id = sq.id
       JOIN dim_size_category sc ON cp.size_id = sc.id
       ${whereClause}
-      ORDER BY c.id
+      ORDER BY c.is_active DESC, c.id
       LIMIT 100
     `, params);
 
@@ -414,6 +421,7 @@ app.get('/api/stats', async (req, res) => {
         COUNT(*) as total,
         COUNT(selected_image) as completed
       FROM creatures
+      WHERE is_active = true
     `);
 
     const stats = result.rows[0];
@@ -602,6 +610,7 @@ app.get('/api/user/collection', async (req, res) => {
       LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
       LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
       WHERE ur.user_id = $1
+        AND c.is_active = true
       ORDER BY ur.claimed_at DESC
     `, [req.session.userId]);
 

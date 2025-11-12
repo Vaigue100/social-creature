@@ -133,46 +133,66 @@
         }
 
         .collection-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
         .chatling-card {
             background: white;
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
+            border-radius: 12px;
+            padding: 15px;
             transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             position: relative;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
         }
 
         .chatling-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            transform: translateX(5px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
 
         .chatling-image {
-            width: 100%;
-            height: 100px;
+            width: 60px;
+            height: 60px;
             object-fit: cover;
-            border-radius: 10px;
-            margin-bottom: 15px;
+            border-radius: 8px;
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            flex-shrink: 0;
         }
 
         .chatling-name {
-            font-size: 1.2em;
+            font-size: 1.1em;
             font-weight: bold;
             color: #333;
-            margin-bottom: 8px;
+            min-width: 150px;
+            flex-shrink: 0;
         }
 
         .chatling-info {
             font-size: 0.9em;
             color: #666;
             margin-bottom: 5px;
+        }
+
+        .overall-score {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #667eea;
+            min-width: 60px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .score-divider {
+            width: 1px;
+            height: 30px;
+            background: #ddd;
+            margin: 0 15px;
         }
 
         .rarity-badge {
@@ -254,38 +274,42 @@
         .trait-badges {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 15px;
-            justify-content: center;
-            padding: 10px 0;
-            border-top: 1px solid #eee;
+            gap: 6px;
+            margin-left: auto;
+            align-items: center;
         }
 
         .trait-badge {
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
+            gap: 4px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 10px;
-            padding: 8px 10px;
-            min-width: 50px;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            padding: 6px 10px;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.2);
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
+        .trait-badge.high {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+        }
+
+        .trait-badge.low {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
         .trait-badge:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+            transform: scale(1.05);
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.4);
         }
 
         .trait-icon {
-            font-size: 1.3em;
-            margin-bottom: 2px;
+            font-size: 1.1em;
         }
 
         .trait-score {
-            font-size: 0.95em;
+            font-size: 0.9em;
             font-weight: bold;
             color: white;
         }
@@ -299,12 +323,9 @@
 
         /* Loading state for traits */
         .trait-badges-loading {
-            text-align: center;
-            padding: 10px;
             color: #999;
             font-size: 0.85em;
-            border-top: 1px solid #eee;
-            margin-top: 15px;
+            margin-left: auto;
         }
 
         /* Tooltip for trait badges */
@@ -327,6 +348,42 @@
             margin-bottom: 5px;
             z-index: 1000;
         }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 30px;
+            padding: 20px;
+        }
+
+        .pagination-button {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .pagination-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .pagination-button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .pagination-info {
+            color: #666;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -338,14 +395,11 @@
             <div class="sidebar">
                 <div class="body-type-filters">
                     <h3>Body Types</h3>
-                    <button class="body-type-button active" onclick="filterByBodyType('')">All Types</button>
                     <div id="body-type-buttons"></div>
                 </div>
             </div>
 
             <div class="main-content">
-                <h2>My Collection</h2>
-
                 <div class="filter-bar">
                     <div class="filter-group">
                         <label for="filter-rarity">Rarity</label>
@@ -398,6 +452,11 @@
                     <a href="integrations.html">Connect YouTube</a>
                 </div>
                 <div id="collection-grid" class="collection-grid"></div>
+                <div id="pagination" class="pagination" style="display: none;">
+                    <button class="pagination-button" id="prev-page" onclick="changePage(-1)">Previous</button>
+                    <span class="pagination-info" id="page-info">Page 1</span>
+                    <button class="pagination-button" id="next-page" onclick="changePage(1)">Next</button>
+                </div>
             </div>
         </div>
     </div>
@@ -461,7 +520,10 @@
 
     <script>
         let allChatlings = [];
+        let filteredChatlings = [];
         let selectedBodyType = '';
+        let currentPage = 1;
+        const CREATURES_PER_PAGE = 20;
 
         async function loadBodyTypes() {
             try {
@@ -471,9 +533,13 @@
                     const container = document.getElementById('body-type-buttons');
                     container.innerHTML = '';
 
-                    bodyTypes.forEach(type => {
+                    bodyTypes.forEach((type, index) => {
                         const button = document.createElement('button');
                         button.className = 'body-type-button';
+                        if (index === 0) {
+                            button.classList.add('active');
+                            selectedBodyType = type.display_name;
+                        }
                         button.textContent = type.display_name;
                         button.onclick = () => filterByBodyType(type.display_name);
                         container.appendChild(button);
@@ -490,14 +556,47 @@
             // Update button active states
             const buttons = document.querySelectorAll('.body-type-button');
             buttons.forEach(btn => {
-                if (btn.textContent === bodyType || (bodyType === '' && btn.textContent === 'All Types')) {
+                if (btn.textContent === bodyType) {
                     btn.classList.add('active');
                 } else {
                     btn.classList.remove('active');
                 }
             });
 
+            currentPage = 1;
             filterAndSort();
+        }
+
+        function changePage(direction) {
+            currentPage += direction;
+            displayCurrentPage();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function displayCurrentPage() {
+            const start = (currentPage - 1) * CREATURES_PER_PAGE;
+            const end = start + CREATURES_PER_PAGE;
+            const pageCreatures = filteredChatlings.slice(start, end);
+
+            displayChatlings(pageCreatures);
+            updatePagination();
+        }
+
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredChatlings.length / CREATURES_PER_PAGE);
+            const paginationDiv = document.getElementById('pagination');
+            const pageInfo = document.getElementById('page-info');
+            const prevButton = document.getElementById('prev-page');
+            const nextButton = document.getElementById('next-page');
+
+            if (totalPages <= 1) {
+                paginationDiv.style.display = 'none';
+            } else {
+                paginationDiv.style.display = 'flex';
+                pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+                prevButton.disabled = currentPage === 1;
+                nextButton.disabled = currentPage === totalPages;
+            }
         }
 
         async function loadCollection() {
@@ -505,14 +604,13 @@
                 const response = await fetch('/api/user/collection');
                 if (response.ok) {
                     allChatlings = await response.json();
-                    console.log('Loaded chatlings:', allChatlings);
-                    console.log('Sample chatling with score:', allChatlings[0]);
                     if (allChatlings.length === 0) {
                         document.getElementById('loading').style.display = 'none';
                         document.getElementById('empty-state').style.display = 'block';
                     } else {
                         document.getElementById('loading').style.display = 'none';
-                        displayChatlings(allChatlings);
+                        // Apply filters (including default first body type)
+                        filterAndSort();
                     }
                 } else {
                     // Not logged in - redirect
@@ -531,21 +629,29 @@
             chatlings.forEach(chatling => {
                 const card = document.createElement('div');
                 card.className = 'chatling-card';
-                card.style.cursor = 'pointer';
                 card.onclick = () => window.location.href = `view-chatling.html?id=${chatling.id}`;
 
-                const rarityClass = `rarity-${chatling.rarity_tier.toLowerCase()}`;
+                // Handle null or missing images
+                const hasImage = chatling.selected_image && chatling.selected_image !== 'null';
+                const imageSrc = hasImage ? `/thumbs/${chatling.selected_image}` : '';
+                const imageFallback = hasImage ? `/images/${chatling.selected_image}` : '';
 
                 card.innerHTML = `
-                    <img src="/images/${chatling.selected_image}"
+                    <img src="${imageSrc}"
                          alt="${chatling.creature_name}"
                          class="chatling-image"
-                         onerror="this.style.display='none'">
+                         onerror="if(this.src !== '${imageFallback}') this.src='${imageFallback}'; else this.style.display='none';"
+                         style="${!hasImage ? 'display:none;' : ''}">
                     <div class="chatling-name">${chatling.creature_name}</div>
-                    <div class="chatling-info">${chatling.species_name}</div>
+                    <div class="overall-score">${chatling.overall_score || 0}</div>
+                    <div class="score-divider"></div>
+                    <div id="traits-${chatling.id}" class="trait-badges-loading">Loading...</div>
                 `;
 
                 grid.appendChild(card);
+
+                // Load trait scores asynchronously
+                loadTraitScores(chatling.id);
             });
         }
 
@@ -571,10 +677,15 @@
             container.className = 'trait-badges';
             container.innerHTML = '';
 
-            traits.forEach(trait => {
+            // Filter for very highs (81-100) and very lows (0-20)
+            const highs = traits.filter(t => t.score >= 81);
+            const lows = traits.filter(t => t.score <= 20);
+
+            // Show highs first (green)
+            highs.forEach(trait => {
                 const badge = document.createElement('div');
-                badge.className = 'trait-badge trait-badge-tooltip';
-                badge.setAttribute('data-tooltip', `${trait.category_name}: ${trait.description}`);
+                badge.className = 'trait-badge high trait-badge-tooltip';
+                badge.setAttribute('data-tooltip', `${trait.category_name}: ${trait.score}`);
 
                 badge.innerHTML = `
                     <span class="trait-icon">${trait.icon}</span>
@@ -583,6 +694,25 @@
 
                 container.appendChild(badge);
             });
+
+            // Show lows (red)
+            lows.forEach(trait => {
+                const badge = document.createElement('div');
+                badge.className = 'trait-badge low trait-badge-tooltip';
+                badge.setAttribute('data-tooltip', `${trait.category_name}: ${trait.score}`);
+
+                badge.innerHTML = `
+                    <span class="trait-icon">${trait.icon}</span>
+                    <span class="trait-score">${trait.score}</span>
+                `;
+
+                container.appendChild(badge);
+            });
+
+            // If no extreme scores, show a message
+            if (highs.length === 0 && lows.length === 0) {
+                container.innerHTML = '<span style="color: #999; font-size: 0.85em;">Moderate scores</span>';
+            }
         }
 
         function filterAndSort() {
@@ -607,7 +737,6 @@
             if (scoreRange) {
                 filtered = filtered.filter(c => {
                     const score = c.overall_score || 0;
-                    console.log('Filtering chatling:', c.creature_name, 'Score:', score, 'Range:', scoreRange);
                     switch (scoreRange) {
                         case 'vlow': return score >= 0 && score <= 20;
                         case 'low': return score >= 21 && score <= 40;
@@ -618,7 +747,6 @@
                         default: return true;
                     }
                 });
-                console.log('After score filter, remaining:', filtered.length);
             }
 
             // Filter by platform
@@ -643,7 +771,9 @@
                 }
             });
 
-            displayChatlings(filtered);
+            filteredChatlings = filtered;
+            currentPage = 1;
+            displayCurrentPage();
         }
 
         // Event listeners

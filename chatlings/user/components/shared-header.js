@@ -6,7 +6,19 @@
 // Store current creature ID for modal
 let currentCreatureId = null;
 
+function getPageTitle(activePage) {
+    const titles = {
+        'home': 'Home',
+        'collections': 'Collection',
+        'achievements': 'Achievements',
+        'integrations': 'Integrations'
+    };
+    return titles[activePage] || 'Home';
+}
+
 function initSharedHeader(activePage = 'home') {
+    const pageTitle = getPageTitle(activePage);
+
     const headerHTML = `
         <header>
             <div class="header-left">
@@ -69,11 +81,12 @@ function initSharedHeader(activePage = 'home') {
         </header>
 
         <nav>
+            <h1 class="page-title">${pageTitle}</h1>
             <div class="nav-links">
-                ${activePage !== 'home' ? '<a href="index.html" class="nav-link">Home</a>' : ''}
-                ${activePage !== 'collections' ? '<a href="collections.html" class="nav-link">Collections</a>' : ''}
-                ${activePage !== 'achievements' ? '<a href="achievements.html" class="nav-link">Achievements</a>' : ''}
-                ${activePage !== 'integrations' ? '<a href="integrations.html" class="nav-link">Integrations</a>' : ''}
+                <a href="index.html" class="nav-link ${activePage === 'home' ? 'active' : ''}">Home</a>
+                <a href="collections.html" class="nav-link ${activePage === 'collections' ? 'active' : ''}">Collections</a>
+                <a href="achievements.html" class="nav-link ${activePage === 'achievements' ? 'active' : ''}">Achievements</a>
+                <a href="integrations.html" class="nav-link ${activePage === 'integrations' ? 'active' : ''}">Integrations</a>
                 <a href="#" class="nav-link" onclick="openGuideModal(); return false;">Guide</a>
             </div>
         </nav>

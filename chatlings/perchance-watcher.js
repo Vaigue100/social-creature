@@ -32,12 +32,18 @@ const { Client } = require('pg');
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const sharp = require('sharp');
 const config = { ...require('./scripts/db-config'), database: 'chatlings' };
 
 const ARTWORK_DIR = path.join(__dirname, 'artwork');
 const LINKED_DIR = path.join(ARTWORK_DIR, 'linked');
+const THUMBS_DIR = path.join(ARTWORK_DIR, 'thumbs');
 const EXTRACTED_DIR = path.join(ARTWORK_DIR, 'extracted');
 const PROCESSED_DIR = path.join(ARTWORK_DIR, 'processed_zips');
+
+// Thumbnail size (width x height)
+const THUMB_WIDTH = 200;
+const THUMB_HEIGHT = 200;
 
 // Track files being processed to avoid duplicates
 const processing = new Set();
@@ -123,8 +129,30 @@ async function getRandomName(client) {
 
 function ensureDirectories() {
   if (!fs.existsSync(LINKED_DIR)) fs.mkdirSync(LINKED_DIR, { recursive: true });
+  if (!fs.existsSync(THUMBS_DIR)) fs.mkdirSync(THUMBS_DIR, { recursive: true });
   if (!fs.existsSync(EXTRACTED_DIR)) fs.mkdirSync(EXTRACTED_DIR, { recursive: true });
   if (!fs.existsSync(PROCESSED_DIR)) fs.mkdirSync(PROCESSED_DIR, { recursive: true });
+}
+
+async function createThumbnail(sourcePath, creatureId) {
+  try {
+    const thumbFilename = `${creatureId}.jpg`;
+    const thumbPath = path.join(THUMBS_DIR, thumbFilename);
+
+    await sharp(sourcePath)
+      .resize(THUMB_WIDTH, THUMB_HEIGHT, {
+        fit: 'cover',
+        position: 'center'
+      })
+      .jpeg({ quality: 80 })
+      .toFile(thumbPath);
+
+    log(`   ✓ Created thumbnail: ${thumbFilename}`);
+    return true;
+  } catch (error) {
+    log(`   ⚠️  Failed to create thumbnail: ${error.message}`);
+    return false;
+  }
 }
 
 function log(message) {
@@ -211,7 +239,7 @@ async function processZipFile(zipFile) {
         continue;
       }
 
-      // Read JSON to get prompt
+      // Read JSON to get prompt and metadata
       let jsonData;
       try {
         const jsonContent = fs.readFileSync(jsonPath, 'utf8');
@@ -221,6 +249,10 @@ async function processZipFile(zipFile) {
         skippedCount++;
         continue;
       }
+
+      // Extract image ID from metadata or filename
+      const imageId = jsonData.meta?.id || jsonData.id || baseName;
+      log(`   📷 Image ID: ${imageId}`);
 
       // Extract prompt (try multiple possible fields)
       // Perchance format: info.prompt
@@ -232,27 +264,95 @@ async function processZipFile(zipFile) {
         continue;
       }
 
+      log(`   📝 Full prompt: "${prompt.substring(0, 150)}..."`);
+
+
       // Match prompt to database
-      // Use fuzzy matching since Perchance may add extra text
-      const promptResult = await client.query(
-        `SELECT id, prompt
-         FROM creature_prompts
-         WHERE $1 LIKE '%' || prompt || '%'
-         ORDER BY length(prompt) DESC
-         LIMIT 1`,
+      // Try exact match first, then fuzzy match
+      let promptResult = await client.query(
+        `SELECT id, prompt FROM creature_prompts WHERE prompt = $1`,
         [prompt]
       );
 
+      let matchType = 'exact';
+
+      if (promptResult.rows.length === 0) {
+        // Try fuzzy matching since Perchance may add extra text
+        promptResult = await client.query(
+          `SELECT id, prompt,
+                  length(prompt) as prompt_length,
+                  CASE
+                    WHEN $1 LIKE prompt || '%' THEN 1  -- Database prompt is prefix
+                    WHEN $1 LIKE '%' || prompt || '%' THEN 2  -- Database prompt is substring
+                    ELSE 3
+                  END as match_priority
+           FROM creature_prompts
+           WHERE $1 LIKE '%' || prompt || '%'
+           ORDER BY match_priority, length(prompt) DESC
+           LIMIT 1`,
+          [prompt]
+        );
+        matchType = 'fuzzy';
+      }
+
       if (promptResult.rows.length === 0) {
         log(`   ⚠️  Prompt not found in database`);
-        log(`      Prompt: ${prompt.substring(0, 80)}...`);
+        log(`      Perchance prompt: ${prompt.substring(0, 100)}...`);
         skippedCount++;
         continue;
       }
 
-      log(`   ✓ Matched prompt: ${promptResult.rows[0].prompt.substring(0, 60)}...`);
+      const matchedPrompt = promptResult.rows[0];
+      const promptId = matchedPrompt.id;
 
-      const promptId = promptResult.rows[0].id;
+      log(`   ✓ Matched to prompt ID ${promptId} (${matchType})`);
+      log(`      DB prompt: "${matchedPrompt.prompt.substring(0, 100)}..."`);
+
+      // Get full prompt details including body type
+      const promptDetails = await client.query(`
+        SELECT
+          cp.id,
+          cp.prompt,
+          bt.body_type_name,
+          sa.activity_name,
+          sm.mood_name,
+          cs.scheme_name,
+          sq.quirk_name,
+          sc.size_name
+        FROM creature_prompts cp
+        LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+        LEFT JOIN dim_social_activity sa ON cp.activity_id = sa.id
+        LEFT JOIN dim_social_mood sm ON cp.mood_id = sm.id
+        LEFT JOIN dim_color_scheme cs ON cp.color_scheme_id = cs.id
+        LEFT JOIN dim_special_quirk sq ON cp.quirk_id = sq.id
+        LEFT JOIN dim_size_category sc ON cp.size_id = sc.id
+        WHERE cp.id = $1
+      `, [promptId]);
+
+      if (promptDetails.rows.length > 0) {
+        const details = promptDetails.rows[0];
+        log(`      Body Type: ${details.body_type_name}`);
+        log(`      Activity: ${details.activity_name}, Mood: ${details.mood_name}`);
+        log(`      Colors: ${details.scheme_name}, Quirk: ${details.quirk_name}, Size: ${details.size_name}`);
+      }
+
+      // Check if this specific image has already been imported
+      const existingImage = await client.query(`
+        SELECT id, creature_name, selected_image
+        FROM creatures
+        WHERE perchance_image_id = $1
+        LIMIT 1
+      `, [imageId]);
+
+      let creatureId;
+      let creatureName;
+
+      if (existingImage.rows.length > 0) {
+        // This exact image already imported - skip
+        log(`   ⊘ Image already imported as: ${existingImage.rows[0].creature_name} (skipping)`);
+        skippedCount++;
+        continue;
+      }
 
       // Generate a unique name for this creature
       const newName = await getRandomName(client);
@@ -260,17 +360,19 @@ async function processZipFile(zipFile) {
       // Create new creature record (dimensions are stored in creature_prompts, not creatures)
       const creatureResult = await client.query(`
         INSERT INTO creatures
-          (creature_name, prompt_id, selected_image, rarity_tier)
-        VALUES ($1, $2, $3, $4)
+          (creature_name, prompt_id, selected_image, rarity_tier, perchance_image_id)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING id
       `, [
         newName,
         promptId,
         null,  // selected_image - will set after copying file
-        'Common'
+        'Common',
+        imageId
       ]);
 
-      const creatureId = creatureResult.rows[0].id;
+      creatureId = creatureResult.rows[0].id;
+      creatureName = newName;
 
       // Rename JPEG to creature_id.jpg and move to linked folder
       const newFilename = `${creatureId}.jpg`;
@@ -278,13 +380,16 @@ async function processZipFile(zipFile) {
 
       fs.copyFileSync(jpegPath, newPath);
 
+      // Create thumbnail
+      await createThumbnail(newPath, creatureId);
+
       // Update creature with image filename
       await client.query(
         'UPDATE creatures SET selected_image = $1 WHERE id = $2',
         [newFilename, creatureId]
       );
 
-      log(`   ✅ Created: ${newName}`);
+      log(`   ✅ Created: ${creatureName}`);
       assignedCount++;
     }
 
