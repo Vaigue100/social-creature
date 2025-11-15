@@ -26,6 +26,11 @@ chatlings/artwork/*.png
 chatlings/artwork/*.jpg
 chatlings/artwork/*.jpeg
 chatlings/artwork/creature_images_created.csv
+chatlings/artwork/linked/
+chatlings/artwork/thumbs/
+chatlings/artwork/frame/
+chatlings/artwork/extracted/
+chatlings/artwork/discarded/
 !chatlings/artwork/README.md
 !chatlings/artwork/creature_images_queue.csv
 
