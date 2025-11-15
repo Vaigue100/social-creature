@@ -64,7 +64,9 @@
         }
 
         .body-type-button {
-            display: block;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             width: 100%;
             padding: 10px 15px;
             margin-bottom: 8px;
@@ -76,7 +78,16 @@
             font-size: 0.9em;
             cursor: pointer;
             transition: all 0.2s;
-            text-align: left;
+        }
+
+        .body-type-count {
+            color: #667eea;
+            font-weight: 700;
+            margin-left: 10px;
+        }
+
+        .body-type-button.active .body-type-count {
+            color: white;
         }
 
         .body-type-button:hover {
@@ -427,14 +438,6 @@
                     </div>
 
                     <div class="filter-group">
-                        <label for="filter-platform">Platform</label>
-                        <select id="filter-platform">
-                            <option value="">All Platforms</option>
-                            <option value="YouTube">YouTube</option>
-                        </select>
-                    </div>
-
-                    <div class="filter-group">
                         <label for="sort-by">Sort By</label>
                         <select id="sort-by">
                             <option value="recent">Most Recent</option>
@@ -477,7 +480,7 @@
                 <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
                     <li><strong>By Body Type:</strong> Use the sidebar to filter chatlings by their body type (Floofs, Noodles, Sleeks, etc.)</li>
                     <li><strong>By Rarity:</strong> Filter by Common, Uncommon, Rare, Epic, or Legendary</li>
-                    <li><strong>By Platform:</strong> See which platform each chatling came from</li>
+                    <li><strong>By Overall Score:</strong> Filter chatlings by their overall trait score</li>
                 </ul>
 
                 <h3 style="color: #667eea; margin-top: 30px; margin-bottom: 15px;">Sorting Options</h3>
@@ -523,31 +526,43 @@
         let filteredChatlings = [];
         let selectedBodyType = '';
         let currentPage = 1;
+        let bodyTypesList = [];
         const CREATURES_PER_PAGE = 20;
 
         async function loadBodyTypes() {
             try {
                 const response = await fetch('/api/body-types');
                 if (response.ok) {
-                    const bodyTypes = await response.json();
-                    const container = document.getElementById('body-type-buttons');
-                    container.innerHTML = '';
-
-                    bodyTypes.forEach((type, index) => {
-                        const button = document.createElement('button');
-                        button.className = 'body-type-button';
-                        if (index === 0) {
-                            button.classList.add('active');
-                            selectedBodyType = type.display_name;
-                        }
-                        button.textContent = type.display_name;
-                        button.onclick = () => filterByBodyType(type.display_name);
-                        container.appendChild(button);
-                    });
+                    bodyTypesList = await response.json();
+                    renderBodyTypeButtons(bodyTypesList);
                 }
             } catch (error) {
                 console.error('Error loading body types:', error);
             }
+        }
+
+        function renderBodyTypeButtons(bodyTypes) {
+            const container = document.getElementById('body-type-buttons');
+            container.innerHTML = '';
+
+            bodyTypes.forEach((type, index) => {
+                // Count chatlings for this body type
+                const count = allChatlings.filter(c => c.body_type_name === type.display_name).length;
+
+                const button = document.createElement('button');
+                button.className = 'body-type-button';
+                if (index === 0) {
+                    button.classList.add('active');
+                    selectedBodyType = type.display_name;
+                }
+
+                button.innerHTML = `
+                    <span>${type.display_name}</span>
+                    <span class="body-type-count">${count}</span>
+                `;
+                button.onclick = () => filterByBodyType(type.display_name);
+                container.appendChild(button);
+            });
         }
 
         function filterByBodyType(bodyType) {
@@ -609,6 +624,10 @@
                         document.getElementById('empty-state').style.display = 'block';
                     } else {
                         document.getElementById('loading').style.display = 'none';
+                        // Update body type buttons with counts
+                        if (bodyTypesList.length > 0) {
+                            renderBodyTypeButtons(bodyTypesList);
+                        }
                         // Apply filters (including default first body type)
                         filterAndSort();
                     }
@@ -626,10 +645,10 @@
             const grid = document.getElementById('collection-grid');
             grid.innerHTML = '';
 
-            chatlings.forEach(chatling => {
+            chatlings.forEach((chatling, index) => {
                 const card = document.createElement('div');
                 card.className = 'chatling-card';
-                card.onclick = () => window.location.href = `view-chatling.html?id=${chatling.id}`;
+                card.onclick = () => openChatlingModal(chatling.id, index);
 
                 // Handle null or missing images
                 const hasImage = chatling.selected_image && chatling.selected_image !== 'null';
@@ -718,7 +737,6 @@
         function filterAndSort() {
             const rarity = document.getElementById('filter-rarity').value;
             const scoreRange = document.getElementById('filter-score').value;
-            const platform = document.getElementById('filter-platform').value;
             const sortBy = document.getElementById('sort-by').value;
 
             let filtered = allChatlings;
@@ -749,11 +767,6 @@
                 });
             }
 
-            // Filter by platform
-            if (platform) {
-                filtered = filtered.filter(c => c.platform === platform);
-            }
-
             // Sort
             filtered.sort((a, b) => {
                 switch (sortBy) {
@@ -779,12 +792,326 @@
         // Event listeners
         document.getElementById('filter-rarity').addEventListener('change', filterAndSort);
         document.getElementById('filter-score').addEventListener('change', filterAndSort);
-        document.getElementById('filter-platform').addEventListener('change', filterAndSort);
         document.getElementById('sort-by').addEventListener('change', filterAndSort);
 
-        // Load collection and body types on page load
-        loadCollection();
-        loadBodyTypes();
+        // Load body types first, then collection (to populate counts)
+        loadBodyTypes().then(() => {
+            loadCollection();
+        });
+    </script>
+
+    <!-- Chatling Detail Modal -->
+    <div id="chatling-modal" style="display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.9); overflow: auto;" onclick="closeChatlingModal(event)">
+        <div style="position: relative; max-width: 1200px; margin: 2% auto; padding: 0;">
+            <!-- Close Button -->
+            <span onclick="closeChatlingModal()" style="position: absolute; top: 15px; right: 30px; color: white; font-size: 40px; font-weight: bold; cursor: pointer; z-index: 2001; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">&times;</span>
+
+            <!-- Previous Button -->
+            <button id="prev-chatling" onclick="navigateChatling(-1); event.stopPropagation();" style="position: absolute; left: -60px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.9); border: none; font-size: 30px; padding: 15px 20px; cursor: pointer; border-radius: 50%; color: #667eea; font-weight: bold; transition: all 0.2s; z-index: 2001; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">‹</button>
+
+            <!-- Next Button -->
+            <button id="next-chatling" onclick="navigateChatling(1); event.stopPropagation();" style="position: absolute; right: -60px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.9); border: none; font-size: 30px; padding: 15px 20px; cursor: pointer; border-radius: 50%; color: #667eea; font-weight: bold; transition: all 0.2s; z-index: 2001; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">›</button>
+
+            <!-- Modal Content -->
+            <div onclick="event.stopPropagation()" style="background: white; border-radius: 20px; padding: 30px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); position: relative;">
+                <link rel="stylesheet" href="/user/components/creature-card-styles.css">
+
+                <div class="creature-display">
+                    <div class="image-with-traits">
+                        <div class="creature-frame-wrapper" id="modal-creature-frame">
+                            <div class="creature-frame-overlay" id="modal-frame-overlay" style="display: none;"></div>
+                            <div class="creature-frame-content">
+                                <!-- Image with badges positioned on corners -->
+                                <div class="creature-image-container">
+                                    <div class="rarity-badge" id="modal-rarity-badge" style="display: none;"></div>
+                                    <div class="overall-score-badge" id="modal-overall-score-badge" style="display: none; cursor: pointer;" title="Click to view traits"></div>
+                                    <div class="bodytype-badge" id="modal-bodytype-badge" style="display: none; cursor: pointer;" title="Click to view body type lore"></div>
+                                    <img id="modal-creature-image" class="creature-image" src="" alt="Creature" style="display: none;">
+                                    <div class="loading" id="modal-image-loading">Loading image...</div>
+                                </div>
+
+                                <!-- Creature Lore attached to bottom -->
+                                <div class="creature-lore-section" id="modal-creature-lore-section" style="display: none;">
+                                    <h3 style="color: #9b59b6; margin-bottom: 10px; font-size: 1.1em;">📖 <span id="modal-creature-lore-title">Tale</span></h3>
+                                    <p id="modal-creature-lore" style="color: #666; line-height: 1.6; margin: 0;">
+                                        Loading creature lore...
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Body Type Lore Modal -->
+                <div id="modal-bodytype-modal" class="lore-modal" style="display: none;">
+                    <div class="lore-modal-content">
+                        <span class="lore-modal-close" data-modal="modal-bodytype-modal">&times;</span>
+                        <h2 style="color: #2ecc71; margin-bottom: 15px;">🎨 <span id="modal-bodytype-modal-title">Body Type</span> Lineage</h2>
+                        <p id="modal-bodytype-modal-lore" style="color: #666; line-height: 1.8;">
+                            Loading body type lore...
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Traits Modal -->
+                <div id="modal-traits-modal" class="lore-modal" style="display: none;">
+                    <div class="lore-modal-content">
+                        <span class="lore-modal-close" data-modal="modal-traits-modal">&times;</span>
+                        <h2 style="color: #667eea; margin-bottom: 20px; text-align: center;">
+                            <span id="modal-traits-modal-title">Chatling</span> Traits
+                        </h2>
+                        <div id="modal-traits-modal-container" style="display: flex; flex-direction: column; gap: 10px;">
+                            <!-- Traits will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/user/components/creature-card-script.js"></script>
+    <script>
+        let currentModalIndex = -1;
+        let modalFilteredList = []; // The list of chatlings to navigate through
+
+        function openChatlingModal(creatureId, indexInPage) {
+            // Calculate the actual index in the filtered list
+            const start = (currentPage - 1) * CREATURES_PER_PAGE;
+            currentModalIndex = start + indexInPage;
+            modalFilteredList = filteredChatlings;
+
+            loadChatlingInModal(creatureId);
+            document.getElementById('chatling-modal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            updateNavigationButtons();
+        }
+
+        function closeChatlingModal(event) {
+            if (event && event.target.id !== 'chatling-modal') {
+                return;
+            }
+            document.getElementById('chatling-modal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        function navigateChatling(direction) {
+            currentModalIndex += direction;
+
+            if (currentModalIndex >= 0 && currentModalIndex < modalFilteredList.length) {
+                const chatling = modalFilteredList[currentModalIndex];
+                loadChatlingInModal(chatling.id);
+                updateNavigationButtons();
+            }
+        }
+
+        function updateNavigationButtons() {
+            const prevBtn = document.getElementById('prev-chatling');
+            const nextBtn = document.getElementById('next-chatling');
+
+            prevBtn.style.opacity = currentModalIndex > 0 ? '1' : '0.3';
+            prevBtn.style.cursor = currentModalIndex > 0 ? 'pointer' : 'not-allowed';
+            prevBtn.disabled = currentModalIndex <= 0;
+
+            nextBtn.style.opacity = currentModalIndex < modalFilteredList.length - 1 ? '1' : '0.3';
+            nextBtn.style.cursor = currentModalIndex < modalFilteredList.length - 1 ? 'pointer' : 'not-allowed';
+            nextBtn.disabled = currentModalIndex >= modalFilteredList.length - 1;
+        }
+
+        async function loadBodyTypeFrame(bodyTypeName) {
+            const frameWrapper = document.getElementById('modal-creature-frame');
+            const frameOverlay = document.getElementById('modal-frame-overlay');
+
+            // Reset frame state
+            frameWrapper.classList.remove('has-frame');
+            frameOverlay.style.display = 'none';
+            frameOverlay.style.backgroundImage = '';
+
+            if (!bodyTypeName) {
+                console.log('No body type name provided');
+                return;
+            }
+
+            // Try to load frame image (case insensitive)
+            const frameFileName = bodyTypeName.toLowerCase() + '.png';
+            const framePath = `/artwork/frame/${frameFileName}`;
+
+            console.log(`Checking for frame: ${framePath}`);
+
+            // Use Image object to check if frame exists
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Frame exists, apply it
+                    console.log(`✓ Frame found! Applying to overlay...`);
+                    frameWrapper.classList.add('has-frame');
+                    frameOverlay.style.backgroundImage = `url('${framePath}')`;
+                    frameOverlay.style.display = 'block';
+                    console.log(`Frame overlay display: ${frameOverlay.style.display}, bg: ${frameOverlay.style.backgroundImage}`);
+                    resolve();
+                };
+                img.onerror = () => {
+                    // No frame found, use default white frame
+                    console.log(`✗ No frame found for "${bodyTypeName}", using default white frame`);
+                    resolve();
+                };
+                img.src = framePath;
+            });
+        }
+
+        async function loadChatlingInModal(creatureId) {
+            try {
+                // Load creature details with traits
+                const creatureResponse = await fetch(`/api/creature/${creatureId}/details`);
+                if (!creatureResponse.ok) {
+                    throw new Error('Failed to fetch creature details');
+                }
+
+                const data = await creatureResponse.json();
+
+                // Update rarity badge
+                const rarityBadge = document.getElementById('modal-rarity-badge');
+                if (data.rarity_tier) {
+                    rarityBadge.textContent = data.rarity_tier;
+                    rarityBadge.className = 'rarity-badge rarity-' + data.rarity_tier.toLowerCase();
+                    rarityBadge.style.display = 'block';
+                }
+
+                // Name badge removed - name is displayed in lore section
+
+                // Update body type badge and check for frame
+                const bodytypeBadge = document.getElementById('modal-bodytype-badge');
+                if (data.body_type_name) {
+                    bodytypeBadge.textContent = data.body_type_name;
+                    bodytypeBadge.style.display = 'block';
+
+                    document.getElementById('modal-bodytype-modal-title').textContent = data.body_type_name;
+                    document.getElementById('modal-bodytype-modal-lore').textContent = `The ${data.body_type_name} are a fascinating lineage of Chatlings known for their unique characteristics. These creatures embody specific traits that make them stand out in the world of Social Streams. Their distinctive form reflects the type of content and community energy from which they emerged.`;
+
+                    // Try to load custom frame for this body type
+                    await loadBodyTypeFrame(data.body_type_name);
+                }
+
+                // Update creature lore
+                if (data.creature_name) {
+                    document.getElementById('modal-creature-lore-title').textContent = `${data.creature_name}'s`;
+                    document.getElementById('modal-creature-lore').textContent = `${data.creature_name} is a unique Chatling with an overall power level of ${data.overall_score || 'unknown'}. This remarkable being possesses a distinctive combination of social traits that define its personality and behavior in the realm of Social Streams. Born from the energy of its source content, ${data.creature_name} carries the essence of that moment forever.`;
+                    document.getElementById('modal-creature-lore-section').style.display = 'block';
+                }
+
+                // Update image
+                const img = document.getElementById('modal-creature-image');
+                const imgLoading = document.getElementById('modal-image-loading');
+                img.src = `/images/${data.selected_image}`;
+                img.style.display = 'block';
+                imgLoading.style.display = 'none';
+
+                // Update overall score badge
+                const scoreBadge = document.getElementById('modal-overall-score-badge');
+                if (data.overall_score !== undefined) {
+                    scoreBadge.className = 'overall-score-badge ' + getScoreClassForBadge(data.overall_score);
+                    scoreBadge.innerHTML = `<span>⭐</span><span>${data.overall_score}</span>`;
+                    scoreBadge.style.display = 'block';
+                }
+
+                // Store traits data for modal
+                window.currentCreatureData = {
+                    name: data.creature_name,
+                    traits: data.traits,
+                    primaryColor: data.primary_color
+                };
+
+            } catch (error) {
+                console.error('Error loading chatling:', error);
+                document.getElementById('modal-image-loading').textContent = 'Failed to load chatling details.';
+                document.getElementById('modal-image-loading').className = 'error';
+            }
+        }
+
+        function getScoreClassForBadge(score) {
+            if (score >= 95) return 'score-max';
+            if (score >= 81) return 'score-vhigh';
+            if (score >= 61) return 'score-high';
+            if (score >= 41) return 'score-medium';
+            if (score >= 21) return 'score-low';
+            return 'score-vlow';
+        }
+
+        // Modal click handlers for sub-modals
+        document.addEventListener('click', (e) => {
+            const bodytypeBadge = document.getElementById('modal-bodytype-badge');
+            const bodytypeModal = document.getElementById('modal-bodytype-modal');
+            const scoreBadge = document.getElementById('modal-overall-score-badge');
+            const traitsModal = document.getElementById('modal-traits-modal');
+
+            // Open body type modal when badge is clicked
+            if (e.target === bodytypeBadge) {
+                bodytypeModal.style.display = 'flex';
+            }
+
+            // Open traits modal when score badge is clicked
+            if (e.target === scoreBadge || e.target.parentElement === scoreBadge) {
+                openTraitsModalInChatlingModal();
+            }
+
+            // Close modal when X is clicked
+            if (e.target.classList.contains('lore-modal-close')) {
+                const modalId = e.target.getAttribute('data-modal');
+                document.getElementById(modalId).style.display = 'none';
+            }
+
+            // Close modal when clicking outside the content
+            if (e.target.classList.contains('lore-modal')) {
+                e.target.style.display = 'none';
+            }
+        });
+
+        function openTraitsModalInChatlingModal() {
+            if (!window.currentCreatureData) return;
+
+            const modal = document.getElementById('modal-traits-modal');
+            const container = document.getElementById('modal-traits-modal-container');
+            const title = document.getElementById('modal-traits-modal-title');
+
+            title.textContent = window.currentCreatureData.name || 'Chatling';
+            container.innerHTML = '';
+
+            const traits = window.currentCreatureData.traits || [];
+            traits.forEach(trait => {
+                const traitDiv = document.createElement('div');
+                traitDiv.className = 'trait-modal-item';
+                traitDiv.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(102, 126, 234, 0.08); border-radius: 10px; transition: background 0.2s;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 1.5em;">${trait.icon || '⭐'}</span>
+                            <div>
+                                <div style="font-weight: 600; color: #333; font-size: 1em;">${trait.category_name}</div>
+                                <div style="font-size: 0.85em; color: #666; margin-top: 2px;">${trait.description || ''}</div>
+                            </div>
+                        </div>
+                        <div style="font-weight: bold; font-size: 1.2em; color: #667eea; min-width: 40px; text-align: right;">
+                            ${trait.score}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(traitDiv);
+            });
+
+            modal.style.display = 'flex';
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            const modal = document.getElementById('chatling-modal');
+            if (modal.style.display === 'block') {
+                if (e.key === 'ArrowLeft' && currentModalIndex > 0) {
+                    navigateChatling(-1);
+                } else if (e.key === 'ArrowRight' && currentModalIndex < modalFilteredList.length - 1) {
+                    navigateChatling(1);
+                } else if (e.key === 'Escape') {
+                    closeChatlingModal();
+                }
+            }
+        });
     </script>
 </body>
 </html>

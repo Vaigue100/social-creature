@@ -24,14 +24,65 @@
     position: relative;
 }
 
-/* Rarity badge in top right corner */
+/* Frame wrapper - contains the image and lore with optional frame overlay */
+.creature-frame-wrapper {
+    position: relative;
+    width: fit-content;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 45px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Frame overlay image (when body type frame exists) */
+.creature-frame-wrapper.has-frame {
+    background: transparent;
+    box-shadow: none;
+    /* Keep padding for frame spacing, or reduce if frame has built-in margins */
+    padding: 20px;
+}
+
+.creature-frame-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    pointer-events: none;
+    z-index: 6;
+    border-radius: 15px;
+}
+
+.creature-frame-content {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: fit-content;
+}
+
+/* Container for image with badges positioned relative to it */
+.creature-image-container {
+    position: relative;
+    width: fit-content;
+    display: flex;
+    flex-direction: column;
+    z-index: 7;
+}
+
+/* Rarity badge - bottom left */
 .rarity-badge {
     position: absolute;
-    top: 10px;
-    right: 10px;
-    padding: 10px 20px; /* 25% bigger */
+    bottom: 25px;
+    left: 75px;
+    padding: 10px 20px;
     border-radius: 20px;
-    font-size: 1.125em; /* 25% bigger */
+    font-size: 1.125em;
     font-weight: bold;
     color: white;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -39,11 +90,12 @@
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-/* Overall score badge in top left corner of image */
+/* Overall score badge - bottom center */
 .overall-score-badge {
     position: absolute;
-    top: 10px;
-    left: 10px;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%);
     padding: 10px 20px;
     border-radius: 20px;
     font-size: 1.125em;
@@ -56,34 +108,24 @@
     align-items: center;
     gap: 6px;
     transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
 }
 
 .overall-score-badge:hover {
-    transform: translateY(-2px);
+    transform: translateX(-50%) translateY(-2px);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
 
-/* Name badge in bottom left corner of image */
+/* Name badge - REMOVED (name is in lore section) */
 .name-badge {
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-    padding: 10px 20px;
-    border-radius: 20px;
-    font-size: 1.125em;
-    font-weight: bold;
-    color: white;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    z-index: 10;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    display: none;
 }
 
-/* Body type badge in bottom right corner */
+/* Body type badge - bottom right */
 .bodytype-badge {
     position: absolute;
-    bottom: 10px;
-    right: 10px;
+    bottom: 25px;
+    right: 75px;
     padding: 10px 20px;
     border-radius: 20px;
     font-size: 1.125em;
@@ -104,12 +146,13 @@
 /* Creature lore section attached to bottom */
 .creature-lore-section {
     width: 100%;
-    padding: 20px;
+    max-width: 600px;
+    padding: 20px 75px;
     background: rgba(155, 89, 182, 0.1);
     border-radius: 0 0 15px 15px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
-    order: 3;
     backdrop-filter: blur(5px);
+    margin-top: -15px;
 }
 
 /* Score range color backgrounds */
@@ -173,10 +216,10 @@
     display: block;
     width: 100%;
     height: auto;
-    max-width: 800px;
-    max-height: 80vh;
-    min-width: 300px;
-    border-radius: 15px 15px 0 0;
+    max-width: 600px;
+    max-height: 70vh;
+    min-width: 250px;
+    border-radius: 15px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
     object-fit: contain;
 }
