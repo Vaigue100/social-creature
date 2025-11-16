@@ -63,13 +63,12 @@ class OAuthService {
       // Create new user if doesn't exist
       if (!userId) {
         const username = profile.displayName || profile.emails[0].value.split('@')[0];
-        const displayName = profile.displayName || username;
 
         const newUser = await client.query(
-          `INSERT INTO users (username, email, display_name, created_at)
-           VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+          `INSERT INTO users (username, email, created_at)
+           VALUES ($1, $2, CURRENT_TIMESTAMP)
            RETURNING id`,
-          [username, email, displayName]
+          [username, email]
         );
 
         userId = newUser.rows[0].id;
