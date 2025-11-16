@@ -1061,6 +1061,57 @@ app.get('/api/user/current-chatling', async (req, res) => {
 });
 
 /**
+ * Switch current chatling to another from user's collection
+ */
+app.post('/api/user/switch-chatling', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { creatureId } = req.body;
+
+  if (!creatureId) {
+    return res.status(400).json({ error: 'creatureId required' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Verify creature is in user's collection
+    const collectionCheck = await client.query(
+      `SELECT creature_id FROM user_rewards WHERE user_id = $1 AND creature_id = $2`,
+      [req.session.userId, creatureId]
+    );
+
+    if (collectionCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'Creature not in your collection' });
+    }
+
+    // Update current creature
+    await client.query(
+      `UPDATE users SET current_creature_id = $1 WHERE id = $2`,
+      [creatureId, req.session.userId]
+    );
+
+    // Get the new current chatling details
+    const currentChatling = await dailyChatlingService.getCurrentChatling(req.session.userId);
+
+    res.json({
+      success: true,
+      currentChatling
+    });
+
+  } catch (error) {
+    console.error('Error switching chatling:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
  * Trigger daily chatling visit
  * This can be called manually or automatically when user logs in
  */

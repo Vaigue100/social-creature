@@ -61,6 +61,7 @@ class OAuthService {
       }
 
       // Create new user if doesn't exist
+      let isNewUser = false;
       if (!userId) {
         const username = profile.displayName || profile.emails[0].value.split('@')[0];
 
@@ -72,6 +73,7 @@ class OAuthService {
         );
 
         userId = newUser.rows[0].id;
+        isNewUser = true;
         console.log(`Created new user from ${provider}: ${email}`);
       }
 
@@ -84,6 +86,11 @@ class OAuthService {
         VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
         [userId, provider, profile.id, email, profile.displayName]
       );
+
+      // Assign starter creature to new users
+      if (isNewUser) {
+        await this.assignStarterCreature(client, userId);
+      }
 
       await client.query('COMMIT');
       return userId;
@@ -159,6 +166,53 @@ class OAuthService {
 
     } finally {
       client.release();
+    }
+  }
+
+  /**
+   * Assign a random common creature as starter to new user
+   * Adds to collection and sets as current creature
+   */
+  async assignStarterCreature(client, userId) {
+    try {
+      // Get a random common creature
+      const creatureResult = await client.query(`
+        SELECT c.id, c.creature_name
+        FROM creatures c
+        LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
+        WHERE c.is_active = true
+          AND c.selected_image IS NOT NULL
+          AND c.rarity_tier = 'Common'
+        ORDER BY RANDOM()
+        LIMIT 1
+      `);
+
+      if (creatureResult.rows.length === 0) {
+        console.log('⚠️  No common creatures available for starter');
+        return null;
+      }
+
+      const creature = creatureResult.rows[0];
+
+      // Add to user's collection
+      await client.query(`
+        INSERT INTO user_rewards (user_id, creature_id, platform, claimed_at)
+        VALUES ($1, $2, 'Starter', NOW())
+      `, [userId, creature.id]);
+
+      // Set as current creature
+      await client.query(`
+        UPDATE users
+        SET current_creature_id = $1
+        WHERE id = $2
+      `, [creature.id, userId]);
+
+      console.log(`✓ Assigned starter creature: ${creature.creature_name} to new user`);
+      return creature;
+
+    } catch (error) {
+      console.error('Error assigning starter creature:', error);
+      throw error;
     }
   }
 

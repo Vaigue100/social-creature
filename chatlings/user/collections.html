@@ -837,6 +837,27 @@
                                         Loading creature lore...
                                     </p>
                                 </div>
+
+                                <!-- Switch Chatling Button -->
+                                <div id="modal-switch-button-container" style="margin-top: 20px; text-align: center; display: none;">
+                                    <button id="modal-switch-chatling-btn" onclick="switchToChatling()" style="
+                                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                        color: white;
+                                        border: none;
+                                        padding: 12px 30px;
+                                        border-radius: 8px;
+                                        font-size: 1em;
+                                        font-weight: 600;
+                                        cursor: pointer;
+                                        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+                                        transition: transform 0.2s, box-shadow 0.2s;
+                                    ">
+                                        🔄 Switch to this Chatling
+                                    </button>
+                                    <p id="modal-current-chatling-indicator" style="color: #667eea; font-weight: bold; margin-top: 10px; display: none;">
+                                        ✨ This is your current chatling
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1070,6 +1091,31 @@
                     primaryColor: data.primary_color
                 };
 
+                // Check if this is the user's current chatling
+                const currentChatlingResponse = await fetch('/api/user/current-chatling');
+                if (currentChatlingResponse.ok) {
+                    const currentData = await currentChatlingResponse.json();
+                    const isCurrentChatling = currentData.currentChatling && currentData.currentChatling.id === creatureId;
+
+                    // Show/hide switch button
+                    const switchContainer = document.getElementById('modal-switch-button-container');
+                    const switchBtn = document.getElementById('modal-switch-chatling-btn');
+                    const currentIndicator = document.getElementById('modal-current-chatling-indicator');
+
+                    if (isCurrentChatling) {
+                        switchBtn.style.display = 'none';
+                        currentIndicator.style.display = 'block';
+                        switchContainer.style.display = 'block';
+                    } else {
+                        switchBtn.style.display = 'inline-block';
+                        currentIndicator.style.display = 'none';
+                        switchContainer.style.display = 'block';
+                    }
+
+                    // Store current creature ID for switching
+                    window.currentModalCreatureId = creatureId;
+                }
+
             } catch (error) {
                 console.error('Error loading chatling:', error);
                 document.getElementById('modal-image-loading').textContent = 'Failed to load chatling details.';
@@ -1084,6 +1130,51 @@
             if (score >= 41) return 'score-medium';
             if (score >= 21) return 'score-low';
             return 'score-vlow';
+        }
+
+        // Switch to a different chatling
+        async function switchToChatling() {
+            if (!window.currentModalCreatureId) {
+                console.error('No creature ID stored');
+                return;
+            }
+
+            const switchBtn = document.getElementById('modal-switch-chatling-btn');
+            const originalText = switchBtn.innerHTML;
+            switchBtn.disabled = true;
+            switchBtn.innerHTML = '⏳ Switching...';
+
+            try {
+                const response = await fetch('/api/user/switch-chatling', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ creatureId: window.currentModalCreatureId })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to switch chatling');
+                }
+
+                const data = await response.json();
+
+                // Update UI to show this is now the current chatling
+                switchBtn.style.display = 'none';
+                document.getElementById('modal-current-chatling-indicator').style.display = 'block';
+
+                // Update header chatling if shared-header is present
+                if (typeof updateCurrentChatling === 'function') {
+                    updateCurrentChatling(data.currentChatling);
+                }
+
+                // Show success message
+                alert(`✨ Successfully switched to ${data.currentChatling.name}!`);
+
+            } catch (error) {
+                console.error('Error switching chatling:', error);
+                alert('Failed to switch chatling. Please try again.');
+                switchBtn.disabled = false;
+                switchBtn.innerHTML = originalText;
+            }
         }
 
         // Modal click handlers for sub-modals

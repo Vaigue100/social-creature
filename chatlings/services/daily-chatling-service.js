@@ -30,6 +30,8 @@ class DailyChatlingService {
 
       console.log(`Daily chatling roll succeeded for user ${userId}! (${(randomChance * 100).toFixed(1)}%)`);
 
+      await client.query('BEGIN');
+
       // Use the database function to assign daily chatling
       const result = await client.query(
         'SELECT * FROM assign_daily_chatling($1)',
@@ -38,6 +40,28 @@ class DailyChatlingService {
 
       if (result.rows.length > 0) {
         const visit = result.rows[0];
+
+        // Add creature to user's collection if it was a new discovery
+        if (visit.was_new_discovery) {
+          await client.query(`
+            INSERT INTO user_rewards (user_id, creature_id, platform, claimed_at)
+            VALUES ($1, $2, 'Daily Visit', NOW())
+            ON CONFLICT DO NOTHING
+          `, [userId, visit.chatling_id]);
+        }
+
+        // Create notification
+        const notificationMessage = visit.was_new_discovery
+          ? `A new chatling visited you: ${visit.chatling_name}! Added to your collection.`
+          : `${visit.chatling_name} came to visit you again!`;
+
+        await client.query(`
+          INSERT INTO notifications (user_id, type, message, related_creature_id, is_read, created_at)
+          VALUES ($1, 'daily_chatling', $2, $3, false, NOW())
+        `, [userId, notificationMessage, visit.chatling_id]);
+
+        await client.query('COMMIT');
+
         return {
           chatlingId: visit.chatling_id,
           chatlingName: visit.chatling_name,
@@ -45,8 +69,12 @@ class DailyChatlingService {
         };
       }
 
+      await client.query('COMMIT');
       return null;
 
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
     } finally {
       client.release();
     }
