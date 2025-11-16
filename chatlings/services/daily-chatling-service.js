@@ -15,11 +15,21 @@ class DailyChatlingService {
    * Assign daily chatling to a user
    * If they don't have it in their collection, it's automatically added
    * Returns the chatling that visited and whether it was new
+   * Note: Has a 1 in 7 chance of actually assigning a chatling
    */
   async assignDailyChatling(userId) {
     const client = await this.pool.connect();
 
     try {
+      // 1 in 7 chance (approximately 14.3%)
+      const randomChance = Math.random();
+      if (randomChance > (1 / 7)) {
+        console.log(`Daily chatling roll failed for user ${userId} (${(randomChance * 100).toFixed(1)}% - need < 14.3%)`);
+        return null;
+      }
+
+      console.log(`Daily chatling roll succeeded for user ${userId}! (${(randomChance * 100).toFixed(1)}%)`);
+
       // Use the database function to assign daily chatling
       const result = await client.query(
         'SELECT * FROM assign_daily_chatling($1)',

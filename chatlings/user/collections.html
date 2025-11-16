@@ -873,12 +873,25 @@
     <script>
         let currentModalIndex = -1;
         let modalFilteredList = []; // The list of chatlings to navigate through
+        let frameConfigCache = {}; // Cache frame configs by body type name
 
         function openChatlingModal(creatureId, indexInPage) {
-            // Calculate the actual index in the filtered list
-            const start = (currentPage - 1) * CREATURES_PER_PAGE;
-            currentModalIndex = start + indexInPage;
-            modalFilteredList = filteredChatlings;
+            // If called from header without parameters, use currentCreatureId from shared-header
+            if (!creatureId && typeof currentCreatureId !== 'undefined') {
+                creatureId = currentCreatureId;
+                indexInPage = 0;
+                // When opening from header, just show single creature (no navigation)
+                modalFilteredList = [];
+                currentModalIndex = 0;
+            } else if (creatureId && indexInPage !== undefined) {
+                // Called from collections grid with parameters
+                const start = (currentPage - 1) * CREATURES_PER_PAGE;
+                currentModalIndex = start + indexInPage;
+                modalFilteredList = filteredChatlings;
+            } else {
+                console.error('openChatlingModal called without valid parameters');
+                return;
+            }
 
             loadChatlingInModal(creatureId);
             document.getElementById('chatling-modal').style.display = 'block';
@@ -920,6 +933,8 @@
         async function loadBodyTypeFrame(bodyTypeName) {
             const frameWrapper = document.getElementById('modal-creature-frame');
             const frameOverlay = document.getElementById('modal-frame-overlay');
+            const creatureImage = document.getElementById('modal-creature-image');
+            const imageContainer = creatureImage.closest('.creature-image-container');
 
             // Reset frame state
             frameWrapper.classList.remove('has-frame');
@@ -929,6 +944,41 @@
             if (!bodyTypeName) {
                 console.log('No body type name provided');
                 return;
+            }
+
+            // Load frame configuration from database (with caching)
+            let config;
+            if (frameConfigCache[bodyTypeName]) {
+                // Use cached config
+                config = frameConfigCache[bodyTypeName];
+                console.log(`✓ Using cached frame config for ${bodyTypeName}`);
+            } else {
+                // Fetch and cache config
+                try {
+                    const configResponse = await fetch(`/api/body-type-frame-config/${bodyTypeName}`);
+                    if (configResponse.ok) {
+                        config = await configResponse.json();
+                        frameConfigCache[bodyTypeName] = config;
+                        console.log(`✓ Loaded and cached frame config for ${bodyTypeName}:`, config);
+                    } else {
+                        console.log(`Using default frame config for ${bodyTypeName}`);
+                    }
+                } catch (error) {
+                    console.error('Error loading frame config:', error);
+                }
+            }
+
+            // Apply sizing configuration to image if config exists
+            if (config) {
+                creatureImage.style.width = `${config.image_width_percent}%`;
+                creatureImage.style.maxWidth = `${config.image_max_width_px}px`;
+                creatureImage.style.maxHeight = `${config.image_max_height_vh}vh`;
+                creatureImage.style.minWidth = `${config.image_min_width_px}px`;
+
+                // Apply margin-top to the image container (moves image + badges together)
+                if (imageContainer) {
+                    imageContainer.style.marginTop = `${config.image_margin_top_px || 0}px`;
+                }
             }
 
             // Try to load frame image (case insensitive)

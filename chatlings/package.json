@@ -19,11 +19,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-session": "^1.17.3",
-    "pg": "^8.11.0",
     "googleapis": "^128.0.0",
-    "dotenv": "^16.3.1"
-  },
-  "devDependencies": {}
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "pg": "^8.11.0",
+    "sharp": "^0.33.5"
+  }
 }

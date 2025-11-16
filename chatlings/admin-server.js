@@ -11,6 +11,7 @@ const fs = require('fs');
 const Services = require('./services');
 const dailyChatlingService = require('./services/daily-chatling-service');
 const SocialInteractionService = require('./services/social-interaction-service');
+const passport = require('./config/passport');
 
 const app = express();
 const PORT = 3000;
@@ -33,6 +34,10 @@ app.use(session({
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));
+
+// Initialize Passport for OAuth
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Middleware
 app.use(express.json());
@@ -667,6 +672,46 @@ app.get('/api/body-types', async (req, res) => {
   }
 });
 
+// Get frame configuration for a specific body type
+app.get('/api/body-type-frame-config/:bodyTypeName', async (req, res) => {
+  const client = new Client(config);
+  const { bodyTypeName } = req.params;
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT
+        image_width_percent,
+        image_max_width_px,
+        image_max_height_vh,
+        image_min_width_px,
+        image_margin_top_px
+      FROM body_type_frame_config
+      WHERE body_type_name = $1
+    `, [bodyTypeName]);
+
+    // If config exists, return it; otherwise return defaults
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      res.json({
+        image_width_percent: 100,
+        image_max_width_px: 600,
+        image_max_height_vh: 70,
+        image_min_width_px: 250,
+        image_margin_top_px: 0
+      });
+    }
+
+  } catch (error) {
+    console.error('Error fetching frame config:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
 /**
  * Get achievements with user progress
  */
@@ -889,13 +934,49 @@ app.post('/api/user/notifications/mark-read', async (req, res) => {
 });
 
 // ============================================================================
-// TEMPORARY LOGIN ENDPOINT (For Testing)
-// TODO: Replace with proper authentication system
+// OAUTH AUTHENTICATION (Google, GitHub, etc.)
 // ============================================================================
 
 /**
- * Simple login for testing (creates or finds user by username)
+ * Initiate Google OAuth flow
  */
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+/**
+ * Google OAuth callback
+ * On success, redirects to user hub
+ * On failure, redirects to login page
+ */
+app.get('/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/user/login.html' }),
+  async (req, res) => {
+    // User authenticated successfully, userId is in session
+    req.session.userId = req.user;
+
+    // Trigger daily chatling visit (if needed)
+    try {
+      const needsVisit = await dailyChatlingService.needsDailyVisit(req.user);
+      if (needsVisit) {
+        await dailyChatlingService.assignDailyChatling(req.user);
+      }
+    } catch (visitError) {
+      console.error('Error assigning daily chatling:', visitError);
+      // Don't fail OAuth if daily visit fails
+    }
+
+    res.redirect('/user/index.html');
+  }
+);
+
+// ============================================================================
+// TEST LOGIN ENDPOINT - DISABLED IN PRODUCTION
+// OAuth-only authentication is now used
+// ============================================================================
+
+// Commented out - use OAuth authentication instead
+/*
 app.post('/api/auth/login', async (req, res) => {
   const { username } = req.body;
 
@@ -951,6 +1032,7 @@ app.post('/api/auth/login', async (req, res) => {
     await client.end();
   }
 });
+*/
 
 /**
  * Logout
@@ -1034,11 +1116,19 @@ app.get('/api/user/visit-history', async (req, res) => {
 });
 
 app.post('/api/auth/logout', (req, res) => {
-  req.session.destroy((err) => {
+  // Clear Passport session
+  req.logout((err) => {
     if (err) {
-      return res.status(500).json({ error: 'Failed to logout' });
+      console.error('Error during logout:', err);
     }
-    res.json({ success: true });
+
+    // Destroy session
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to logout' });
+      }
+      res.json({ success: true });
+    });
   });
 });
 
