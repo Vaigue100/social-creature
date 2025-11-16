@@ -1,31 +1,34 @@
 /**
- * Add all creatures to Test001 user's collection
+ * Add all creatures to user's collection
  * Run this after importing creatures to make them visible in the user hub
  */
 
 const { Client } = require('pg');
 const config = { ...require('./scripts/db-config'), database: 'chatlings' };
 
-async function addCreaturesToTest001() {
+// USER EMAIL - Change this to your Google account email
+const USER_EMAIL = 'xbarneyroddis@gmail.com';
+
+async function addCreaturesToUser() {
   const client = new Client(config);
 
   try {
     await client.connect();
     console.log('Connected to database\n');
 
-    // Find Test001 user
-    const userResult = await client.query("SELECT id, username FROM users WHERE username = 'Test001'");
+    // Find user by email
+    const userResult = await client.query("SELECT id, username, email FROM users WHERE email = $1", [USER_EMAIL]);
 
     if (userResult.rows.length === 0) {
-      console.log('❌ Test001 user not found!');
+      console.log(`❌ User with email ${USER_EMAIL} not found!`);
       console.log('\nAvailable users:');
-      const allUsers = await client.query('SELECT username FROM users ORDER BY username');
-      allUsers.rows.forEach(u => console.log(`  - ${u.username}`));
+      const allUsers = await client.query('SELECT username, email FROM users ORDER BY username');
+      allUsers.rows.forEach(u => console.log(`  - ${u.username} (${u.email})`));
       process.exit(1);
     }
 
     const userId = userResult.rows[0].id;
-    console.log(`Found user: ${userResult.rows[0].username}\n`);
+    console.log(`Found user: ${userResult.rows[0].username} (${userResult.rows[0].email})\n`);
 
     // Get all unclaimed creatures
     const creaturesResult = await client.query(`
@@ -41,7 +44,7 @@ async function addCreaturesToTest001() {
     console.log(`Found ${creaturesResult.rows.length} unclaimed creatures\n`);
 
     if (creaturesResult.rows.length === 0) {
-      console.log('✓ All creatures already in Test001 collection!');
+      console.log('✓ All creatures already in your collection!');
       process.exit(0);
     }
 
@@ -55,7 +58,7 @@ async function addCreaturesToTest001() {
       console.log(`✓ Added ${creature.creature_name} (${creature.body_type_name})`);
     }
 
-    console.log(`\n✅ Added ${creaturesResult.rows.length} creatures to Test001's collection!`);
+    console.log(`\n✅ Added ${creaturesResult.rows.length} creatures to your collection!`);
 
   } catch (error) {
     console.error('❌ Error:', error.message);
@@ -65,4 +68,4 @@ async function addCreaturesToTest001() {
   }
 }
 
-addCreaturesToTest001();
+addCreaturesToUser();
