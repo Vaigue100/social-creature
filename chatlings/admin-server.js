@@ -1112,6 +1112,168 @@ app.post('/api/user/switch-chatling', async (req, res) => {
 });
 
 /**
+ * Get user's team (all 5 members with details)
+ */
+app.get('/api/user/team', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Get all team member IDs
+    const userResult = await client.query(
+      `SELECT current_creature_id, team_member_2_id, team_member_3_id,
+              team_member_4_id, team_member_5_id, email
+       FROM users WHERE id = $1`,
+      [req.session.userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userResult.rows[0];
+    const team = [];
+
+    // Team roles
+    const roles = [
+      { slot: 1, title: 'Team Leader', column: 'current_creature_id' },
+      { slot: 2, title: 'Director of Influence', column: 'team_member_2_id' },
+      { slot: 3, title: 'Director of Chatling Resources', column: 'team_member_3_id' },
+      { slot: 4, title: 'Chief of Engagement', column: 'team_member_4_id' },
+      { slot: 5, title: 'Head of Community', column: 'team_member_5_id' }
+    ];
+
+    // Fetch details for each team member
+    for (const role of roles) {
+      const creatureId = user[role.column];
+
+      if (creatureId) {
+        const creatureResult = await client.query(`
+          SELECT
+            c.id,
+            c.creature_name,
+            c.selected_image,
+            c.rarity_tier,
+            cp.body_type_id,
+            bt.body_type_name
+          FROM creatures c
+          LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
+          LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+          WHERE c.id = $1
+        `, [creatureId]);
+
+        if (creatureResult.rows.length > 0) {
+          const creature = creatureResult.rows[0];
+
+          // Get traits
+          const traitsResult = await client.query(`
+            SELECT
+              cst.score,
+              dstc.category_name
+            FROM creature_social_traits cst
+            JOIN dim_social_trait_category dstc ON cst.trait_category_id = dstc.id
+            WHERE cst.creature_id = $1
+          `, [creatureId]);
+
+          team.push({
+            slot: role.slot,
+            role: role.title,
+            creature: {
+              id: creature.id,
+              name: creature.creature_name,
+              image: creature.selected_image,
+              rarity: creature.rarity_tier,
+              bodyType: creature.body_type_name
+            },
+            traits: traitsResult.rows
+          });
+        } else {
+          team.push({ slot: role.slot, role: role.title, creature: null });
+        }
+      } else {
+        team.push({ slot: role.slot, role: role.title, creature: null });
+      }
+    }
+
+    res.json({
+      team,
+      userEmail: user.email
+    });
+
+  } catch (error) {
+    console.error('Error fetching team:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Assign a creature to a team slot
+ */
+app.post('/api/user/team/assign', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { creatureId, slot } = req.body;
+
+  if (!creatureId || !slot) {
+    return res.status(400).json({ error: 'creatureId and slot required' });
+  }
+
+  if (slot < 1 || slot > 5) {
+    return res.status(400).json({ error: 'slot must be between 1 and 5' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Verify creature is in user's collection
+    const collectionCheck = await client.query(
+      `SELECT creature_id FROM user_rewards WHERE user_id = $1 AND creature_id = $2`,
+      [req.session.userId, creatureId]
+    );
+
+    if (collectionCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'Creature not in your collection' });
+    }
+
+    // Map slot number to column name
+    const columnMap = {
+      1: 'current_creature_id',
+      2: 'team_member_2_id',
+      3: 'team_member_3_id',
+      4: 'team_member_4_id',
+      5: 'team_member_5_id'
+    };
+
+    const column = columnMap[slot];
+
+    // Update team slot
+    await client.query(
+      `UPDATE users SET ${column} = $1 WHERE id = $2`,
+      [creatureId, req.session.userId]
+    );
+
+    res.json({ success: true, slot, creatureId });
+
+  } catch (error) {
+    console.error('Error assigning to team:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
  * Trigger daily chatling visit
  * This can be called manually or automatically when user logs in
  */

@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Team - Chatlings</title>
+    <link rel="stylesheet" href="components/shared-header-styles.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .team-container {
+            max-width: 1400px;
+            margin: 100px auto 40px;
+            padding: 20px;
+        }
+
+        .team-header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .team-header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .team-header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        /* CEO Section */
+        .ceo-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        .ceo-card {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .ceo-icon {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .ceo-info h2 {
+            font-size: 2em;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .ceo-info .role-title {
+            font-size: 1.3em;
+            color: #764ba2;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .ceo-info .email {
+            color: #666;
+            font-size: 1em;
+        }
+
+        /* Team Grid */
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .team-member-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .team-member-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+        }
+
+        .role-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+
+        .creature-slot {
+            margin: 20px 0;
+        }
+
+        .creature-image-wrapper {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 15px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .creature-image-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .empty-slot {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 15px;
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 3em;
+        }
+
+        .creature-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .creature-rarity {
+            font-size: 0.9em;
+            padding: 4px 12px;
+            border-radius: 10px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        .rarity-common { background: #95a5a6; color: white; }
+        .rarity-uncommon { background: #2ecc71; color: white; }
+        .rarity-rare { background: #3498db; color: white; }
+        .rarity-epic { background: #9b59b6; color: white; }
+        .rarity-legendary { background: #f39c12; color: white; }
+
+        /* Team Analysis */
+        .team-analysis {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .team-analysis h2 {
+            font-size: 2em;
+            color: #667eea;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .analysis-section {
+            padding: 20px;
+            border-radius: 12px;
+            background: #f8f9fa;
+        }
+
+        .analysis-section h3 {
+            font-size: 1.4em;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .stat-bar {
+            margin-bottom: 15px;
+        }
+
+        .stat-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.95em;
+        }
+
+        .stat-progress {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .stat-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.5s ease;
+        }
+
+        .synergy-indicator {
+            text-align: center;
+            padding: 20px;
+            border-radius: 12px;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .synergy-excellent { background: #d4edda; color: #155724; }
+        .synergy-good { background: #d1ecf1; color: #0c5460; }
+        .synergy-average { background: #fff3cd; color: #856404; }
+        .synergy-poor { background: #f8d7da; color: #721c24; }
+
+        .insights-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .insights-list li {
+            padding: 10px;
+            margin-bottom: 10px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2em;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Shared Header -->
+    <div id="shared-header"></div>
+
+    <div class="team-container">
+        <div class="team-header">
+            <h1>🏆 My Team</h1>
+            <p>Your elite squad of Chatlings</p>
+        </div>
+
+        <div id="loading" class="loading">Loading team...</div>
+
+        <!-- CEO Section -->
+        <div class="ceo-section" id="ceo-section" style="display: none;">
+            <div class="ceo-card">
+                <div class="ceo-icon">👤</div>
+                <div class="ceo-info">
+                    <div class="role-title">🎯 CEO & Team Commander</div>
+                    <h2 id="ceo-name">You</h2>
+                    <p class="email" id="ceo-email"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Team Members Grid -->
+        <div class="team-grid" id="team-grid"></div>
+
+        <!-- Team Analysis -->
+        <div class="team-analysis" id="team-analysis" style="display: none;">
+            <h2>📊 Team Analysis</h2>
+            <div class="analysis-grid">
+                <!-- Strengths -->
+                <div class="analysis-section">
+                    <h3>💪 Team Strengths</h3>
+                    <div id="strengths-content"></div>
+                </div>
+
+                <!-- Weaknesses -->
+                <div class="analysis-section">
+                    <h3>⚠️ Areas for Growth</h3>
+                    <div id="weaknesses-content"></div>
+                </div>
+
+                <!-- Synergy -->
+                <div class="analysis-section">
+                    <h3>🤝 Team Synergy</h3>
+                    <div id="synergy-content"></div>
+                </div>
+            </div>
+
+            <!-- Team Insights -->
+            <div class="analysis-section" style="margin-top: 25px;">
+                <h3>💡 Team Insights</h3>
+                <ul class="insights-list" id="insights-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="components/shared-header.js"></script>
+    <script>
+        let teamData = null;
+
+        async function loadTeam() {
+            try {
+                const response = await fetch('/api/user/team');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch team');
+                }
+
+                const data = await response.json();
+                teamData = data;
+
+                document.getElementById('loading').style.display = 'none';
+                displayCEO(data.userEmail);
+                displayTeamMembers(data.team);
+                analyzeTeam(data.team);
+
+            } catch (error) {
+                console.error('Error loading team:', error);
+                document.getElementById('loading').textContent = 'Failed to load team. Please try again.';
+            }
+        }
+
+        function displayCEO(email) {
+            document.getElementById('ceo-email').textContent = email;
+            document.getElementById('ceo-section').style.display = 'block';
+        }
+
+        function displayTeamMembers(team) {
+            const grid = document.getElementById('team-grid');
+            grid.innerHTML = '';
+
+            team.forEach(member => {
+                const card = document.createElement('div');
+                card.className = 'team-member-card';
+
+                let content = `<div class="role-badge">${member.role}</div>`;
+
+                if (member.creature) {
+                    content += `
+                        <div class="creature-slot">
+                            <div class="creature-image-wrapper">
+                                <img src="/images/${member.creature.image}" alt="${member.creature.name}">
+                            </div>
+                            <div class="creature-name">${member.creature.name}</div>
+                            <div class="creature-rarity rarity-${member.creature.rarity.toLowerCase()}">${member.creature.rarity}</div>
+                            <div style="color: #666; font-size: 0.9em;">${member.creature.bodyType || 'Unknown Type'}</div>
+                        </div>
+                    `;
+                } else {
+                    content += `
+                        <div class="creature-slot">
+                            <div class="empty-slot">?</div>
+                            <div style="color: #999; font-style: italic;">No chatling assigned</div>
+                            <div style="color: #999; font-size: 0.85em; margin-top: 10px;">Assign from your collection</div>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = content;
+                grid.appendChild(card);
+            });
+        }
+
+        function analyzeTeam(team) {
+            const members = team.filter(m => m.creature !== null);
+
+            if (members.length === 0) {
+                document.getElementById('team-analysis').style.display = 'none';
+                return;
+            }
+
+            // Calculate average trait scores
+            const traitScores = {};
+            let traitCounts = {};
+
+            members.forEach(member => {
+                member.traits.forEach(trait => {
+                    if (!traitScores[trait.category_name]) {
+                        traitScores[trait.category_name] = 0;
+                        traitCounts[trait.category_name] = 0;
+                    }
+                    traitScores[trait.category_name] += trait.score;
+                    traitCounts[trait.category_name]++;
+                });
+            });
+
+            // Calculate averages
+            const avgTraits = {};
+            Object.keys(traitScores).forEach(trait => {
+                avgTraits[trait] = Math.round(traitScores[trait] / traitCounts[trait]);
+            });
+
+            // Display strengths (top 3 traits)
+            const sortedTraits = Object.entries(avgTraits).sort((a, b) => b[1] - a[1]);
+            const strengths = sortedTraits.slice(0, 3);
+            const weaknesses = sortedTraits.slice(-3).reverse();
+
+            displayStrengths(strengths);
+            displayWeaknesses(weaknesses);
+            calculateSynergy(members, avgTraits);
+            generateInsights(members, avgTraits, sortedTraits);
+
+            document.getElementById('team-analysis').style.display = 'block';
+        }
+
+        function displayStrengths(strengths) {
+            const content = document.getElementById('strengths-content');
+            content.innerHTML = '';
+
+            strengths.forEach(([trait, score]) => {
+                const bar = document.createElement('div');
+                bar.className = 'stat-bar';
+                bar.innerHTML = `
+                    <div class="stat-label">
+                        <span>${trait}</span>
+                        <span>${score}</span>
+                    </div>
+                    <div class="stat-progress">
+                        <div class="stat-fill" style="width: ${score}%"></div>
+                    </div>
+                `;
+                content.appendChild(bar);
+            });
+        }
+
+        function displayWeaknesses(weaknesses) {
+            const content = document.getElementById('weaknesses-content');
+            content.innerHTML = '';
+
+            weaknesses.forEach(([trait, score]) => {
+                const bar = document.createElement('div');
+                bar.className = 'stat-bar';
+                bar.innerHTML = `
+                    <div class="stat-label">
+                        <span>${trait}</span>
+                        <span>${score}</span>
+                    </div>
+                    <div class="stat-progress">
+                        <div class="stat-fill" style="width: ${score}%; background: linear-gradient(90deg, #e74c3c, #c0392b);"></div>
+                    </div>
+                `;
+                content.appendChild(bar);
+            });
+        }
+
+        function calculateSynergy(members, avgTraits) {
+            // Calculate team synergy based on trait variance and balance
+            const traitValues = Object.values(avgTraits);
+            const avgScore = traitValues.reduce((a, b) => a + b, 0) / traitValues.length;
+
+            // Calculate variance (lower = more balanced = better synergy)
+            const variance = traitValues.reduce((sum, val) => sum + Math.pow(val - avgScore, 2), 0) / traitValues.length;
+            const stdDev = Math.sqrt(variance);
+
+            let synergyScore;
+            let synergyLevel;
+            let synergyClass;
+            let synergyText;
+
+            if (stdDev < 10 && avgScore > 70) {
+                synergyLevel = 'Excellent';
+                synergyClass = 'synergy-excellent';
+                synergyScore = 95;
+                synergyText = 'Your team is exceptionally well-balanced with strong overall performance!';
+            } else if (stdDev < 15 && avgScore > 60) {
+                synergyLevel = 'Good';
+                synergyClass = 'synergy-good';
+                synergyScore = 75;
+                synergyText = 'Your team works well together with good balance across traits.';
+            } else if (stdDev < 20 || avgScore > 50) {
+                synergyLevel = 'Average';
+                synergyClass = 'synergy-average';
+                synergyScore = 50;
+                synergyText = 'Your team has potential but could benefit from more balanced members.';
+            } else {
+                synergyLevel = 'Needs Improvement';
+                synergyClass = 'synergy-poor';
+                synergyScore = 25;
+                synergyText = 'Consider diversifying your team to improve overall synergy.';
+            }
+
+            const content = document.getElementById('synergy-content');
+            content.innerHTML = `
+                <div class="synergy-indicator ${synergyClass}">
+                    ${synergyLevel} (${Math.round(synergyScore)}%)
+                </div>
+                <p style="text-align: center; margin-top: 15px; color: #666;">${synergyText}</p>
+                <div style="margin-top: 15px;">
+                    <div class="stat-label">
+                        <span>Team Size</span>
+                        <span>${members.length}/5</span>
+                    </div>
+                    <div class="stat-progress">
+                        <div class="stat-fill" style="width: ${(members.length/5)*100}%"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateInsights(members, avgTraits, sortedTraits) {
+            const insights = [];
+
+            // Team size insight
+            if (members.length < 5) {
+                insights.push(`🔍 You have ${5 - members.length} empty slot${5 - members.length > 1 ? 's' : ''}. Fill your team to unlock maximum potential!`);
+            } else {
+                insights.push('✅ Your team is complete with all 5 positions filled!');
+            }
+
+            // Strength insight
+            if (sortedTraits[0] && sortedTraits[0][1] > 80) {
+                insights.push(`💎 Your team excels at ${sortedTraits[0][0]} - this is a major competitive advantage!`);
+            }
+
+            // Weakness insight
+            if (sortedTraits[sortedTraits.length - 1] && sortedTraits[sortedTraits.length - 1][1] < 40) {
+                insights.push(`📈 Consider recruiting chatlings with higher ${sortedTraits[sortedTraits.length - 1][0]} to shore up this weakness.`);
+            }
+
+            // Rarity insight
+            const rarityCount = {};
+            members.forEach(m => {
+                rarityCount[m.creature.rarity] = (rarityCount[m.creature.rarity] || 0) + 1;
+            });
+
+            if (rarityCount['Legendary']) {
+                insights.push(`🌟 You have ${rarityCount['Legendary']} legendary chatling${rarityCount['Legendary'] > 1 ? 's' : ''} on your team!`);
+            }
+
+            // Balance insight
+            const scores = Object.values(avgTraits);
+            const isBalanced = Math.max(...scores) - Math.min(...scores) < 20;
+            if (isBalanced) {
+                insights.push('⚖️ Your team has excellent trait balance - versatility is key to success!');
+            }
+
+            const list = document.getElementById('insights-list');
+            list.innerHTML = '';
+            insights.forEach(insight => {
+                const li = document.createElement('li');
+                li.textContent = insight;
+                list.appendChild(li);
+            });
+        }
+
+        // Load team on page load
+        loadTeam();
+    </script>
+</body>
+</html>
