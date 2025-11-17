@@ -858,6 +858,33 @@
                                         ✨ This is your current chatling
                                     </p>
                                 </div>
+
+                                <!-- Team Assignment Buttons -->
+                                <div id="modal-team-assignment-container" style="margin-top: 25px; padding: 20px; background: #f8f9fa; border-radius: 12px; display: none;">
+                                    <h4 style="color: #667eea; margin-bottom: 15px; text-align: center;">🏆 Assign to Team</h4>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                        <button onclick="assignToTeam(1)" class="team-assign-btn">
+                                            <span style="display: block; font-size: 0.75em; color: #999;">Slot 1</span>
+                                            <span style="display: block; font-weight: bold;">Team Leader</span>
+                                        </button>
+                                        <button onclick="assignToTeam(2)" class="team-assign-btn">
+                                            <span style="display: block; font-size: 0.75em; color: #999;">Slot 2</span>
+                                            <span style="display: block; font-weight: bold;">Dir. of Influence</span>
+                                        </button>
+                                        <button onclick="assignToTeam(3)" class="team-assign-btn">
+                                            <span style="display: block; font-size: 0.75em; color: #999;">Slot 3</span>
+                                            <span style="display: block; font-weight: bold;">Dir. of Resources</span>
+                                        </button>
+                                        <button onclick="assignToTeam(4)" class="team-assign-btn">
+                                            <span style="display: block; font-size: 0.75em; color: #999;">Slot 4</span>
+                                            <span style="display: block; font-weight: bold;">Chief of Engagement</span>
+                                        </button>
+                                        <button onclick="assignToTeam(5)" class="team-assign-btn" style="grid-column: 1 / -1;">
+                                            <span style="display: block; font-size: 0.75em; color: #999;">Slot 5</span>
+                                            <span style="display: block; font-weight: bold;">Head of Community</span>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1114,6 +1141,12 @@
 
                     // Store current creature ID for switching
                     window.currentModalCreatureId = creatureId;
+
+                    // Show team assignment container
+                    const teamAssignmentContainer = document.getElementById('modal-team-assignment-container');
+                    if (teamAssignmentContainer) {
+                        teamAssignmentContainer.style.display = 'block';
+                    }
                 }
 
             } catch (error) {
@@ -1174,6 +1207,50 @@
                 alert('Failed to switch chatling. Please try again.');
                 switchBtn.disabled = false;
                 switchBtn.innerHTML = originalText;
+            }
+        }
+
+        // Assign creature to team slot
+        async function assignToTeam(slot) {
+            if (!window.currentModalCreatureId) {
+                console.error('No creature ID stored');
+                return;
+            }
+
+            const roleNames = {
+                1: 'Team Leader',
+                2: 'Director of Influence',
+                3: 'Director of Chatling Resources',
+                4: 'Chief of Engagement',
+                5: 'Head of Community'
+            };
+
+            try {
+                const response = await fetch('/api/user/team/assign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        creatureId: window.currentModalCreatureId,
+                        slot: slot
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to assign to team');
+                }
+
+                // Reload team icons in header
+                if (typeof loadTeamIcons === 'function') {
+                    await loadTeamIcons();
+                }
+
+                // Show success message
+                alert(`✅ Successfully assigned to ${roleNames[slot]}!`);
+
+            } catch (error) {
+                console.error('Error assigning to team:', error);
+                alert(`Failed to assign: ${error.message}`);
             }
         }
 

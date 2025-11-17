@@ -11,7 +11,8 @@ function getPageTitle(activePage) {
         'home': 'Home',
         'collections': 'Collection',
         'achievements': 'Achievements',
-        'integrations': 'Integrations'
+        'integrations': 'Integrations',
+        'team': 'Team'
     };
     return titles[activePage] || 'Home';
 }
@@ -25,12 +26,9 @@ function initSharedHeader(activePage = 'home') {
                 <img src="/assets/logo.png" alt="Chatlings Logo" class="logo" onerror="this.style.display='none'">
             </div>
             <div class="header-right" id="header-right" style="display: none;">
-                <div class="current-chatling-mini" id="current-chatling-mini" onclick="openChatlingModal()">
-                    <img id="chatling-image-mini" src="" alt="Current Chatling">
-                    <div class="current-chatling-info">
-                        <div class="name" id="chatling-name-mini">-</div>
-                        <div class="rarity" id="chatling-rarity-mini">-</div>
-                    </div>
+                <!-- Team Icons -->
+                <div class="team-icons" id="team-icons" style="display: flex; gap: 8px; margin-right: 15px;">
+                    <!-- Team icons will be populated here -->
                 </div>
 
                 <!-- Notifications Dropdown -->
@@ -85,6 +83,7 @@ function initSharedHeader(activePage = 'home') {
             <div class="nav-links">
                 <a href="index.html" class="nav-link ${activePage === 'home' ? 'active' : ''}">Home</a>
                 <a href="collections.html" class="nav-link ${activePage === 'collections' ? 'active' : ''}">Collections</a>
+                <a href="team.html" class="nav-link ${activePage === 'team' ? 'active' : ''}">Team</a>
                 <a href="achievements.html" class="nav-link ${activePage === 'achievements' ? 'active' : ''}">Achievements</a>
                 <a href="integrations.html" class="nav-link ${activePage === 'integrations' ? 'active' : ''}">Integrations</a>
                 <a href="#" class="nav-link" onclick="openGuideModal(); return false;">Guide</a>
@@ -109,8 +108,82 @@ async function loadUserDataForHeader() {
             const user = await response.json();
             updateHeaderUserInfo(user);
         }
+
+        // Load team icons
+        await loadTeamIcons();
     } catch (error) {
         console.error('Error loading user data for header:', error);
+    }
+}
+
+async function loadTeamIcons() {
+    try {
+        const response = await fetch('/api/user/team');
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const teamIconsContainer = document.getElementById('team-icons');
+        if (!teamIconsContainer) return;
+
+        teamIconsContainer.innerHTML = '';
+
+        data.team.forEach((member, index) => {
+            const icon = document.createElement('div');
+            icon.style.cssText = `
+                width: 45px;
+                height: 45px;
+                border-radius: 8px;
+                overflow: hidden;
+                border: 2px solid ${member.creature ? '#667eea' : '#ddd'};
+                cursor: pointer;
+                transition: transform 0.2s, box-shadow 0.2s;
+                background: ${member.creature ? 'white' : '#f5f5f5'};
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+
+            icon.onmouseover = () => {
+                icon.style.transform = 'scale(1.1)';
+                icon.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+            };
+
+            icon.onmouseout = () => {
+                icon.style.transform = 'scale(1)';
+                icon.style.boxShadow = 'none';
+            };
+
+            if (member.creature) {
+                const img = document.createElement('img');
+                img.src = `/images/${member.creature.image}`;
+                img.alt = member.creature.name;
+                img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+                img.title = `${member.role}: ${member.creature.name}`;
+                icon.appendChild(img);
+
+                // Click to view details
+                icon.onclick = () => {
+                    if (typeof openChatlingModal === 'function') {
+                        window.location.href = `collections.html?creature=${member.creature.id}`;
+                    }
+                };
+            } else {
+                icon.textContent = '?';
+                icon.style.color = '#999';
+                icon.style.fontSize = '1.5em';
+                icon.title = `${member.role}: Empty slot`;
+
+                // Click to go to team page
+                icon.onclick = () => {
+                    window.location.href = 'team.html';
+                };
+            }
+
+            teamIconsContainer.appendChild(icon);
+        });
+
+    } catch (error) {
+        console.error('Error loading team icons:', error);
     }
 }
 

@@ -348,3 +348,27 @@
 .lore-modal-close:hover {
     color: #333;
 }
+
+/* Team Assignment Buttons */
+.team-assign-btn {
+    background: white;
+    border: 2px solid #667eea;
+    color: #333;
+    padding: 12px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9em;
+    text-align: center;
+}
+
+.team-assign-btn:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.team-assign-btn:active {
+    transform: translateY(0);
+}
