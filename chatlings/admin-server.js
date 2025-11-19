@@ -52,6 +52,9 @@ app.use('/thumbs', express.static(path.join(__dirname, 'artwork', 'thumbs')));
 // Handle favicon requests (just return 204 No Content to avoid 404 errors)
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
+// Redirect /admin to admin index
+app.get('/admin', (req, res) => res.redirect('/index.html'));
+
 /**
  * Get next creature that needs image selection
  */

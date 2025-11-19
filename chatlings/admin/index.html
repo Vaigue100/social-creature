@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chatlings Admin Hub</title>
+    <title>Chatlings Admin</title>
     <style>
         * {
             margin: 0;
@@ -14,274 +14,102 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
             min-height: 100vh;
-            padding: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
         }
 
         .container {
-            max-width: 95%;
-            width: 100%;
-            margin: 0 auto;
-        }
-
-        .header {
             background: white;
-            padding: 40px;
-            border-radius: 10px 10px 0 0;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-
-        .header-logo {
-            max-width: 300px;
-            height: auto;
-            margin-bottom: 20px;
-            display: inline-block;
-        }
-
-        .header h1 {
-            color: #667eea;
-            font-size: 48px;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            color: #666;
-            font-size: 18px;
-        }
-
-        .menu-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            padding: 20px;
-            background: rgba(255,255,255,0.95);
-            border-radius: 0 0 10px 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        .menu-item {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 40px 30px;
-            border-radius: 10px;
-            text-decoration: none;
-            color: white;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .menu-item:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
-        }
-
-        .menu-item::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .menu-item:hover::before {
-            opacity: 1;
-        }
-
-        .menu-item-icon {
-            font-size: 48px;
-            margin-bottom: 15px;
-            display: block;
-        }
-
-        .menu-item-title {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .menu-item-description {
-            font-size: 14px;
-            opacity: 0.9;
-            line-height: 1.5;
-        }
-
-        .menu-item-badge {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: rgba(255,255,255,0.3);
-            padding: 5px 10px;
             border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
         }
 
-        .stats-bar {
-            background: white;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 10px;
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #999;
+            margin-bottom: 30px;
+        }
+
+        .admin-links {
             display: flex;
-            justify-content: space-around;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            flex-direction: column;
+            gap: 15px;
         }
 
-        .stat {
+        .admin-link {
+            display: block;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            transition: all 0.3s;
             text-align: center;
         }
 
-        .stat-value {
-            font-size: 32px;
+        .admin-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .admin-link .title {
+            font-size: 1.3em;
             font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .admin-link .description {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .status {
+            margin-top: 30px;
+            padding: 15px;
+            background: #f0f0ff;
+            border-radius: 8px;
+            font-size: 0.9em;
             color: #667eea;
-        }
-
-        .stat-label {
-            font-size: 14px;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .menu-item.disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            background: linear-gradient(135deg, #999 0%, #666 100%);
-        }
-
-        .menu-item.disabled:hover {
-            transform: none;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <img src="assets/logo.png" alt="Chatlings Logo" class="header-logo">
-            <h1>Chatlings Admin Hub</h1>
-            <p>Manage your creatures, images, and content</p>
+        <h1>Chatlings Admin</h1>
+        <p class="subtitle">Administration & Quality Control</p>
+
+        <div class="admin-links">
+            <a href="/review-conversations.html" class="admin-link">
+                <div class="title">🔍 Review Conversations</div>
+                <div class="description">View and flag recent chatroom conversations</div>
+            </a>
+
+            <a href="/user/chatroom-demo.html" class="admin-link">
+                <div class="title">💬 Chatroom Demo</div>
+                <div class="description">Test the client polling interface</div>
+            </a>
+
+            <a href="/user" class="admin-link">
+                <div class="title">👥 User Hub</div>
+                <div class="description">Main user interface</div>
+            </a>
         </div>
 
-        <div class="stats-bar" id="statsBar">
-            <div class="stat">
-                <div class="stat-value">-</div>
-                <div class="stat-label">Total Creatures</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value">-</div>
-                <div class="stat-label">Images Selected</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value">-</div>
-                <div class="stat-label">Remaining</div>
-            </div>
-        </div>
-
-        <div class="menu-grid">
-            <a href="/family-browser.html" class="menu-item">
-                <span class="menu-item-badge">NEW</span>
-                <span class="menu-item-icon">🔍</span>
-                <div class="menu-item-title">Family Browser</div>
-                <div class="menu-item-description">
-                    Browse creatures by dimension families. Navigate through body types, activities, moods, and more in a 3x3 grid.
-                </div>
-            </a>
-
-            <a href="/image-selection.html" class="menu-item">
-                <span class="menu-item-badge">ACTIVE</span>
-                <span class="menu-item-icon">🖼️</span>
-                <div class="menu-item-title">Image Selection</div>
-                <div class="menu-item-description">
-                    Choose the best image from 4 generated options for each creature.
-                    Fast keyboard shortcuts included.
-                </div>
-            </a>
-
-            <a href="#" class="menu-item disabled" onclick="return false;">
-                <span class="menu-item-badge">COMING SOON</span>
-                <span class="menu-item-icon">📊</span>
-                <div class="menu-item-title">Analytics</div>
-                <div class="menu-item-description">
-                    View statistics, distribution charts, and insights about your creature collection.
-                </div>
-            </a>
-
-            <a href="#" class="menu-item disabled" onclick="return false;">
-                <span class="menu-item-badge">COMING SOON</span>
-                <span class="menu-item-icon">✏️</span>
-                <div class="menu-item-title">Content Editor</div>
-                <div class="menu-item-description">
-                    Edit creature names, lore, and metadata in bulk or individually.
-                </div>
-            </a>
-
-            <a href="#" class="menu-item disabled" onclick="return false;">
-                <span class="menu-item-badge">COMING SOON</span>
-                <span class="menu-item-icon">🎬</span>
-                <div class="menu-item-title">Animation Queue</div>
-                <div class="menu-item-description">
-                    Manage and prioritize creatures for animation generation.
-                </div>
-            </a>
-
-            <a href="#" class="menu-item disabled" onclick="return false;">
-                <span class="menu-item-badge">COMING SOON</span>
-                <span class="menu-item-icon">📦</span>
-                <div class="menu-item-title">Export Tools</div>
-                <div class="menu-item-description">
-                    Export creature data, images, and metadata in various formats.
-                </div>
-            </a>
-
-            <a href="#" class="menu-item disabled" onclick="return false;">
-                <span class="menu-item-badge">COMING SOON</span>
-                <span class="menu-item-icon">⚙️</span>
-                <div class="menu-item-title">Settings</div>
-                <div class="menu-item-description">
-                    Configure dimension data, generation settings, and system preferences.
-                </div>
-            </a>
+        <div class="status">
+            <strong>Status:</strong> Procedural chat system active<br>
+            <strong>Chat Lines:</strong> 65 pre-approved messages<br>
+            <strong>Flow Rules:</strong> 19 state transitions
         </div>
     </div>
-
-    <script>
-        // Load stats on page load
-        async function loadStats() {
-            try {
-                const response = await fetch('/api/stats');
-                const stats = await response.json();
-
-                const statsBar = document.getElementById('statsBar');
-                statsBar.innerHTML = `
-                    <div class="stat">
-                        <div class="stat-value">${parseInt(stats.total).toLocaleString()}</div>
-                        <div class="stat-label">Total Creatures</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-value">${parseInt(stats.completed).toLocaleString()}</div>
-                        <div class="stat-label">Images Selected</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-value">${(parseInt(stats.total) - parseInt(stats.completed)).toLocaleString()}</div>
-                        <div class="stat-label">Remaining</div>
-                    </div>
-                `;
-            } catch (error) {
-                console.error('Error loading stats:', error);
-            }
-        }
-
-        loadStats();
-    </script>
 </body>
 </html>
