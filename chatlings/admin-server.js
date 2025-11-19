@@ -1829,17 +1829,35 @@ app.post('/api/chatroom/mark-read/:conversationId', async (req, res) => {
  * Force start a conversation (bypasses likelihood check - for testing)
  */
 app.post('/api/chat/force-start', async (req, res) => {
-  if (!req.session.userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+  // For demo/testing: Use test user if not authenticated
+  let userId = req.session.userId;
+
+  if (!userId) {
+    const { Client } = require('pg');
+    const client = new Client(config);
+    try {
+      await client.connect();
+      const testUser = await client.query(
+        `SELECT id FROM users WHERE email = 'demo@chatroom.test' LIMIT 1`
+      );
+      if (testUser.rows.length > 0) {
+        userId = testUser.rows[0].id;
+      } else {
+        return res.status(401).json({ error: 'Not authenticated and no demo user found' });
+      }
+    } finally {
+      await client.end();
+    }
   }
 
   try {
     // Delete any existing active conversation first
-    await db.query('DELETE FROM active_conversations WHERE user_id = $1', [req.session.userId]);
+    const db = require('./services/db');
+    await db.query('DELETE FROM active_conversations WHERE user_id = $1', [userId]);
 
     // Force start a new conversation
     const conversationEngine = require('./services/conversation-engine');
-    const result = await conversationEngine.startConversation(req.session.userId);
+    const result = await conversationEngine.startConversation(userId);
 
     if (!result) {
       return res.json({
@@ -1901,12 +1919,31 @@ const conversationEngine = require('./services/conversation-engine');
  * Returns null if no conversation active/starting
  */
 app.get('/api/chat/next-line', async (req, res) => {
-  if (!req.session.userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
+  // For demo/testing: Use test user if not authenticated
+  let userId = req.session.userId;
+
+  if (!userId) {
+    // Get or create test user for demo
+    const { Client } = require('pg');
+    const client = new Client(config);
+    try {
+      await client.connect();
+      const testUser = await client.query(
+        `SELECT id FROM users WHERE email = 'demo@chatroom.test' LIMIT 1`
+      );
+
+      if (testUser.rows.length > 0) {
+        userId = testUser.rows[0].id;
+      } else {
+        return res.status(401).json({ error: 'Not authenticated and no demo user found' });
+      }
+    } finally {
+      await client.end();
+    }
   }
 
   try {
-    const nextLine = await conversationEngine.getNextLine(req.session.userId);
+    const nextLine = await conversationEngine.getNextLine(userId);
     res.json(nextLine || { continues: false, noConversation: true });
 
   } catch (error) {
@@ -1919,14 +1956,24 @@ app.get('/api/chat/next-line', async (req, res) => {
  * Get user's mood dashboard
  */
 app.get('/api/chat/moods', async (req, res) => {
-  if (!req.session.userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
+  // For demo/testing: Use test user if not authenticated
+  let userId = req.session.userId;
 
   const client = new Client(config);
 
   try {
     await client.connect();
+
+    if (!userId) {
+      const testUser = await client.query(
+        `SELECT id FROM users WHERE email = 'demo@chatroom.test' LIMIT 1`
+      );
+      if (testUser.rows.length > 0) {
+        userId = testUser.rows[0].id;
+      } else {
+        return res.status(401).json({ error: 'Not authenticated and no demo user found' });
+      }
+    }
 
     const moods = await client.query(`
       SELECT
@@ -1939,7 +1986,7 @@ app.get('/api/chat/moods', async (req, res) => {
       JOIN creatures c ON ur.creature_id = c.id
       WHERE ur.user_id = $1
       ORDER BY c.creature_name
-    `, [req.session.userId]);
+    `, [userId]);
 
     res.json({ moods: moods.rows });
 
