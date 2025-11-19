@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Chatling - Chatlings</title>
+    <link rel="stylesheet" href="/user/components/creature-card-styles.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: rgba(0, 0, 0, 0.9);
+            min-height: 100vh;
+            color: #333;
+            overflow: auto;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+        }
+
+        .modal-container {
+            position: relative;
+            max-width: 1200px;
+            margin: 2% auto;
+            padding: 0;
+            width: 90%;
+        }
+
+        .close-button {
+            position: absolute;
+            top: 15px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 2001;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            transition: transform 0.2s;
+        }
+
+        .close-button:hover {
+            transform: scale(1.1);
+        }
+
+        .creature-view-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+            font-size: 1.2em;
+        }
+
+        .error {
+            text-align: center;
+            padding: 60px 20px;
+            color: #e74c3c;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="modal-overlay">
+        <div class="modal-container">
+            <!-- Close Button -->
+            <span class="close-button" onclick="goBack()">&times;</span>
+
+            <!-- Creature View Container -->
+            <div class="creature-view-container">
+            <div class="creature-display">
+                <div class="image-with-traits">
+                    <div class="creature-frame-wrapper" id="creature-frame">
+                        <div class="creature-frame-overlay" id="frame-overlay" style="display: none;"></div>
+                        <div class="creature-frame-content">
+                            <!-- Image with badges positioned on corners -->
+                            <div class="creature-image-container">
+                                <div class="rarity-badge" id="rarity-badge" style="display: none;"></div>
+                                <div class="overall-score-badge" id="overall-score-badge" style="display: none; cursor: pointer;" title="Click to view traits"></div>
+                                <div class="bodytype-badge" id="bodytype-badge" style="display: none; cursor: pointer;" title="Click to view body type lore"></div>
+                                <img id="creature-image" class="creature-image" src="" alt="Creature" style="display: none;">
+                                <div class="loading" id="image-loading">Loading chatling...</div>
+                            </div>
+
+                            <!-- Creature Lore attached to bottom -->
+                            <div class="creature-lore-section" id="creature-lore-section" style="display: none;">
+                                <h3 style="color: #9b59b6; margin-bottom: 10px; font-size: 1.1em;">📖 <span id="creature-lore-title">Tale</span></h3>
+                                <p id="creature-lore" style="color: #666; line-height: 1.6; margin: 0;">
+                                    Loading creature lore...
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Body Type Lore Modal -->
+            <div id="bodytype-modal" class="lore-modal" style="display: none;">
+                <div class="lore-modal-content">
+                    <span class="lore-modal-close" data-modal="bodytype-modal">&times;</span>
+                    <h2 style="color: #2ecc71; margin-bottom: 15px;">🎨 <span id="bodytype-modal-title">Body Type</span> Lineage</h2>
+                    <p id="bodytype-modal-lore" style="color: #666; line-height: 1.8;">
+                        Loading body type lore...
+                    </p>
+                </div>
+            </div>
+
+            <!-- Traits Modal -->
+            <div id="traits-modal" class="lore-modal" style="display: none;">
+                <div class="lore-modal-content">
+                    <span class="lore-modal-close" data-modal="traits-modal">&times;</span>
+                    <h2 style="color: #667eea; margin-bottom: 20px; text-align: center;">
+                        <span id="traits-modal-title">Chatling</span> Traits
+                    </h2>
+                    <div id="traits-modal-container" style="display: flex; flex-direction: column; gap: 10px;">
+                        <!-- Traits will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Team Assignment Buttons -->
+        <div id="team-assignment-container" style="margin-top: 20px; padding: 20px; background: rgba(255,255,255,0.95); border-radius: 15px; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+            <h4 style="color: #667eea; margin-bottom: 15px; text-align: center; font-size: 1.2em;">🏆 Assign to Team Role</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                <button onclick="assignToTeam(1); event.stopPropagation();" class="team-assign-btn">
+                    <span style="display: block; font-size: 0.75em; color: #999;">Slot 1</span>
+                    <span style="display: block; font-weight: bold;">Prime Chatling</span>
+                </button>
+                <button onclick="assignToTeam(2); event.stopPropagation();" class="team-assign-btn">
+                    <span style="display: block; font-size: 0.75em; color: #999;">Slot 2</span>
+                    <span style="display: block; font-weight: bold;">Viral Catalyst</span>
+                </button>
+                <button onclick="assignToTeam(3); event.stopPropagation();" class="team-assign-btn">
+                    <span style="display: block; font-size: 0.75em; color: #999;">Slot 3</span>
+                    <span style="display: block; font-weight: bold;">Community Builder</span>
+                </button>
+                <button onclick="assignToTeam(4); event.stopPropagation();" class="team-assign-btn">
+                    <span style="display: block; font-size: 0.75em; color: #999;">Slot 4</span>
+                    <span style="display: block; font-weight: bold;">Engagement Maven</span>
+                </button>
+                <button onclick="assignToTeam(5); event.stopPropagation();" class="team-assign-btn">
+                    <span style="display: block; font-size: 0.75em; color: #999;">Slot 5 <span style="color: #e74c3c;">★ Required</span></span>
+                    <span style="display: block; font-weight: bold;">Community Ambassador</span>
+                </button>
+            </div>
+        </div>
+        </div><!-- Close creature-view-container -->
+        </div><!-- Close modal-container -->
+    </div><!-- Close modal-overlay -->
+
+    <script src="/user/components/creature-card-script.js"></script>
+    <script>
+        let frameConfigCache = {};
+        let currentCreatureId = null;
+        let returnUrl = 'collections.html'; // Default return page
+
+        // Get creature ID and return URL from query parameters
+        function getQueryParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                creatureId: params.get('id'),
+                from: params.get('from') || 'collections'
+            };
+        }
+
+        // Set up back button
+        function goBack() {
+            const params = getQueryParams();
+            const returnPages = {
+                'collections': 'collections.html',
+                'team': 'team.html',
+                'home': 'index.html'
+            };
+            window.location.href = returnPages[params.from] || 'collections.html';
+        }
+
+        // Load creature on page load
+        window.addEventListener('load', async () => {
+            const params = getQueryParams();
+
+            if (!params.creatureId) {
+                document.getElementById('image-loading').textContent = 'No creature specified';
+                document.getElementById('image-loading').className = 'error';
+                return;
+            }
+
+            currentCreatureId = params.creatureId;
+            await loadCreature(params.creatureId);
+        });
+
+        async function loadCreature(creatureId) {
+            try {
+                // Load creature details
+                const response = await fetch(`/api/creature/${creatureId}/details`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch creature details');
+                }
+
+                const data = await response.json();
+
+                // Update rarity badge
+                const rarityBadge = document.getElementById('rarity-badge');
+                if (data.rarity_tier) {
+                    rarityBadge.textContent = data.rarity_tier;
+                    rarityBadge.className = 'rarity-badge rarity-' + data.rarity_tier.toLowerCase();
+                    rarityBadge.style.display = 'block';
+                }
+
+                // Update body type badge
+                const bodytypeBadge = document.getElementById('bodytype-badge');
+                if (data.body_type_name) {
+                    bodytypeBadge.textContent = data.body_type_name;
+                    bodytypeBadge.style.display = 'block';
+
+                    document.getElementById('bodytype-modal-title').textContent = data.body_type_name;
+                    document.getElementById('bodytype-modal-lore').textContent = `The ${data.body_type_name} are a fascinating lineage of Chatlings known for their unique characteristics. These creatures embody specific traits that make them stand out in the world of Social Streams. Their distinctive form reflects the type of content and community energy from which they emerged.`;
+
+                    // Load frame
+                    await loadBodyTypeFrame(data.body_type_name);
+                }
+
+                // Update creature lore
+                if (data.creature_name) {
+                    document.getElementById('creature-lore-title').textContent = `${data.creature_name}'s`;
+                    document.getElementById('creature-lore').textContent = `${data.creature_name} is a unique Chatling with an overall power level of ${data.overall_score || 'unknown'}. This remarkable being possesses a distinctive combination of social traits that define its personality and behavior in the realm of Social Streams. Born from the energy of its source content, ${data.creature_name} carries the essence of that moment forever.`;
+                    document.getElementById('creature-lore-section').style.display = 'block';
+                }
+
+                // Update image
+                const img = document.getElementById('creature-image');
+                const imgLoading = document.getElementById('image-loading');
+                img.src = `/images/${data.selected_image}`;
+                img.style.display = 'block';
+                imgLoading.style.display = 'none';
+
+                // Update overall score badge
+                const scoreBadge = document.getElementById('overall-score-badge');
+                if (data.overall_score !== undefined) {
+                    scoreBadge.className = 'overall-score-badge ' + getScoreClass(data.overall_score);
+                    scoreBadge.innerHTML = `<span>⭐</span><span>${data.overall_score}</span>`;
+                    scoreBadge.style.display = 'block';
+                }
+
+                // Store traits data for modal
+                window.currentCreatureData = {
+                    name: data.creature_name,
+                    traits: data.traits,
+                    primaryColor: data.primary_color
+                };
+
+                // Show team assignment container and highlight assigned roles
+                const teamAssignmentContainer = document.getElementById('team-assignment-container');
+                if (teamAssignmentContainer) {
+                    teamAssignmentContainer.style.display = 'block';
+                    await highlightAssignedRoles(creatureId);
+                }
+
+            } catch (error) {
+                console.error('Error loading creature:', error);
+                document.getElementById('image-loading').textContent = 'Failed to load chatling details.';
+                document.getElementById('image-loading').className = 'error';
+            }
+        }
+
+        async function loadBodyTypeFrame(bodyTypeName) {
+            const frameWrapper = document.getElementById('creature-frame');
+            const frameOverlay = document.getElementById('frame-overlay');
+            const creatureImage = document.getElementById('creature-image');
+
+            // Reset frame state
+            frameWrapper.classList.remove('has-frame');
+            frameOverlay.style.display = 'none';
+            frameOverlay.style.backgroundImage = '';
+
+            if (!bodyTypeName) {
+                return;
+            }
+
+            // Load frame configuration
+            let config;
+            if (frameConfigCache[bodyTypeName]) {
+                config = frameConfigCache[bodyTypeName];
+            } else {
+                try {
+                    const configResponse = await fetch(`/api/body-type-frame-config/${bodyTypeName}`);
+                    if (configResponse.ok) {
+                        config = await configResponse.json();
+                        frameConfigCache[bodyTypeName] = config;
+                    }
+                } catch (error) {
+                    console.log('No frame config for', bodyTypeName);
+                }
+            }
+
+            if (config && config.frame_image) {
+                frameWrapper.classList.add('has-frame');
+                frameOverlay.style.backgroundImage = `url('/frames/${config.frame_image}')`;
+                frameOverlay.style.display = 'block';
+            }
+        }
+
+        function getScoreClass(score) {
+            if (score >= 95) return 'score-max';
+            if (score >= 81) return 'score-vhigh';
+            if (score >= 61) return 'score-high';
+            if (score >= 41) return 'score-medium';
+            if (score >= 21) return 'score-low';
+            return 'score-vlow';
+        }
+
+        // Highlight team role buttons if creature is assigned
+        async function highlightAssignedRoles(creatureId) {
+            try {
+                const teamResponse = await fetch('/api/user/team');
+                if (!teamResponse.ok) return;
+
+                const teamData = await teamResponse.json();
+
+                // Reset all buttons
+                for (let slot = 1; slot <= 5; slot++) {
+                    const buttons = document.querySelectorAll(`button[onclick*="assignToTeam(${slot})"]`);
+                    buttons.forEach(btn => {
+                        btn.style.background = 'white';
+                        btn.style.color = '#333';
+                        btn.style.border = '2px solid #667eea';
+                    });
+                }
+
+                // Highlight assigned slots
+                teamData.team.forEach(member => {
+                    if (member.creature && member.creature.id === creatureId) {
+                        const buttons = document.querySelectorAll(`button[onclick*="assignToTeam(${member.slot})"]`);
+                        buttons.forEach(btn => {
+                            btn.style.background = 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)';
+                            btn.style.color = 'white';
+                            btn.style.border = '2px solid #27ae60';
+                            btn.style.boxShadow = '0 4px 12px rgba(46, 204, 113, 0.4)';
+                        });
+                    }
+                });
+
+            } catch (error) {
+                console.error('Error highlighting assigned roles:', error);
+            }
+        }
+
+        // Assign creature to team slot
+        async function assignToTeam(slot) {
+            if (!currentCreatureId) {
+                console.error('No creature ID stored');
+                return;
+            }
+
+            const roleNames = {
+                1: 'Prime Chatling',
+                2: 'Viral Catalyst',
+                3: 'Community Builder',
+                4: 'Engagement Maven',
+                5: 'Community Ambassador'
+            };
+
+            try {
+                const response = await fetch('/api/user/team/assign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        creatureId: currentCreatureId,
+                        slot: slot
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to assign to team');
+                }
+
+                // Reload team icons in header
+                if (typeof loadTeamIcons === 'function') {
+                    await loadTeamIcons();
+                }
+
+                // Refresh role button highlighting
+                await highlightAssignedRoles(currentCreatureId);
+
+                // Show success message
+                alert(`✅ Successfully assigned to ${roleNames[slot]}!`);
+
+            } catch (error) {
+                console.error('Error assigning to team:', error);
+                alert(`Failed to assign: ${error.message}`);
+            }
+        }
+
+        // Modal click handlers
+        document.addEventListener('click', (e) => {
+            const bodytypeBadge = document.getElementById('bodytype-badge');
+            const bodytypeModal = document.getElementById('bodytype-modal');
+            const scoreBadge = document.getElementById('overall-score-badge');
+            const traitsModal = document.getElementById('traits-modal');
+
+            // Body type badge click
+            if (e.target === bodytypeBadge) {
+                bodytypeModal.style.display = 'flex';
+            }
+
+            // Score badge click
+            if (e.target === scoreBadge || scoreBadge.contains(e.target)) {
+                // Show traits modal
+                const traitsContainer = document.getElementById('traits-modal-container');
+                traitsContainer.innerHTML = '';
+
+                if (window.currentCreatureData && window.currentCreatureData.traits) {
+                    document.getElementById('traits-modal-title').textContent = window.currentCreatureData.name;
+
+                    window.currentCreatureData.traits.forEach(trait => {
+                        const traitBar = document.createElement('div');
+                        traitBar.style.cssText = 'margin-bottom: 15px;';
+                        traitBar.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <span style="font-weight: 600; color: #667eea;">${trait.category_name}</span>
+                                <span style="font-weight: bold; color: #333;">${trait.score}</span>
+                            </div>
+                            <div style="background: #e0e0e0; border-radius: 10px; height: 8px; overflow: hidden;">
+                                <div style="background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; width: ${trait.score}%; border-radius: 10px; transition: width 0.3s;"></div>
+                            </div>
+                        `;
+                        traitsContainer.appendChild(traitBar);
+                    });
+                }
+
+                traitsModal.style.display = 'flex';
+            }
+
+            // Close modal when clicking X or outside
+            if (e.target.classList.contains('lore-modal-close')) {
+                const modalId = e.target.getAttribute('data-modal');
+                document.getElementById(modalId).style.display = 'none';
+            }
+
+            if (e.target.classList.contains('lore-modal')) {
+                e.target.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

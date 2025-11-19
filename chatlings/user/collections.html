@@ -837,54 +837,6 @@
                                         Loading creature lore...
                                     </p>
                                 </div>
-
-                                <!-- Switch Chatling Button -->
-                                <div id="modal-switch-button-container" style="margin-top: 20px; text-align: center; display: none;">
-                                    <button id="modal-switch-chatling-btn" onclick="switchToChatling()" style="
-                                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                                        color: white;
-                                        border: none;
-                                        padding: 12px 30px;
-                                        border-radius: 8px;
-                                        font-size: 1em;
-                                        font-weight: 600;
-                                        cursor: pointer;
-                                        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-                                        transition: transform 0.2s, box-shadow 0.2s;
-                                    ">
-                                        🔄 Switch to this Chatling
-                                    </button>
-                                    <p id="modal-current-chatling-indicator" style="color: #667eea; font-weight: bold; margin-top: 10px; display: none;">
-                                        ✨ This is your current chatling
-                                    </p>
-                                </div>
-
-                                <!-- Team Assignment Buttons -->
-                                <div id="modal-team-assignment-container" style="margin-top: 25px; padding: 20px; background: #f8f9fa; border-radius: 12px; display: none;">
-                                    <h4 style="color: #667eea; margin-bottom: 15px; text-align: center;">🏆 Assign to Team</h4>
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                                        <button onclick="assignToTeam(1)" class="team-assign-btn">
-                                            <span style="display: block; font-size: 0.75em; color: #999;">Slot 1</span>
-                                            <span style="display: block; font-weight: bold;">Team Leader</span>
-                                        </button>
-                                        <button onclick="assignToTeam(2)" class="team-assign-btn">
-                                            <span style="display: block; font-size: 0.75em; color: #999;">Slot 2</span>
-                                            <span style="display: block; font-weight: bold;">Dir. of Influence</span>
-                                        </button>
-                                        <button onclick="assignToTeam(3)" class="team-assign-btn">
-                                            <span style="display: block; font-size: 0.75em; color: #999;">Slot 3</span>
-                                            <span style="display: block; font-weight: bold;">Dir. of Resources</span>
-                                        </button>
-                                        <button onclick="assignToTeam(4)" class="team-assign-btn">
-                                            <span style="display: block; font-size: 0.75em; color: #999;">Slot 4</span>
-                                            <span style="display: block; font-weight: bold;">Chief of Engagement</span>
-                                        </button>
-                                        <button onclick="assignToTeam(5)" class="team-assign-btn" style="grid-column: 1 / -1;">
-                                            <span style="display: block; font-size: 0.75em; color: #999;">Slot 5</span>
-                                            <span style="display: block; font-weight: bold;">Head of Community</span>
-                                        </button>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -912,6 +864,33 @@
                             <!-- Traits will be loaded here -->
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Team Assignment Buttons (Outside Frame) -->
+            <div id="modal-team-assignment-container" onclick="event.stopPropagation()" style="margin-top: 20px; padding: 20px; background: rgba(255,255,255,0.95); border-radius: 15px; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                <h4 style="color: #667eea; margin-bottom: 15px; text-align: center; font-size: 1.2em;">🏆 Assign to Team Role</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                    <button onclick="assignToTeam(1); event.stopPropagation();" class="team-assign-btn">
+                        <span style="display: block; font-size: 0.75em; color: #999;">Slot 1</span>
+                        <span style="display: block; font-weight: bold;">Prime Chatling</span>
+                    </button>
+                    <button onclick="assignToTeam(2); event.stopPropagation();" class="team-assign-btn">
+                        <span style="display: block; font-size: 0.75em; color: #999;">Slot 2</span>
+                        <span style="display: block; font-weight: bold;">Viral Catalyst</span>
+                    </button>
+                    <button onclick="assignToTeam(3); event.stopPropagation();" class="team-assign-btn">
+                        <span style="display: block; font-size: 0.75em; color: #999;">Slot 3</span>
+                        <span style="display: block; font-weight: bold;">Community Builder</span>
+                    </button>
+                    <button onclick="assignToTeam(4); event.stopPropagation();" class="team-assign-btn">
+                        <span style="display: block; font-size: 0.75em; color: #999;">Slot 4</span>
+                        <span style="display: block; font-weight: bold;">Engagement Maven</span>
+                    </button>
+                    <button onclick="assignToTeam(5); event.stopPropagation();" class="team-assign-btn">
+                        <span style="display: block; font-size: 0.75em; color: #999;">Slot 5 <span style="color: #e74c3c;">★ Required</span></span>
+                        <span style="display: block; font-weight: bold;">Community Ambassador</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -1118,35 +1097,16 @@
                     primaryColor: data.primary_color
                 };
 
-                // Check if this is the user's current chatling
-                const currentChatlingResponse = await fetch('/api/user/current-chatling');
-                if (currentChatlingResponse.ok) {
-                    const currentData = await currentChatlingResponse.json();
-                    const isCurrentChatling = currentData.currentChatling && currentData.currentChatling.id === creatureId;
+                // Store current creature ID for team assignment
+                window.currentModalCreatureId = creatureId;
 
-                    // Show/hide switch button
-                    const switchContainer = document.getElementById('modal-switch-button-container');
-                    const switchBtn = document.getElementById('modal-switch-chatling-btn');
-                    const currentIndicator = document.getElementById('modal-current-chatling-indicator');
+                // Show team assignment container
+                const teamAssignmentContainer = document.getElementById('modal-team-assignment-container');
+                if (teamAssignmentContainer) {
+                    teamAssignmentContainer.style.display = 'block';
 
-                    if (isCurrentChatling) {
-                        switchBtn.style.display = 'none';
-                        currentIndicator.style.display = 'block';
-                        switchContainer.style.display = 'block';
-                    } else {
-                        switchBtn.style.display = 'inline-block';
-                        currentIndicator.style.display = 'none';
-                        switchContainer.style.display = 'block';
-                    }
-
-                    // Store current creature ID for switching
-                    window.currentModalCreatureId = creatureId;
-
-                    // Show team assignment container
-                    const teamAssignmentContainer = document.getElementById('modal-team-assignment-container');
-                    if (teamAssignmentContainer) {
-                        teamAssignmentContainer.style.display = 'block';
-                    }
+                    // Fetch team data and highlight buttons for assigned roles
+                    await highlightAssignedRoles(creatureId);
                 }
 
             } catch (error) {
@@ -1165,48 +1125,41 @@
             return 'score-vlow';
         }
 
-        // Switch to a different chatling
-        async function switchToChatling() {
-            if (!window.currentModalCreatureId) {
-                console.error('No creature ID stored');
-                return;
-            }
-
-            const switchBtn = document.getElementById('modal-switch-chatling-btn');
-            const originalText = switchBtn.innerHTML;
-            switchBtn.disabled = true;
-            switchBtn.innerHTML = '⏳ Switching...';
-
+        // Highlight team role buttons if creature is assigned
+        async function highlightAssignedRoles(creatureId) {
             try {
-                const response = await fetch('/api/user/switch-chatling', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ creatureId: window.currentModalCreatureId })
+                // Fetch current team composition
+                const teamResponse = await fetch('/api/user/team');
+                if (!teamResponse.ok) return;
+
+                const teamData = await teamResponse.json();
+
+                // Reset all buttons to default style first
+                for (let slot = 1; slot <= 5; slot++) {
+                    const buttons = document.querySelectorAll(`button[onclick*="assignToTeam(${slot})"]`);
+                    buttons.forEach(btn => {
+                        btn.style.background = 'white';
+                        btn.style.color = '#333';
+                        btn.style.border = '2px solid #667eea';
+                    });
+                }
+
+                // Check which slots have this creature assigned
+                teamData.team.forEach(member => {
+                    if (member.creature && member.creature.id === creatureId) {
+                        // Highlight this slot's button
+                        const buttons = document.querySelectorAll(`button[onclick*="assignToTeam(${member.slot})"]`);
+                        buttons.forEach(btn => {
+                            btn.style.background = 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)';
+                            btn.style.color = 'white';
+                            btn.style.border = '2px solid #27ae60';
+                            btn.style.boxShadow = '0 4px 12px rgba(46, 204, 113, 0.4)';
+                        });
+                    }
                 });
 
-                if (!response.ok) {
-                    throw new Error('Failed to switch chatling');
-                }
-
-                const data = await response.json();
-
-                // Update UI to show this is now the current chatling
-                switchBtn.style.display = 'none';
-                document.getElementById('modal-current-chatling-indicator').style.display = 'block';
-
-                // Update header chatling if shared-header is present
-                if (typeof updateCurrentChatling === 'function') {
-                    updateCurrentChatling(data.currentChatling);
-                }
-
-                // Show success message
-                alert(`✨ Successfully switched to ${data.currentChatling.name}!`);
-
             } catch (error) {
-                console.error('Error switching chatling:', error);
-                alert('Failed to switch chatling. Please try again.');
-                switchBtn.disabled = false;
-                switchBtn.innerHTML = originalText;
+                console.error('Error highlighting assigned roles:', error);
             }
         }
 
@@ -1218,11 +1171,11 @@
             }
 
             const roleNames = {
-                1: 'Team Leader',
-                2: 'Director of Influence',
-                3: 'Director of Chatling Resources',
-                4: 'Chief of Engagement',
-                5: 'Head of Community'
+                1: 'Prime Chatling',
+                2: 'Viral Catalyst',
+                3: 'Community Builder',
+                4: 'Engagement Maven',
+                5: 'Community Ambassador'
             };
 
             try {
@@ -1244,6 +1197,9 @@
                 if (typeof loadTeamIcons === 'function') {
                     await loadTeamIcons();
                 }
+
+                // Refresh role button highlighting
+                await highlightAssignedRoles(window.currentModalCreatureId);
 
                 // Show success message
                 alert(`✅ Successfully assigned to ${roleNames[slot]}!`);

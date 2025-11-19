@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatroom - Chatlings</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .chatroom-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .topic {
+            text-align: center;
+            font-size: 1.3em;
+            color: #667eea;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f0f0ff;
+            border-radius: 10px;
+        }
+
+        .conversation {
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message .speaker {
+            font-weight: bold;
+            color: #667eea;
+            margin-right: 8px;
+        }
+
+        .message .text {
+            color: #333;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 10px;
+            font-style: italic;
+            color: #999;
+        }
+
+        .typing-indicator.active {
+            display: block;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            color: #1976d2;
+            margin-bottom: 20px;
+        }
+
+        .status.waiting {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status.ended {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .mood-dashboard {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        .mood-dashboard h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .mood-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 5px;
+        }
+
+        .mood-item .name {
+            font-weight: 500;
+        }
+
+        .mood-item .mood {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mood-icon {
+            font-size: 1.5em;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #667eea;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💬 Chatroom</h1>
+
+        <div class="chatroom-card">
+            <div id="status" class="status waiting">
+                Waiting for chatlings to start a conversation...
+            </div>
+
+            <div id="topicDisplay" class="topic" style="display: none;">
+                Topic: <span id="topicText"></span>
+            </div>
+
+            <div class="conversation" id="conversation">
+                <!-- Messages appear here -->
+            </div>
+
+            <div class="typing-indicator" id="typingIndicator">
+                Someone is typing...
+            </div>
+
+            <button class="btn" id="forceConversation" onclick="forceNewConversation()">
+                🎲 Start Random Conversation (Debug)
+            </button>
+
+            <div class="mood-dashboard">
+                <h3>📊 Chatling Moods</h3>
+                <div id="moodList">
+                    <!-- Mood items appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pollingInterval = null;
+        let conversationActive = false;
+        let lastTurn = 0;
+
+        // Poll for next chat line
+        async function pollForNextLine() {
+            try {
+                const response = await fetch('/api/chat/next-line');
+                const data = await response.json();
+
+                if (data.error) {
+                    console.error('Error:', data.error);
+                    return;
+                }
+
+                if (data.noConversation) {
+                    // No conversation happening
+                    if (conversationActive) {
+                        // Conversation just ended
+                        conversationEnded();
+                    }
+                    return;
+                }
+
+                if (data.conversationEnded) {
+                    conversationEnded();
+                    return;
+                }
+
+                if (data.continues) {
+                    // New message received
+                    if (!conversationActive) {
+                        conversationStarted(data.topic);
+                    }
+
+                    if (data.turn > lastTurn) {
+                        addMessage(data.speaker, data.text, data.turn);
+                        lastTurn = data.turn;
+                    }
+
+                    showTypingIndicator();
+                }
+
+            } catch (error) {
+                console.error('Polling error:', error);
+            }
+        }
+
+        function conversationStarted(topic) {
+            conversationActive = true;
+            lastTurn = 0;
+
+            document.getElementById('status').className = 'status';
+            document.getElementById('status').textContent = 'Conversation in progress...';
+
+            document.getElementById('topicDisplay').style.display = 'block';
+            document.getElementById('topicText').textContent = topic;
+
+            document.getElementById('conversation').innerHTML = '';
+        }
+
+        function conversationEnded() {
+            conversationActive = false;
+            lastTurn = 0;
+
+            document.getElementById('status').className = 'status ended';
+            document.getElementById('status').textContent = 'Conversation ended. Waiting for next one...';
+
+            hideTypingIndicator();
+            loadMoods(); // Refresh moods
+        }
+
+        function addMessage(speaker, text, turn) {
+            const conversationDiv = document.getElementById('conversation');
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.innerHTML = `
+                <span class="speaker">${speaker}:</span>
+                <span class="text">${text}</span>
+            `;
+
+            conversationDiv.appendChild(messageDiv);
+            conversationDiv.scrollTop = conversationDiv.scrollHeight;
+
+            hideTypingIndicator();
+        }
+
+        function showTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            indicator.classList.add('active');
+        }
+
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            indicator.classList.remove('active');
+        }
+
+        async function loadMoods() {
+            try {
+                const response = await fetch('/api/chat/moods');
+                const data = await response.json();
+
+                const moodList = document.getElementById('moodList');
+                moodList.innerHTML = data.moods.map(mood => {
+                    const icon = mood.mood_status === 'happy' ? '😊' :
+                                mood.mood_status === 'unhappy' ? '😞' : '😐';
+
+                    return `
+                        <div class="mood-item">
+                            <span class="name">${mood.creature_name}</span>
+                            <div class="mood">
+                                <span class="mood-icon">${icon}</span>
+                                <span>${mood.mood_status}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error('Error loading moods:', error);
+            }
+        }
+
+        async function forceNewConversation() {
+            // For debugging: Force a conversation to start
+            // This bypasses the likelihood check
+            const btn = document.getElementById('forceConversation');
+            btn.disabled = true;
+            btn.textContent = 'Starting...';
+
+            try {
+                // We'll add this endpoint if needed
+                // For now, just increase polling frequency briefly
+                alert('To force a conversation for testing, increase the chat_likelihood.likelihood_multiplier in the database.');
+            } catch (error) {
+                console.error('Error forcing conversation:', error);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🎲 Start Random Conversation (Debug)';
+            }
+        }
+
+        // Start polling every 3 seconds
+        function startPolling() {
+            pollingInterval = setInterval(pollForNextLine, 3000);
+            pollForNextLine(); // Initial poll
+        }
+
+        // Stop polling
+        function stopPolling() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+            }
+        }
+
+        // Initialize
+        loadMoods();
+        startPolling();
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', stopPolling);
+    </script>
+</body>
+</html>

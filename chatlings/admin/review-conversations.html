@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Conversations - Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .stats {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-box {
+            text-align: center;
+        }
+
+        .stat-box .number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-box .label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .filters {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .filters label {
+            font-weight: 500;
+        }
+
+        .filters select {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .conversation-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .conversation-card.flagged {
+            border: 3px solid #e74c3c;
+        }
+
+        .conversation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .conversation-meta {
+            flex: 1;
+        }
+
+        .topic {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .timestamp {
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        .participants {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .conversation-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn-flag {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-unflag {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-flag:hover, .btn-unflag:hover {
+            opacity: 0.8;
+            transform: translateY(-2px);
+        }
+
+        .messages {
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 5px;
+            border-left: 3px solid #667eea;
+        }
+
+        .message .speaker {
+            font-weight: bold;
+            color: #667eea;
+            margin-right: 8px;
+        }
+
+        .message .text {
+            color: #333;
+        }
+
+        .mood-changes {
+            margin-top: 15px;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 8px;
+        }
+
+        .mood-changes h4 {
+            margin-bottom: 10px;
+            color: #856404;
+        }
+
+        .mood-change {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+
+        .mood-icon {
+            font-size: 1.2em;
+        }
+
+        .admin-notes {
+            margin-top: 10px;
+        }
+
+        .admin-notes textarea {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.2em;
+            padding: 40px;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            background: white;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Conversation Review Dashboard</h1>
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="number" id="totalConversations">-</div>
+                <div class="label">Total Conversations</div>
+            </div>
+            <div class="stat-box">
+                <div class="number" id="flaggedCount">-</div>
+                <div class="label">Flagged Nonsense</div>
+            </div>
+            <div class="stat-box">
+                <div class="number" id="avgLength">-</div>
+                <div class="label">Avg Length (turns)</div>
+            </div>
+            <div class="stat-box">
+                <div class="number" id="last24h">-</div>
+                <div class="label">Last 24 Hours</div>
+            </div>
+        </div>
+
+        <div class="filters">
+            <label>Filter:</label>
+            <select id="filterType">
+                <option value="all">All Conversations</option>
+                <option value="flagged">Flagged Only</option>
+                <option value="recent">Last 24 Hours</option>
+            </select>
+
+            <label>Limit:</label>
+            <select id="limitCount">
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+                <option value="200">200</option>
+            </select>
+
+            <button class="btn btn-flag" onclick="loadConversations()">Refresh</button>
+        </div>
+
+        <div id="conversationsList">
+            <div class="loading">Loading conversations...</div>
+        </div>
+    </div>
+
+    <script>
+        let conversations = [];
+
+        async function loadConversations() {
+            const filterType = document.getElementById('filterType').value;
+            const limit = document.getElementById('limitCount').value;
+
+            document.getElementById('conversationsList').innerHTML = '<div class="loading">Loading conversations...</div>';
+
+            try {
+                const response = await fetch(`/api/admin/conversations?filter=${filterType}&limit=${limit}`);
+                const data = await response.json();
+
+                conversations = data.conversations;
+                updateStats(data.stats);
+                renderConversations();
+            } catch (error) {
+                console.error('Error loading conversations:', error);
+                document.getElementById('conversationsList').innerHTML = '<div class="empty">Error loading conversations</div>';
+            }
+        }
+
+        function updateStats(stats) {
+            document.getElementById('totalConversations').textContent = stats.total || 0;
+            document.getElementById('flaggedCount').textContent = stats.flagged || 0;
+            document.getElementById('avgLength').textContent = stats.avgLength || 0;
+            document.getElementById('last24h').textContent = stats.last24h || 0;
+        }
+
+        function renderConversations() {
+            const container = document.getElementById('conversationsList');
+
+            if (conversations.length === 0) {
+                container.innerHTML = '<div class="empty">No conversations found</div>';
+                return;
+            }
+
+            container.innerHTML = conversations.map(conv => `
+                <div class="conversation-card ${conv.flagged_nonsense ? 'flagged' : ''}" data-id="${conv.id}">
+                    <div class="conversation-header">
+                        <div class="conversation-meta">
+                            <div class="topic">💬 ${conv.topic}</div>
+                            <div class="timestamp">${formatTimestamp(conv.created_at)}</div>
+                            <div class="participants">
+                                Participants: ${conv.participants.map(p => p.name).join(', ')}
+                            </div>
+                        </div>
+                        <div class="conversation-actions">
+                            ${conv.flagged_nonsense
+                                ? `<button class="btn btn-unflag" onclick="toggleFlag(${conv.id}, false)">✓ Unflag</button>`
+                                : `<button class="btn btn-flag" onclick="toggleFlag(${conv.id}, true)">⚠ Flag Nonsense</button>`
+                            }
+                        </div>
+                    </div>
+
+                    <div class="messages">
+                        ${renderMessages(conv.messages)}
+                    </div>
+
+                    ${renderMoodChanges(conv.mood_changes)}
+
+                    <div class="admin-notes">
+                        <textarea
+                            placeholder="Admin notes..."
+                            onchange="saveNotes(${conv.id}, this.value)"
+                        >${conv.admin_notes || ''}</textarea>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderMessages(messages) {
+            if (!messages || messages.length === 0) {
+                return '<div style="color: #999; font-style: italic;">No messages recorded</div>';
+            }
+
+            return messages.map(msg => `
+                <div class="message">
+                    <span class="speaker">${msg.speaker}:</span>
+                    <span class="text">${msg.text}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderMoodChanges(moodChanges) {
+            if (!moodChanges || Object.keys(moodChanges).length === 0) {
+                return '';
+            }
+
+            const changes = Object.entries(moodChanges).map(([creatureId, change]) => {
+                const icon = change.after === 'happy' ? '😊' :
+                           change.after === 'unhappy' ? '😞' : '😐';
+
+                return `
+                    <div class="mood-change">
+                        <span class="mood-icon">${icon}</span>
+                        <span>Creature ${creatureId}: ${change.before} → ${change.after} (score: ${change.score})</span>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="mood-changes">
+                    <h4>Mood Changes</h4>
+                    ${changes}
+                </div>
+            `;
+        }
+
+        async function toggleFlag(conversationId, flag) {
+            try {
+                await fetch(`/api/admin/conversations/${conversationId}/flag`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ flagged: flag })
+                });
+
+                // Update local data
+                const conv = conversations.find(c => c.id === conversationId);
+                if (conv) {
+                    conv.flagged_nonsense = flag;
+                    renderConversations();
+                }
+            } catch (error) {
+                console.error('Error toggling flag:', error);
+                alert('Failed to update flag');
+            }
+        }
+
+        async function saveNotes(conversationId, notes) {
+            try {
+                await fetch(`/api/admin/conversations/${conversationId}/notes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ notes })
+                });
+            } catch (error) {
+                console.error('Error saving notes:', error);
+            }
+        }
+
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 60) return `${diffMins} minutes ago`;
+            if (diffHours < 24) return `${diffHours} hours ago`;
+            if (diffDays < 7) return `${diffDays} days ago`;
+
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        }
+
+        // Initial load
+        loadConversations();
+
+        // Auto-refresh every 30 seconds
+        setInterval(loadConversations, 30000);
+    </script>
+</body>
+</html>

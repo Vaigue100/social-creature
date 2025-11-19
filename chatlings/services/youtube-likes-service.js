@@ -118,8 +118,8 @@ class YouTubeLikesService {
             client
           );
 
-          // Claim the reward for the user
-          await this.claimReward(userId, creature.id, client);
+          // Claim the reward for the user (with video ID to prevent duplicates)
+          await this.claimReward(userId, creature.id, client, video.videoId);
 
           newRewards.push({
             creature_id: creature.id,
@@ -153,16 +153,15 @@ class YouTubeLikesService {
   }
 
   /**
-   * Check if user already has the reward for this video's chatling
+   * Check if user already has claimed a reward from this video
+   * Checks permanent history via source_video_id (prevents duplicate claims)
    */
   async checkUserHasReward(userId, videoId, client) {
     const result = await client.query(`
       SELECT ur.id
       FROM user_rewards ur
-      JOIN video_rewards vr ON ur.creature_id = vr.creature_id
       WHERE ur.user_id = $1
-        AND vr.video_id = $2
-        AND vr.expires_at > CURRENT_TIMESTAMP
+        AND ur.source_video_id = $2
     `, [userId, videoId]);
 
     return result.rows.length > 0;
@@ -237,13 +236,14 @@ class YouTubeLikesService {
 
   /**
    * Claim a reward for a user (permanent)
+   * Stores source_video_id to prevent duplicate claims from same video
    */
-  async claimReward(userId, creatureId, client) {
+  async claimReward(userId, creatureId, client, videoId = null) {
     await client.query(`
-      INSERT INTO user_rewards (user_id, creature_id, platform)
-      VALUES ($1, $2, 'YouTube')
+      INSERT INTO user_rewards (user_id, creature_id, platform, source_video_id)
+      VALUES ($1, $2, 'YouTube', $3)
       ON CONFLICT (user_id, creature_id) DO NOTHING
-    `, [userId, creatureId]);
+    `, [userId, creatureId, videoId]);
   }
 
   /**

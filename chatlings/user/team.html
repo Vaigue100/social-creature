@@ -19,30 +19,27 @@
             color: #333;
         }
 
-        .team-container {
-            max-width: 1400px;
-            margin: 100px auto 40px;
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
             padding: 20px;
         }
 
         .team-header {
             text-align: center;
-            margin-bottom: 40px;
-            color: white;
+            margin-bottom: 30px;
         }
 
         .team-header h1 {
-            font-size: 3em;
+            font-size: 2.5em;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
 
         .team-header p {
-            font-size: 1.2em;
-            opacity: 0.9;
+            font-size: 1.1em;
         }
 
-        /* CEO Section */
+        /* Social Architect Section */
         .ceo-section {
             background: white;
             border-radius: 20px;
@@ -269,13 +266,14 @@
     </style>
 </head>
 <body>
-    <!-- Shared Header -->
-    <div id="shared-header"></div>
+    <script src="components/shared-header.js"></script>
+    <div class="container">
+        <script>initSharedHeader('team');</script>
 
-    <div class="team-container">
+        <div style="background: rgba(255, 255, 255, 0.95); border-radius: 15px; padding: 40px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1); margin-top: 20px;">
         <div class="team-header">
-            <h1>🏆 My Team</h1>
-            <p>Your elite squad of Chatlings</p>
+            <h1 style="color: #667eea;">🏆 My Team</h1>
+            <p style="color: #666;">Your elite squad of Chatlings</p>
         </div>
 
         <div id="loading" class="loading">Loading team...</div>
@@ -285,7 +283,7 @@
             <div class="ceo-card">
                 <div class="ceo-icon">👤</div>
                 <div class="ceo-info">
-                    <div class="role-title">🎯 CEO & Team Commander</div>
+                    <div class="role-title">🎯 Social Architect</div>
                     <h2 id="ceo-name">You</h2>
                     <p class="email" id="ceo-email"></p>
                 </div>
@@ -324,12 +322,10 @@
                 <ul class="insights-list" id="insights-list"></ul>
             </div>
         </div>
-    </div>
+        </div><!-- Close content wrapper -->
+    </div><!-- Close container -->
 
-    <script src="components/shared-header.js"></script>
     <script>
-        // Initialize header with 'team' as active page
-        initSharedHeader('team');
 
         let teamData = null;
 
@@ -367,9 +363,17 @@
                 const card = document.createElement('div');
                 card.className = 'team-member-card';
 
-                let content = `<div class="role-badge">${member.role}</div>`;
+                // Add "Required" indicator for Community Ambassador (slot 5)
+                const requiredLabel = member.slot === 5 ? ' <span style="color: #e74c3c; font-size: 0.85em;">★ Required</span>' : '';
+                let content = `<div class="role-badge">${member.role}${requiredLabel}</div>`;
 
                 if (member.creature) {
+                    // Make card clickable for filled slots
+                    card.style.cursor = 'pointer';
+                    card.onclick = () => {
+                        window.location.href = `view-creature.html?id=${member.creature.id}&from=team`;
+                    };
+
                     content += `
                         <div class="creature-slot">
                             <div class="creature-image-wrapper">

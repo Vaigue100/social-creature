@@ -5,6 +5,7 @@
  */
 
 const YouTubeLikesService = require('./youtube-likes-service');
+const ChatroomBackgroundService = require('./chatroom-background-service');
 
 class Services {
   constructor(dbConfig) {
@@ -12,6 +13,7 @@ class Services {
 
     // Initialize services
     this.youtubeLikes = new YouTubeLikesService(dbConfig);
+    this.chatroomBackground = new ChatroomBackgroundService(dbConfig);
   }
 
   /**
@@ -30,6 +32,9 @@ class Services {
       console.log('   Add YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET to .env to enable');
     }
 
+    // Start chatroom background service
+    this.chatroomBackground.start();
+
     console.log('='.repeat(80) + '\n');
   }
 
@@ -37,7 +42,8 @@ class Services {
    * Stop all background services
    */
   stop() {
-    // No background services to stop (session-based only)
+    console.log('✓ Stopping services...');
+    this.chatroomBackground.stop();
     console.log('✓ Services stopped');
   }
 }

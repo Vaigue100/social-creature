@@ -3,16 +3,14 @@
  * Injects common header HTML and functionality across all user pages
  */
 
-// Store current creature ID for modal
-let currentCreatureId = null;
-
 function getPageTitle(activePage) {
     const titles = {
         'home': 'Home',
         'collections': 'Collection',
         'achievements': 'Achievements',
         'integrations': 'Integrations',
-        'team': 'Team'
+        'team': 'Team',
+        'chatroom': 'Chatroom'
     };
     return titles[activePage] || 'Home';
 }
@@ -84,6 +82,7 @@ function initSharedHeader(activePage = 'home') {
                 <a href="index.html" class="nav-link ${activePage === 'home' ? 'active' : ''}">Home</a>
                 <a href="collections.html" class="nav-link ${activePage === 'collections' ? 'active' : ''}">Collections</a>
                 <a href="team.html" class="nav-link ${activePage === 'team' ? 'active' : ''}">Team</a>
+                <a href="chatroom.html" class="nav-link ${activePage === 'chatroom' ? 'active' : ''}">Chatroom</a>
                 <a href="achievements.html" class="nav-link ${activePage === 'achievements' ? 'active' : ''}">Achievements</a>
                 <a href="integrations.html" class="nav-link ${activePage === 'integrations' ? 'active' : ''}">Integrations</a>
                 <a href="#" class="nav-link" onclick="openGuideModal(); return false;">Guide</a>
@@ -161,11 +160,11 @@ async function loadTeamIcons() {
                 img.title = `${member.role}: ${member.creature.name}`;
                 icon.appendChild(img);
 
-                // Click to view details
+                // Click to view details (determine current page for back navigation)
                 icon.onclick = () => {
-                    if (typeof openChatlingModal === 'function') {
-                        window.location.href = `collections.html?creature=${member.creature.id}`;
-                    }
+                    const currentPage = window.location.pathname.includes('team.html') ? 'team' :
+                                       window.location.pathname.includes('index.html') ? 'home' : 'collections';
+                    window.location.href = `view-creature.html?id=${member.creature.id}&from=${currentPage}`;
                 };
             } else {
                 icon.textContent = '?';
@@ -200,26 +199,6 @@ function updateHeaderUserInfo(user) {
     const userAvatar = document.getElementById('user-avatar');
     if (userAvatar && user.username) {
         userAvatar.textContent = user.username.charAt(0).toUpperCase();
-    }
-
-    // Update current chatling display in header
-    if (user.currentChatling) {
-        const chatling = user.currentChatling;
-        currentCreatureId = chatling.id; // Store for modal
-
-        // Show mini chatling card
-        const miniCard = document.getElementById('current-chatling-mini');
-        if (miniCard) {
-            miniCard.style.display = 'flex';
-        }
-
-        const chatlingImageMini = document.getElementById('chatling-image-mini');
-        const chatlingNameMini = document.getElementById('chatling-name-mini');
-        const chatlingRarityMini = document.getElementById('chatling-rarity-mini');
-
-        if (chatlingImageMini) chatlingImageMini.src = `/images/${chatling.image}`;
-        if (chatlingNameMini) chatlingNameMini.textContent = chatling.shortName || chatling.name;
-        if (chatlingRarityMini) chatlingRarityMini.textContent = chatling.rarityTier || 'Unknown';
     }
 }
 
@@ -366,9 +345,4 @@ async function logout() {
 // Stub for guide modal (will be defined on pages that need it)
 function openGuideModal() {
     window.location.href = 'index.html#guide';
-}
-
-// Stub for chatling modal (will be defined on pages that need it)
-function openChatlingModal() {
-    window.location.href = `view-chatling.html?id=${currentCreatureId}`;
 }

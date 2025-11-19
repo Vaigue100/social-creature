@@ -33,6 +33,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const sharp = require('sharp');
+const readline = require('readline');
 const config = { ...require('./scripts/db-config'), database: 'chatlings' };
 
 const ARTWORK_DIR = path.join(__dirname, 'artwork');
@@ -160,6 +161,41 @@ function log(message) {
   console.log(`[${timestamp}] ${message}`);
 }
 
+async function promptUserForBodyType(client, unmatchedCount) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    log(`\n⚠️  ${unmatchedCount} images could not be matched to prompts (custom designs)`);
+    log(`   Would you like to assign them to a body type? (y/n)`);
+
+    rl.question('> ', async (answer) => {
+      if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
+        rl.close();
+        resolve(null);
+        return;
+      }
+
+      // Get list of body types
+      const bodyTypes = await client.query('SELECT id, body_type_name FROM dim_body_type ORDER BY body_type_name');
+
+      log(`\n   Available body types:`);
+      bodyTypes.rows.forEach(bt => {
+        log(`      - ${bt.body_type_name}`);
+      });
+
+      log(`\n   Enter body type name for these ${unmatchedCount} images:`);
+
+      rl.question('> ', (bodyTypeName) => {
+        rl.close();
+        resolve(bodyTypeName.trim());
+      });
+    });
+  });
+}
+
 function findFilesRecursively(dir, extension) {
   const files = [];
 
@@ -226,6 +262,7 @@ async function processZipFile(zipFile) {
 
     let assignedCount = 0;
     let skippedCount = 0;
+    const unmatchedImages = []; // Store unmatched images for later processing
 
     for (const jsonPath of jsonFiles) {
       const baseName = path.basename(jsonPath, '.info.json');
@@ -296,8 +333,16 @@ async function processZipFile(zipFile) {
       }
 
       if (promptResult.rows.length === 0) {
-        log(`   ⚠️  Prompt not found in database`);
+        log(`   ⚠️  Prompt not found in database (custom design)`);
         log(`      Perchance prompt: ${prompt.substring(0, 100)}...`);
+        // Store unmatched image for later processing
+        unmatchedImages.push({
+          jsonPath,
+          jpegPath,
+          baseName,
+          imageId,
+          prompt
+        });
         skippedCount++;
         continue;
       }
@@ -391,6 +436,115 @@ async function processZipFile(zipFile) {
 
       log(`   ✅ Created: ${creatureName}`);
       assignedCount++;
+    }
+
+    // Handle unmatched images (custom designs)
+    if (unmatchedImages.length > 0) {
+      log(`\n   📋 Processing ${unmatchedImages.length} unmatched image(s)...`);
+
+      const bodyTypeName = await promptUserForBodyType(client, unmatchedImages.length);
+
+      if (bodyTypeName) {
+        // Find the body type
+        const bodyTypeResult = await client.query(
+          'SELECT id, body_type_name FROM dim_body_type WHERE LOWER(body_type_name) = LOWER($1)',
+          [bodyTypeName]
+        );
+
+        if (bodyTypeResult.rows.length === 0) {
+          log(`   ❌ Body type "${bodyTypeName}" not found. Skipping unmatched images.`);
+        } else {
+          const bodyType = bodyTypeResult.rows[0];
+          log(`   ✓ Assigning to body type: ${bodyType.body_type_name}`);
+
+          // Process each unmatched image
+          for (const unmatched of unmatchedImages) {
+            // Find any available prompt from this body type that hasn't been used yet
+            // Prefer prompts that haven't been exported yet, then fall back to any prompt
+            const availablePrompt = await client.query(`
+              SELECT cp.id
+              FROM creature_prompts cp
+              WHERE cp.body_type_id = $1
+                AND NOT EXISTS (
+                  SELECT 1 FROM creatures c WHERE c.prompt_id = cp.id
+                )
+              ORDER BY RANDOM()
+              LIMIT 1
+            `, [bodyType.id]);
+
+            let promptId;
+
+            if (availablePrompt.rows.length > 0) {
+              promptId = availablePrompt.rows[0].id;
+            } else {
+              // All prompts have been used at least once, just pick a random one
+              const anyPrompt = await client.query(`
+                SELECT id FROM creature_prompts
+                WHERE body_type_id = $1
+                ORDER BY RANDOM()
+                LIMIT 1
+              `, [bodyType.id]);
+
+              if (anyPrompt.rows.length === 0) {
+                log(`   ❌ No prompts found for ${bodyType.body_type_name}. Skipping ${unmatched.baseName}`);
+                continue;
+              }
+
+              promptId = anyPrompt.rows[0].id;
+            }
+
+            // Check if this specific image has already been imported
+            const existingImage = await client.query(
+              'SELECT id, creature_name FROM creatures WHERE perchance_image_id = $1',
+              [unmatched.imageId]
+            );
+
+            if (existingImage.rows.length > 0) {
+              log(`   ⊘ Image already imported as: ${existingImage.rows[0].creature_name} (skipping)`);
+              continue;
+            }
+
+            // Generate a unique name for this creature
+            const newName = await getRandomName(client);
+
+            // Create new creature record
+            const creatureResult = await client.query(`
+              INSERT INTO creatures
+                (creature_name, prompt_id, selected_image, rarity_tier, perchance_image_id)
+              VALUES ($1, $2, $3, $4, $5)
+              RETURNING id
+            `, [
+              newName,
+              promptId,
+              null,
+              'Common',
+              unmatched.imageId
+            ]);
+
+            const creatureId = creatureResult.rows[0].id;
+
+            // Copy image to linked folder
+            const newFilename = `${creatureId}.jpg`;
+            const newPath = path.join(LINKED_DIR, newFilename);
+            fs.copyFileSync(unmatched.jpegPath, newPath);
+
+            // Create thumbnail
+            await createThumbnail(newPath, creatureId);
+
+            // Update creature with image filename
+            await client.query(
+              'UPDATE creatures SET selected_image = $1 WHERE id = $2',
+              [newFilename, creatureId]
+            );
+
+            log(`   ✅ Created: ${newName} (${bodyType.body_type_name})`);
+            assignedCount++;
+            skippedCount--; // Remove from skipped count since we processed it
+          }
+        }
+      } else {
+        log(`   ⊘ Skipping ${unmatchedImages.length} unmatched image(s)`);
+      }
     }
 
     // Move ZIP to processed folder (use copy+delete for Windows reliability)

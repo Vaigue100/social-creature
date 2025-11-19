@@ -171,7 +171,7 @@ class OAuthService {
 
   /**
    * Assign a random common creature as starter to new user
-   * Adds to collection and sets as current creature
+   * Adds to collection and sets as Community Ambassador (team slot 5)
    */
   async assignStarterCreature(client, userId) {
     try {
@@ -200,14 +200,14 @@ class OAuthService {
         VALUES ($1, $2, 'Starter', NOW())
       `, [userId, creature.id]);
 
-      // Set as current creature
+      // Set as Community Ambassador (slot 5 - required for all users)
       await client.query(`
         UPDATE users
-        SET current_creature_id = $1
+        SET team_member_5_id = $1
         WHERE id = $2
       `, [creature.id, userId]);
 
-      console.log(`✓ Assigned starter creature: ${creature.creature_name} to new user`);
+      console.log(`✓ Assigned starter creature as Community Ambassador: ${creature.creature_name} to new user`);
       return creature;
 
     } catch (error) {

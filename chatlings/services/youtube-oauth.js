@@ -18,13 +18,17 @@ class YouTubeOAuthService {
   constructor(config) {
     this.dbConfig = config;
 
-    // Load OAuth credentials from environment
-    this.clientId = process.env.YOUTUBE_CLIENT_ID;
-    this.clientSecret = process.env.YOUTUBE_CLIENT_SECRET;
+    // Use same OAuth credentials as Google login for incremental authorization
+    // Falls back to separate YOUTUBE_* credentials if Google credentials not available
+    this.clientId = process.env.GOOGLE_CLIENT_ID || process.env.YOUTUBE_CLIENT_ID;
+    this.clientSecret = process.env.GOOGLE_CLIENT_SECRET || process.env.YOUTUBE_CLIENT_SECRET;
     this.redirectUri = process.env.YOUTUBE_REDIRECT_URI || 'http://localhost:3000/api/auth/youtube/callback';
 
     if (!this.clientId || !this.clientSecret) {
-      console.warn('⚠️  YouTube OAuth not configured. Set YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET in .env');
+      console.warn('⚠️  YouTube OAuth not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env');
+      console.warn('   (YouTube integration uses the same OAuth client as Google login)');
+    } else {
+      console.log('✓ YouTube OAuth configured (using Google OAuth credentials)');
     }
 
     this.oauth2Client = new google.auth.OAuth2(
@@ -36,18 +40,31 @@ class YouTubeOAuthService {
 
   /**
    * Generate authorization URL for user to grant access
+   * Supports incremental authorization if user already logged in with Google
    */
-  getAuthorizationUrl(userId) {
-    const scopes = [
+  getAuthorizationUrl(userId, includeLoginScopes = false) {
+    // YouTube-specific scopes
+    const youtubeScopes = [
       'https://www.googleapis.com/auth/youtube.readonly',
       'https://www.googleapis.com/auth/youtube.force-ssl'
     ];
+
+    // Include login scopes if user not already authenticated with Google
+    const loginScopes = [
+      'https://www.googleapis.com/auth/userinfo.profile',
+      'https://www.googleapis.com/auth/userinfo.email'
+    ];
+
+    const scopes = includeLoginScopes
+      ? [...loginScopes, ...youtubeScopes]
+      : youtubeScopes;
 
     return this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
       state: userId, // Pass userId through state parameter
-      prompt: 'consent' // Force consent screen to get refresh token
+      prompt: includeLoginScopes ? 'consent' : 'select_account', // Incremental auth for existing users
+      include_granted_scopes: true // Enable incremental authorization
     });
   }
 

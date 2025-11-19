@@ -11,6 +11,7 @@ const fs = require('fs');
 const Services = require('./services');
 const dailyChatlingService = require('./services/daily-chatling-service');
 const SocialInteractionService = require('./services/social-interaction-service');
+const ChatroomService = require('./services/chatroom-service');
 const passport = require('./config/passport');
 
 const app = express();
@@ -22,6 +23,7 @@ const config = { ...require('./scripts/db-config'), database: 'chatlings' };
 // Initialize services
 const services = new Services(config);
 const socialInteractionService = new SocialInteractionService(require('./scripts/db-config'));
+const chatroomService = new ChatroomService(config);
 
 // Session middleware (privacy-first - no long-term storage)
 app.use(session({
@@ -808,7 +810,7 @@ app.post('/api/user/youtube-disconnect', async (req, res) => {
 });
 
 /**
- * YouTube OAuth - Initiate authorization (session-based)
+ * YouTube OAuth - Initiate authorization (session-based with incremental auth)
  */
 app.get('/api/auth/youtube/authorize', async (req, res) => {
   try {
@@ -816,10 +818,22 @@ app.get('/api/auth/youtube/authorize', async (req, res) => {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    // Generate authorization URL with session ID as state
-    const authUrl = services.youtubeLikes.getAuthorizationUrl(req.session.id);
+    // Check if user is already authenticated with Google OAuth (from passport)
+    // This enables incremental authorization for a smoother experience
+    const isGoogleAuthenticated = !!req.session.passport;
 
-    res.json({ authUrl });
+    // Generate authorization URL
+    // If user logged in with Google, only request YouTube scopes (incremental)
+    // Otherwise, request both login + YouTube scopes
+    const authUrl = services.youtubeLikes.getAuthorizationUrl(
+      req.session.id,
+      !isGoogleAuthenticated // includeLoginScopes only if not authenticated with Google
+    );
+
+    res.json({
+      authUrl,
+      incrementalAuth: isGoogleAuthenticated // Info for UI
+    });
 
   } catch (error) {
     console.error('Error initiating YouTube auth:', error);
@@ -1141,11 +1155,11 @@ app.get('/api/user/team', async (req, res) => {
 
     // Team roles
     const roles = [
-      { slot: 1, title: 'Team Leader', column: 'current_creature_id' },
-      { slot: 2, title: 'Director of Influence', column: 'team_member_2_id' },
-      { slot: 3, title: 'Director of Chatling Resources', column: 'team_member_3_id' },
-      { slot: 4, title: 'Chief of Engagement', column: 'team_member_4_id' },
-      { slot: 5, title: 'Head of Community', column: 'team_member_5_id' }
+      { slot: 1, title: 'Prime Chatling', column: 'current_creature_id' },
+      { slot: 2, title: 'Viral Catalyst', column: 'team_member_2_id' },
+      { slot: 3, title: 'Community Builder', column: 'team_member_3_id' },
+      { slot: 4, title: 'Engagement Maven', column: 'team_member_4_id' },
+      { slot: 5, title: 'Community Ambassador', column: 'team_member_5_id' }
     ];
 
     // Fetch details for each team member
@@ -1255,15 +1269,79 @@ app.post('/api/user/team/assign', async (req, res) => {
       5: 'team_member_5_id'
     };
 
-    const column = columnMap[slot];
-
-    // Update team slot
-    await client.query(
-      `UPDATE users SET ${column} = $1 WHERE id = $2`,
-      [creatureId, req.session.userId]
+    // Get current team state
+    const currentTeam = await client.query(
+      `SELECT current_creature_id, team_member_2_id, team_member_3_id,
+              team_member_4_id, team_member_5_id
+       FROM users WHERE id = $1`,
+      [req.session.userId]
     );
 
-    res.json({ success: true, slot, creatureId });
+    if (currentTeam.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const teamState = currentTeam.rows[0];
+    const targetColumn = columnMap[slot];
+    const creatureInTargetSlot = teamState[targetColumn];
+
+    // Find if the creature being assigned is currently in another slot
+    let sourceSlot = null;
+    for (const [slotNum, column] of Object.entries(columnMap)) {
+      if (teamState[column] === creatureId) {
+        sourceSlot = parseInt(slotNum);
+        break;
+      }
+    }
+
+    // Implement swap logic
+    if (sourceSlot !== null && sourceSlot !== slot) {
+      // Creature is moving from sourceSlot to slot
+      // Swap: put creature from target slot into source slot
+      const sourceColumn = columnMap[sourceSlot];
+
+      await client.query(
+        `UPDATE users
+         SET ${sourceColumn} = $1, ${targetColumn} = $2
+         WHERE id = $3`,
+        [creatureInTargetSlot, creatureId, req.session.userId]
+      );
+    } else {
+      // Creature is not in any slot yet, just assign it
+      await client.query(
+        `UPDATE users SET ${targetColumn} = $1 WHERE id = $2`,
+        [creatureId, req.session.userId]
+      );
+    }
+
+    // Validate that Community Ambassador (slot 5) is always filled
+    // Also validate no creature appears in multiple slots
+    const updatedTeam = await client.query(
+      `SELECT current_creature_id, team_member_2_id, team_member_3_id,
+              team_member_4_id, team_member_5_id
+       FROM users WHERE id = $1`,
+      [req.session.userId]
+    );
+
+    const finalTeamState = updatedTeam.rows[0];
+
+    // Check Community Ambassador is filled
+    if (!finalTeamState.team_member_5_id) {
+      return res.status(400).json({
+        error: 'Community Ambassador role must always be filled. Please assign a creature to this role.'
+      });
+    }
+
+    // Check for duplicate assignments
+    const assignedCreatures = Object.values(finalTeamState).filter(id => id !== null);
+    const uniqueCreatures = new Set(assignedCreatures);
+    if (assignedCreatures.length !== uniqueCreatures.size) {
+      return res.status(500).json({
+        error: 'System error: A creature cannot be in multiple roles. Please refresh and try again.'
+      });
+    }
+
+    res.json({ success: true, slot, creatureId, swapped: sourceSlot !== null && sourceSlot !== slot });
 
   } catch (error) {
     console.error('Error assigning to team:', error);
@@ -1651,6 +1729,302 @@ function getColorFromScheme(schemeName) {
 
   return colorMap[schemeName] || '#667eea';
 }
+
+// ============================================================================
+// Chatroom API Endpoints
+// ============================================================================
+
+/**
+ * Get user's conversations (paginated)
+ */
+app.get('/api/chatroom/conversations', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const limit = parseInt(req.query.limit) || 10;
+  const offset = parseInt(req.query.offset) || 0;
+
+  try {
+    const conversations = await chatroomService.getConversations(
+      req.session.userId,
+      limit,
+      offset
+    );
+
+    res.json(conversations);
+
+  } catch (error) {
+    console.error('Error fetching conversations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get user's runaway chatlings
+ */
+app.get('/api/chatroom/runaways', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const runaways = await chatroomService.getRunaways(req.session.userId);
+    res.json(runaways);
+
+  } catch (error) {
+    console.error('Error fetching runaways:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Attempt to recover a runaway chatling
+ */
+app.post('/api/chatroom/recover/:creatureId', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { creatureId } = req.params;
+
+  try {
+    const result = await chatroomService.recoverRunaway(
+      req.session.userId,
+      creatureId
+    );
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('Error recovering runaway:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Mark conversation as read
+ */
+app.post('/api/chatroom/mark-read/:conversationId', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { conversationId } = req.params;
+
+  try {
+    await chatroomService.markConversationRead(conversationId, req.session.userId);
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Error marking conversation as read:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Manually generate conversation (for testing)
+ */
+app.post('/api/chatroom/generate', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const conversationId = await chatroomService.generateConversation(req.session.userId);
+
+    if (!conversationId) {
+      return res.json({
+        success: false,
+        message: 'Could not generate conversation (need at least 2 chatlings)'
+      });
+    }
+
+    res.json({
+      success: true,
+      conversationId,
+      message: 'Conversation generated successfully!'
+    });
+
+  } catch (error) {
+    console.error('Error generating conversation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// Procedural Chat Engine API (Client Polling)
+// ============================================================================
+
+const conversationEngine = require('./services/conversation-engine');
+
+/**
+ * Client polls this endpoint for next chat line
+ * Returns null if no conversation active/starting
+ */
+app.get('/api/chat/next-line', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const nextLine = await conversationEngine.getNextLine(req.session.userId);
+    res.json(nextLine || { continues: false, noConversation: true });
+
+  } catch (error) {
+    console.error('Error getting next chat line:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get user's mood dashboard
+ */
+app.get('/api/chat/moods', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const moods = await client.query(`
+      SELECT
+        c.id,
+        c.creature_name,
+        c.selected_image,
+        ur.mood_status,
+        ur.unhappy_count
+      FROM user_rewards ur
+      JOIN creatures c ON ur.creature_id = c.id
+      WHERE ur.user_id = $1
+      ORDER BY c.creature_name
+    `, [req.session.userId]);
+
+    res.json({ moods: moods.rows });
+
+  } catch (error) {
+    console.error('Error fetching moods:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+// ============================================================================
+// Admin Conversation Review API Endpoints
+// ============================================================================
+
+/**
+ * Get conversations from audit log for admin review
+ */
+app.get('/api/admin/conversations', async (req, res) => {
+  const filter = req.query.filter || 'all';
+  const limit = parseInt(req.query.limit) || 100;
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Build query based on filter
+    let query = 'SELECT * FROM conversation_audit_log';
+    const params = [];
+
+    if (filter === 'flagged') {
+      query += ' WHERE flagged_nonsense = true';
+    } else if (filter === 'recent') {
+      query += ' WHERE created_at > NOW() - INTERVAL \'24 hours\'';
+    }
+
+    query += ' ORDER BY created_at DESC LIMIT $1';
+    params.push(limit);
+
+    const conversations = await client.query(query, params);
+
+    // Get statistics
+    const stats = await client.query(`
+      SELECT
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE flagged_nonsense = true) as flagged,
+        COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '24 hours') as last24h,
+        AVG(jsonb_array_length(messages)) as avg_length
+      FROM conversation_audit_log
+    `);
+
+    res.json({
+      conversations: conversations.rows,
+      stats: {
+        total: parseInt(stats.rows[0]?.total || 0),
+        flagged: parseInt(stats.rows[0]?.flagged || 0),
+        last24h: parseInt(stats.rows[0]?.last24h || 0),
+        avgLength: parseFloat(stats.rows[0]?.avg_length || 0).toFixed(1)
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching admin conversations:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Flag/unflag a conversation as nonsense
+ */
+app.post('/api/admin/conversations/:id/flag', async (req, res) => {
+  const { id } = req.params;
+  const { flagged } = req.body;
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    await client.query(
+      'UPDATE conversation_audit_log SET flagged_nonsense = $1 WHERE id = $2',
+      [flagged, id]
+    );
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Error flagging conversation:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Save admin notes for a conversation
+ */
+app.post('/api/admin/conversations/:id/notes', async (req, res) => {
+  const { id } = req.params;
+  const { notes } = req.body;
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    await client.query(
+      'UPDATE conversation_audit_log SET admin_notes = $1 WHERE id = $2',
+      [notes, id]
+    );
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Error saving notes:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
 
 // Start server
 app.listen(PORT, () => {
