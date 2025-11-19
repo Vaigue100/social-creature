@@ -342,18 +342,34 @@
         }
 
         async function forceNewConversation() {
-            // For debugging: Force a conversation to start
-            // This bypasses the likelihood check
+            // Force a conversation to start (bypasses likelihood check)
             const btn = document.getElementById('forceConversation');
             btn.disabled = true;
             btn.textContent = 'Starting...';
 
             try {
-                // We'll add this endpoint if needed
-                // For now, just increase polling frequency briefly
-                alert('To force a conversation for testing, increase the chat_likelihood.likelihood_multiplier in the database.');
+                const response = await fetch('/api/chat/force-start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    // Clear existing conversation display
+                    document.getElementById('conversation').innerHTML = '';
+                    lastTurn = 0;
+
+                    // Immediately poll for the first line
+                    setTimeout(() => pollForNextLine(), 100);
+
+                    document.getElementById('status').className = 'status';
+                    document.getElementById('status').textContent = '✅ Conversation started! Polling for messages...';
+                } else {
+                    alert(data.message || 'Failed to start conversation');
+                }
             } catch (error) {
                 console.error('Error forcing conversation:', error);
+                alert('Error: ' + error.message);
             } finally {
                 btn.disabled = false;
                 btn.textContent = '🎲 Start Random Conversation (Debug)';

@@ -1826,6 +1826,41 @@ app.post('/api/chatroom/mark-read/:conversationId', async (req, res) => {
 });
 
 /**
+ * Force start a conversation (bypasses likelihood check - for testing)
+ */
+app.post('/api/chat/force-start', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    // Delete any existing active conversation first
+    await db.query('DELETE FROM active_conversations WHERE user_id = $1', [req.session.userId]);
+
+    // Force start a new conversation
+    const conversationEngine = require('./services/conversation-engine');
+    const result = await conversationEngine.startConversation(req.session.userId);
+
+    if (!result) {
+      return res.json({
+        success: false,
+        message: 'Could not start conversation (need at least 2 chatlings and active topics)'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Conversation started!',
+      firstLine: result
+    });
+
+  } catch (error) {
+    console.error('Error forcing conversation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * Manually generate conversation (for testing)
  */
 app.post('/api/chatroom/generate', async (req, res) => {
