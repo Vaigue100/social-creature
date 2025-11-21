@@ -29,6 +29,12 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     try {
       // Find or create user from Google profile
       const userId = await oauthService.findOrCreateUserFromOAuth('google', profile);
+
+      // If no active user found, pass profile info for signup
+      if (userId === null) {
+        return done(null, { needsSignup: true, profile: profile });
+      }
+
       done(null, userId);
     } catch (error) {
       console.error('Google OAuth error:', error);

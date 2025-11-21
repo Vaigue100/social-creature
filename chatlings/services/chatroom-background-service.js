@@ -148,7 +148,7 @@ class ChatroomBackgroundService {
     // Ensure all users have a likelihood record
     await client.query(`
       INSERT INTO user_chat_likelihood (user_id, last_login_at)
-      SELECT u.id, u.last_login_at
+      SELECT u.id, u.created_at
       FROM users u
       LEFT JOIN user_chat_likelihood ucl ON u.id = ucl.user_id
       WHERE ucl.user_id IS NULL
@@ -158,7 +158,7 @@ class ChatroomBackgroundService {
     await client.query(`
       UPDATE user_chat_likelihood ucl
       SET
-        last_login_at = u.last_login_at,
+        last_login_at = u.created_at,
         total_chatlings = (
           SELECT COUNT(*) FROM user_rewards WHERE user_id = ucl.user_id
         ),
@@ -183,7 +183,7 @@ class ChatroomBackgroundService {
         last_chat_at = (
           SELECT MAX(created_at) FROM chatling_conversations WHERE user_id = ucl.user_id
         ),
-        days_since_login = EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - COALESCE(u.last_login_at, u.created_at))) / 86400,
+        days_since_login = EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - u.created_at)) / 86400,
         hours_since_last_chat = EXTRACT(EPOCH FROM (
           CURRENT_TIMESTAMP - COALESCE(
             (SELECT MAX(created_at) FROM chatling_conversations WHERE user_id = ucl.user_id),

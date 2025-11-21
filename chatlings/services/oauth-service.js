@@ -14,8 +14,7 @@ class OAuthService {
 
   /**
    * Find or create user from OAuth profile
-   * If email exists, links OAuth to existing account
-   * Otherwise creates new user
+   * Returns active user ID if exists, null if needs signup
    */
   async findOrCreateUserFromOAuth(provider, profile) {
     const client = await this.pool.connect();
@@ -31,7 +30,17 @@ class OAuthService {
       );
 
       if (existingOAuth.rows.length > 0) {
-        // OAuth account exists, update last used
+        // OAuth account exists - find the active account for this OAuth login
+        const activeAccount = await client.query(
+          `SELECT u.id FROM users u
+           JOIN oauth_accounts oa ON u.id = oa.user_id
+           WHERE oa.provider = $1 AND oa.provider_user_id = $2
+           AND u.active_account = true
+           LIMIT 1`,
+          [provider, profile.id]
+        );
+
+        // Update last used timestamp
         await client.query(
           `UPDATE oauth_accounts
            SET last_used_at = CURRENT_TIMESTAMP
@@ -40,7 +49,14 @@ class OAuthService {
         );
 
         await client.query('COMMIT');
-        return existingOAuth.rows[0].user_id;
+
+        // Return active account if found, null if all accounts are inactive
+        if (activeAccount.rows.length > 0) {
+          return activeAccount.rows[0].id;
+        } else {
+          // No active account - user needs to sign up again
+          return null;
+        }
       }
 
       // OAuth account doesn't exist - check if user exists by email
@@ -66,8 +82,8 @@ class OAuthService {
         const username = profile.displayName || profile.emails[0].value.split('@')[0];
 
         const newUser = await client.query(
-          `INSERT INTO users (username, email, created_at)
-           VALUES ($1, $2, CURRENT_TIMESTAMP)
+          `INSERT INTO users (username, email, active_account, created_at)
+           VALUES ($1, $2, true, CURRENT_TIMESTAMP)
            RETURNING id`,
           [username, email]
         );

@@ -94,24 +94,49 @@ const ConversationEngine = {
     const numParticipants = this.weightedParticipantCount();
     const participants = this.shuffleArray(chatlings.rows).slice(0, Math.min(numParticipants, chatlings.rows.length));
 
-    // Get random trending topic
+    // Get random trending topic (prefer YouTube topics)
     const topic = await db.query(
-      'SELECT * FROM trending_topics WHERE is_active = true ORDER BY RANDOM() LIMIT 1'
+      `SELECT * FROM trending_topics
+       WHERE is_active = true
+       ORDER BY (youtube_video_id IS NOT NULL) DESC, RANDOM()
+       LIMIT 1`
     );
 
     if (topic.rows.length === 0) {
       return null; // No topics available
     }
 
-    // Get a starter line
+    const topicData = topic.rows[0];
+    const hasYouTubeTopic = !!topicData.youtube_video_id;
+
+    // Get a starter line (video-share if YouTube topic, otherwise regular starter)
+    const starterLineType = hasYouTubeTopic ? 'video-share' : 'starter';
     const starterLine = await this.selectChatLine({
-      lineType: 'starter',
+      lineType: starterLineType,
       speaker: participants[0],
-      topicTags: topic.rows[0].category ? [topic.rows[0].category] : null
+      topicTags: topicData.category ? [topicData.category] : null
     });
 
-    if (!starterLine) {
-      return null; // No appropriate starter line found
+    let starterLineObj = starterLine;
+    if (!starterLineObj) {
+      // Fallback to regular starter if no video-share line found
+      if (starterLineType === 'video-share') {
+        starterLineObj = await this.selectChatLine({
+          lineType: 'starter',
+          speaker: participants[0]
+        });
+        if (!starterLineObj) {
+          return null;
+        }
+      } else {
+        return null; // No appropriate starter line found
+      }
+    }
+
+    // Replace YouTube placeholders if applicable
+    let lineText = starterLineObj.text;
+    if (hasYouTubeTopic && starterLineObj.requires_youtube_topic) {
+      lineText = this.replaceYouTubePlaceholders(lineText, topicData);
     }
 
     // Create active conversation with first message
@@ -119,8 +144,8 @@ const ConversationEngine = {
       turn: 1,
       speaker: participants[0].name,
       creatureId: participants[0].creature_id,
-      text: starterLine.text,
-      lineType: starterLine.line_type
+      text: lineText,
+      lineType: starterLineObj.line_type
     };
 
     await db.query(
@@ -129,9 +154,9 @@ const ConversationEngine = {
        VALUES ($1, $2, $3, 1, 0, $4, $5, $6)`,
       [
         userId,
-        topic.rows[0].id,
+        topicData.id,
         JSON.stringify(participants),
-        starterLine.line_type,
+        starterLineObj.line_type,
         JSON.stringify({}), // Initialize empty sentiment scores
         JSON.stringify([firstMessage]) // Track messages for audit log
       ]
@@ -140,10 +165,11 @@ const ConversationEngine = {
     return {
       speaker: participants[0].name,
       creatureId: participants[0].creature_id,
-      text: starterLine.text,
+      text: lineText,
       turn: 1,
       continues: true,
-      topic: topic.rows[0].topic_text
+      topic: topicData.topic_text,
+      videoLink: hasYouTubeTopic ? `https://youtube.com/watch?v=${topicData.youtube_video_id}` : null
     };
   },
 
@@ -486,6 +512,25 @@ const ConversationEngine = {
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     return shuffled;
+  },
+
+  /**
+   * Replace YouTube placeholders in chat line text
+   */
+  replaceYouTubePlaceholders(text, topicData) {
+    if (!topicData.youtube_video_id) {
+      return text; // No YouTube data available
+    }
+
+    const videoLink = `https://youtube.com/watch?v=${topicData.youtube_video_id}`;
+    const videoTitle = topicData.video_title || 'this video';
+    const channelName = topicData.channel_name || 'this channel';
+
+    return text
+      .replace(/{video_link}/g, videoLink)
+      .replace(/{video_title}/g, videoTitle)
+      .replace(/{channel_name}/g, channelName)
+      .replace(/{video_topic_detail}/g, videoTitle); // Fallback for generic references
   }
 };
 

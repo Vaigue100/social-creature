@@ -71,23 +71,103 @@ function initSharedHeader(activePage = 'home') {
                             <span class="dropdown-item-icon">🚪</span>
                             <span class="dropdown-item-text">Logout</span>
                         </div>
+                        <div class="dropdown-item" onclick="showAbandonAccountConfirmation()" style="justify-content: center; color: #dc3545; font-size: 0.85em; padding: 8px 15px; opacity: 0.8;">
+                            <span class="dropdown-item-icon" style="font-size: 0.9em;">⚠️</span>
+                            <span class="dropdown-item-text">Abandon Account</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </header>
 
+        <!-- Abandon Account Confirmation Modal -->
+        <div id="abandon-account-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
+            <div style="background: white; border-radius: 15px; padding: 30px; max-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+                <h2 style="color: #dc3545; margin-bottom: 15px;">⚠️ Abandon Account?</h2>
+                <p style="color: #666; margin-bottom: 20px;">
+                    This will permanently abandon your current account and start fresh. You will lose:
+                </p>
+                <ul style="color: #666; margin-bottom: 20px; padding-left: 25px;">
+                    <li>All your chatlings</li>
+                    <li>Your achievements</li>
+                    <li>Conversation history</li>
+                    <li>Team assignments</li>
+                </ul>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #333;">
+                        Enter your password to confirm:
+                    </label>
+                    <input
+                        type="password"
+                        id="abandon-password-input"
+                        placeholder="Your password"
+                        style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;"
+                    >
+                    <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                        This action requires password verification for security
+                    </div>
+                </div>
+                <div id="abandon-status-message" style="display: none; padding: 12px; border-radius: 8px; margin-bottom: 15px; text-align: center;"></div>
+                <div style="display: flex; gap: 15px; justify-content: flex-end;">
+                    <button id="abandon-cancel-btn" onclick="hideAbandonAccountConfirmation()" style="padding: 12px 24px; border: 1px solid #ddd; background: white; border-radius: 8px; cursor: pointer; font-size: 16px;">
+                        Cancel
+                    </button>
+                    <button id="abandon-confirm-btn" onclick="confirmAbandonAccount()" style="padding: 12px 24px; border: none; background: #dc3545; color: white; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold;">
+                        Yes, Abandon Account
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <nav>
             <h1 class="page-title">${pageTitle}</h1>
             <div class="nav-links">
-                <a href="index.html" class="nav-link ${activePage === 'home' ? 'active' : ''}">Home</a>
-                <a href="collections.html" class="nav-link ${activePage === 'collections' ? 'active' : ''}">Collections</a>
-                <a href="team.html" class="nav-link ${activePage === 'team' ? 'active' : ''}">Team</a>
-                <a href="chatroom.html" class="nav-link ${activePage === 'chatroom' ? 'active' : ''}">Chatroom</a>
-                <a href="achievements.html" class="nav-link ${activePage === 'achievements' ? 'active' : ''}">Achievements</a>
-                <a href="integrations.html" class="nav-link ${activePage === 'integrations' ? 'active' : ''}">Integrations</a>
-                <a href="#" class="nav-link" onclick="openGuideModal(); return false;">Guide</a>
+                <a href="index.html" class="nav-link nav-icon ${activePage === 'home' ? 'active' : ''}" title="Home">
+                    <img src="/user/assets/home.png" alt="" class="nav-icon-img">
+                </a>
+                <a href="collections.html" class="nav-link nav-icon ${activePage === 'collections' ? 'active' : ''}" title="Collections">
+                    <img src="/user/assets/collections.png" alt="" class="nav-icon-img">
+                </a>
+                <a href="team.html" class="nav-link nav-icon ${activePage === 'team' ? 'active' : ''}" title="Team">
+                    <img src="/user/assets/team.png" alt="" class="nav-icon-img">
+                </a>
+                <a href="chatroom.html" class="nav-link nav-icon ${activePage === 'chatroom' ? 'active' : ''}" title="Chatroom">
+                    <img src="/user/assets/chatroom.png" alt="" class="nav-icon-img">
+                </a>
+                <a href="achievements.html" class="nav-link nav-icon ${activePage === 'achievements' ? 'active' : ''}" title="Achievements">
+                    <img src="/user/assets/achievements.png" alt="" class="nav-icon-img">
+                </a>
+                <a href="integrations.html" class="nav-link nav-icon ${activePage === 'integrations' ? 'active' : ''}" title="Integrations">
+                    <img src="/user/assets/integrations.png" alt="" class="nav-icon-img">
+                </a>
+                <a href="#" class="nav-link nav-icon" onclick="openGuideModal(); return false;" title="Guide">
+                    <img src="/user/assets/guide.png" alt="" class="nav-icon-img">
+                </a>
             </div>
         </nav>
+
+        <style>
+            .nav-icon {
+                min-width: 50px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 12px 20px !important;
+            }
+            .nav-icon-img {
+                width: 36px;
+                height: 36px;
+                object-fit: contain;
+                transition: transform 0.2s;
+            }
+            .nav-icon:hover .nav-icon-img {
+                transform: scale(1.15);
+            }
+            .nav-icon.active {
+                background: rgba(118, 75, 162, 0.5) !important;
+                box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3) !important;
+            }
+        </style>
     `;
 
     // Insert header at the beginning of container
@@ -237,7 +317,7 @@ function updateUserDropdown(user) {
     const joinedEl = document.getElementById('user-dropdown-joined');
 
     if (nameEl) nameEl.textContent = user.username || 'User';
-    if (emailEl) emailEl.textContent = user.email || '';
+    if (emailEl) emailEl.textContent = user.provider_email || '';
 
     if (joinedEl && user.created_at) {
         const date = new Date(user.created_at);
@@ -345,4 +425,121 @@ async function logout() {
 // Stub for guide modal (will be defined on pages that need it)
 function openGuideModal() {
     window.location.href = 'index.html#guide';
+}
+
+// Abandon Account functions
+function showAbandonAccountConfirmation() {
+    const modal = document.getElementById('abandon-account-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+    // Close the user dropdown
+    const userDropdown = document.getElementById('user-dropdown');
+    if (userDropdown) {
+        userDropdown.classList.remove('show');
+    }
+}
+
+function hideAbandonAccountConfirmation() {
+    const modal = document.getElementById('abandon-account-modal');
+    const statusMsg = document.getElementById('abandon-status-message');
+    const confirmBtn = document.getElementById('abandon-confirm-btn');
+    const cancelBtn = document.getElementById('abandon-cancel-btn');
+    const passwordInput = document.getElementById('abandon-password-input');
+
+    if (modal) {
+        modal.style.display = 'none';
+    }
+
+    // Reset status message
+    if (statusMsg) {
+        statusMsg.style.display = 'none';
+        statusMsg.textContent = '';
+    }
+
+    // Reset password input
+    if (passwordInput) {
+        passwordInput.value = '';
+        passwordInput.disabled = false;
+    }
+
+    // Reset buttons
+    if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Yes, Abandon Account';
+    }
+    if (cancelBtn) {
+        cancelBtn.disabled = false;
+    }
+}
+
+async function confirmAbandonAccount() {
+    const statusMsg = document.getElementById('abandon-status-message');
+    const confirmBtn = document.getElementById('abandon-confirm-btn');
+    const cancelBtn = document.getElementById('abandon-cancel-btn');
+    const passwordInput = document.getElementById('abandon-password-input');
+
+    const password = passwordInput.value.trim();
+
+    // Disable buttons during processing
+    confirmBtn.disabled = true;
+    cancelBtn.disabled = true;
+    passwordInput.disabled = true;
+    confirmBtn.textContent = 'Processing...';
+
+    try {
+        const response = await fetch('/api/user/abandon-account', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ password })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+
+            // Show success message
+            statusMsg.style.display = 'block';
+            statusMsg.style.background = '#d4edda';
+            statusMsg.style.color = '#155724';
+            statusMsg.style.border = '1px solid #c3e6cb';
+            statusMsg.innerHTML = '✅ Account abandoned! Logging you out...';
+
+            // Redirect to login after 1.5 seconds
+            setTimeout(() => {
+                window.location.href = '/user/login.html';
+            }, 1500);
+        } else {
+            const error = await response.json();
+
+            // Show error message
+            statusMsg.style.display = 'block';
+            statusMsg.style.background = '#f8d7da';
+            statusMsg.style.color = '#721c24';
+            statusMsg.style.border = '1px solid #f5c6cb';
+            statusMsg.textContent = 'Error: ' + (error.error || 'Failed to abandon account');
+
+            // Re-enable buttons
+            confirmBtn.disabled = false;
+            cancelBtn.disabled = false;
+            passwordInput.disabled = false;
+            confirmBtn.textContent = 'Yes, Abandon Account';
+        }
+    } catch (error) {
+        console.error('Error abandoning account:', error);
+
+        // Show error message
+        statusMsg.style.display = 'block';
+        statusMsg.style.background = '#f8d7da';
+        statusMsg.style.color = '#721c24';
+        statusMsg.style.border = '1px solid #f5c6cb';
+        statusMsg.textContent = 'Error: Unable to abandon account. Please try again.';
+
+        // Re-enable buttons
+        confirmBtn.disabled = false;
+        cancelBtn.disabled = false;
+        passwordInput.disabled = false;
+        confirmBtn.textContent = 'Yes, Abandon Account';
+    }
 }

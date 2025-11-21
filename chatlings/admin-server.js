@@ -12,6 +12,7 @@ const Services = require('./services');
 const dailyChatlingService = require('./services/daily-chatling-service');
 const SocialInteractionService = require('./services/social-interaction-service');
 const ChatroomService = require('./services/chatroom-service');
+const YouTubeMetadataService = require('./services/youtube-metadata-service');
 const passport = require('./config/passport');
 
 const app = express();
@@ -24,6 +25,10 @@ const config = { ...require('./scripts/db-config'), database: 'chatlings' };
 const services = new Services(config);
 const socialInteractionService = new SocialInteractionService(require('./scripts/db-config'));
 const chatroomService = new ChatroomService(config);
+const youtubeMetadataService = new YouTubeMetadataService(
+  require('./scripts/db-config'),
+  process.env.YOUTUBE_API_KEY
+);
 
 // Session middleware (privacy-first - no long-term storage)
 app.use(session({
@@ -468,7 +473,12 @@ app.get('/api/user/me', async (req, res) => {
     await client.connect();
 
     const result = await client.query(
-      'SELECT id, username, email, created_at FROM users WHERE id = $1',
+      `SELECT u.id, u.username, u.email, u.created_at, oa.provider_email
+       FROM users u
+       LEFT JOIN oauth_accounts oa ON u.id = oa.user_id
+       WHERE u.id = $1
+       ORDER BY oa.last_used_at DESC NULLS LAST
+       LIMIT 1`,
       [req.session.userId]
     );
 
@@ -969,21 +979,68 @@ app.get('/auth/google',
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/user/login.html' }),
   async (req, res) => {
+    // Check if user needs to sign up (no active account)
+    if (req.user && req.user.needsSignup) {
+      // Store OAuth profile in session for signup
+      req.session.oauthProfile = req.user.profile;
+      req.session.oauthProvider = 'google';
+
+      return req.session.save((err) => {
+        if (err) {
+          console.error('Session save error:', err);
+        }
+        res.redirect('/user/signup.html');
+      });
+    }
+
     // User authenticated successfully, userId is in session
     req.session.userId = req.user;
 
-    // Trigger daily chatling visit (if needed)
-    try {
-      const needsVisit = await dailyChatlingService.needsDailyVisit(req.user);
-      if (needsVisit) {
-        await dailyChatlingService.assignDailyChatling(req.user);
-      }
-    } catch (visitError) {
-      console.error('Error assigning daily chatling:', visitError);
-      // Don't fail OAuth if daily visit fails
-    }
+    const client = new Client(config);
 
-    res.redirect('/user/index.html');
+    try {
+      await client.connect();
+
+      // Check if user has password set
+      const userResult = await client.query(
+        'SELECT password_hash FROM users WHERE id = $1',
+        [req.user]
+      );
+
+      const hasPassword = userResult.rows.length > 0 && userResult.rows[0].password_hash;
+
+      // Save session before redirecting
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error:', err);
+        }
+
+        // If no password, redirect to password setup
+        if (!hasPassword) {
+          return res.redirect('/user/setup-password.html');
+        }
+
+        // Trigger daily chatling visit (if needed)
+        dailyChatlingService.needsDailyVisit(req.user)
+          .then(needsVisit => {
+            if (needsVisit) {
+              return dailyChatlingService.assignDailyChatling(req.user);
+            }
+          })
+          .catch(visitError => {
+            console.error('Error assigning daily chatling:', visitError);
+          })
+          .finally(() => {
+            res.redirect('/user/index.html');
+          });
+      });
+
+    } catch (error) {
+      console.error('Error in OAuth callback:', error);
+      res.redirect('/user/index.html'); // Fallback to main page
+    } finally {
+      await client.end();
+    }
   }
 );
 
@@ -1734,6 +1791,306 @@ function getColorFromScheme(schemeName) {
 }
 
 // ============================================================================
+// Account Management API
+// ============================================================================
+
+/**
+ * Get session info for signup page
+ */
+app.get('/api/user/session-info', (req, res) => {
+  if (req.session.oauthProfile) {
+    const email = req.session.oauthProfile.emails && req.session.oauthProfile.emails[0]
+      ? req.session.oauthProfile.emails[0].value
+      : null;
+
+    return res.json({
+      googleEmail: email,
+      displayName: req.session.oauthProfile.displayName
+    });
+  }
+
+  res.json({});
+});
+
+/**
+ * Create new account after OAuth (signup flow)
+ * Only allowed if no active account exists for this OAuth login
+ */
+app.post('/api/user/signup', async (req, res) => {
+  const { username, password, confirmPassword } = req.body;
+
+  if (!req.session.oauthProfile) {
+    return res.status(400).json({ error: 'No OAuth session found. Please sign in with Google first.' });
+  }
+
+  if (!username || !password || !confirmPassword) {
+    return res.status(400).json({ error: 'Username and password required' });
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(400).json({ error: 'Passwords do not match' });
+  }
+
+  // Validate username for inappropriate content with enhanced detection
+  const usernameValidator = require('./services/username-validation-service');
+  const usernameValidation = await usernameValidator.validateUsername(username);
+  if (!usernameValidation.valid) {
+    return res.status(400).json({ error: usernameValidation.reason });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+    await client.query('BEGIN');
+
+    // Check if username already exists
+    const existingUsername = await client.query(
+      'SELECT id FROM users WHERE LOWER(username) = LOWER($1)',
+      [username]
+    );
+
+    if (existingUsername.rows.length > 0) {
+      await client.query('ROLLBACK');
+      const alternatives = usernameValidator.generateAlternatives(username, 3);
+      return res.status(400).json({
+        error: 'Username already taken',
+        suggestions: alternatives
+      });
+    }
+
+    const provider = req.session.oauthProvider || 'google';
+    const profile = req.session.oauthProfile;
+    const providerId = profile.id;
+    const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
+
+    // Check if there's already an ACTIVE account for this OAuth login
+    const activeCheck = await client.query(`
+      SELECT u.id FROM users u
+      JOIN oauth_accounts oa ON u.id = oa.user_id
+      WHERE oa.provider = $1 AND oa.provider_user_id = $2
+      AND u.active_account = true
+    `, [provider, providerId]);
+
+    if (activeCheck.rows.length > 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'An active account already exists for this Google login' });
+    }
+
+    // Validate password
+    const passwordService = require('./services/password-service');
+    const validation = passwordService.validatePasswordStrength(password);
+    if (!validation.valid) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: validation.errors.join('. ') });
+    }
+
+    // Hash password
+    const passwordHash = await passwordService.hashPassword(password);
+
+    // Create new user with unique email
+    const timestamp = Date.now();
+    const uniqueEmail = email ? `${email.split('@')[0]}_${timestamp}@${email.split('@')[1]}` : `user_${timestamp}@chatlings.app`;
+
+    const newUser = await client.query(`
+      INSERT INTO users (username, email, password_hash, active_account, created_at)
+      VALUES ($1, $2, $3, true, NOW())
+      RETURNING id
+    `, [username, uniqueEmail, passwordHash]);
+
+    const userId = newUser.rows[0].id;
+
+    // Link OAuth account to new user
+    await client.query(`
+      UPDATE oauth_accounts
+      SET user_id = $1, updated_at = NOW()
+      WHERE provider = $2 AND provider_user_id = $3
+    `, [userId, provider, providerId]);
+
+    // Initialize chat likelihood
+    await client.query(`
+      INSERT INTO user_chat_likelihood (user_id)
+      VALUES ($1)
+      ON CONFLICT (user_id) DO NOTHING
+    `, [userId]);
+
+    // Assign starter creature
+    const oauthService = require('./services/oauth-service');
+    await oauthService.assignStarterCreature(client, userId);
+
+    await client.query('COMMIT');
+
+    // Update session
+    req.session.userId = userId;
+    delete req.session.oauthProfile;
+    delete req.session.oauthProvider;
+
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+      }
+
+      res.json({
+        success: true,
+        message: 'Account created successfully!',
+        userId: userId
+      });
+    });
+
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackError) {
+      console.error('Rollback error:', rollbackError);
+    }
+
+    console.error('='.repeat(80));
+    console.error('ERROR CREATING ACCOUNT:');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', error);
+    console.error('='.repeat(80));
+
+    try {
+      res.status(500).json({ error: error.message });
+    } catch (resError) {
+      console.error('Failed to send error response:', resError);
+    }
+  } finally {
+    try {
+      await client.end();
+    } catch (endError) {
+      console.error('Error closing database connection:', endError);
+    }
+  }
+});
+
+/**
+ * Set user password (during signup or password change)
+ */
+app.post('/api/user/set-password', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { password, confirmPassword } = req.body;
+
+  if (!password || !confirmPassword) {
+    return res.status(400).json({ error: 'Password and confirmation required' });
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(400).json({ error: 'Passwords do not match' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const passwordService = require('./services/password-service');
+
+    // Validate password
+    const validation = passwordService.validatePasswordStrength(password);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.errors.join('. ') });
+    }
+
+    // Hash password
+    const passwordHash = await passwordService.hashPassword(password);
+
+    // Update user
+    await client.query(
+      'UPDATE users SET password_hash = $1 WHERE id = $2',
+      [passwordHash, req.session.userId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Password set successfully'
+    });
+
+  } catch (error) {
+    console.error('Error setting password:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Abandon current account
+ * Deactivates account and logs user out
+ * User must sign in again to create new account
+ */
+app.post('/api/user/abandon-account', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { password } = req.body;
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Get current user's password hash
+    const userResult = await client.query(
+      'SELECT password_hash FROM users WHERE id = $1',
+      [req.session.userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userResult.rows[0];
+
+    // Verify password if set
+    if (user.password_hash) {
+      if (!password) {
+        return res.status(400).json({ error: 'Password required' });
+      }
+
+      const passwordService = require('./services/password-service');
+      const isValid = await passwordService.verifyPassword(password, user.password_hash);
+
+      if (!isValid) {
+        return res.status(401).json({ error: 'Incorrect password' });
+      }
+    }
+
+    // Deactivate current account
+    await client.query(
+      `UPDATE users
+       SET active_account = false, abandoned_at = NOW()
+       WHERE id = $1`,
+      [req.session.userId]
+    );
+
+    // Destroy session (logout)
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Error destroying session:', err);
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Account abandoned. You have been logged out.',
+      logout: true
+    });
+
+  } catch (error) {
+    console.error('Error abandoning account:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+// ============================================================================
 // Chatroom API Endpoints
 // ============================================================================
 
@@ -2108,6 +2465,63 @@ app.post('/api/admin/conversations/:id/notes', async (req, res) => {
     res.status(500).json({ error: error.message });
   } finally {
     await client.end();
+  }
+});
+
+// ============================================================================
+// YouTube Topic Management API
+// ============================================================================
+
+// GET YouTube topics
+app.get('/api/admin/youtube-topics', async (req, res) => {
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(
+      `SELECT * FROM trending_topics
+       WHERE youtube_video_id IS NOT NULL
+       ORDER BY created_at DESC`
+    );
+
+    res.json({ topics: result.rows });
+
+  } catch (error) {
+    console.error('Error fetching YouTube topics:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+// POST new YouTube topic
+app.post('/api/admin/youtube-topics', async (req, res) => {
+  const { videoId } = req.body;
+
+  if (!videoId) {
+    return res.status(400).json({ error: 'videoId is required' });
+  }
+
+  try {
+    // Check if YouTube API key is configured
+    if (!process.env.YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY === 'your_youtube_api_key_here') {
+      return res.status(500).json({
+        error: 'YouTube API key not configured. Add YOUTUBE_API_KEY to .env file'
+      });
+    }
+
+    // Add video as topic using the YouTube metadata service
+    const topic = await youtubeMetadataService.addVideoAsTopic(videoId);
+
+    res.json({
+      success: true,
+      topic: topic
+    });
+
+  } catch (error) {
+    console.error('Error adding YouTube topic:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add YouTube Topic - Chatlings Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .hint {
+            font-size: 0.9em;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            background: #667eea;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .status.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+
+        .video-preview {
+            display: none;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .video-preview.show {
+            display: block;
+        }
+
+        .video-preview h3 {
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        .video-preview .field {
+            margin-bottom: 10px;
+        }
+
+        .video-preview .field label {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .video-preview .field .value {
+            color: #333;
+            margin-top: 3px;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .back-link:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .topic-list {
+            margin-top: 20px;
+        }
+
+        .topic-item {
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .topic-item .info {
+            flex: 1;
+        }
+
+        .topic-item .title {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .topic-item .channel {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 3px;
+        }
+
+        .topic-item .link {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/admin" class="back-link">← Back to Admin</a>
+
+        <h1>Add YouTube Video as Topic</h1>
+
+        <div class="card">
+            <div class="form-group">
+                <label for="videoInput">YouTube Video URL or ID</label>
+                <input
+                    type="text"
+                    id="videoInput"
+                    placeholder="https://youtube.com/watch?v=dQw4w9WgXcQ or dQw4w9WgXcQ"
+                >
+                <div class="hint">
+                    Paste a YouTube video URL or just the video ID
+                </div>
+            </div>
+
+            <button class="btn" id="addBtn" onclick="addYouTubeTopic()">
+                Add Video as Topic
+            </button>
+
+            <div id="status" class="status"></div>
+
+            <div id="videoPreview" class="video-preview"></div>
+        </div>
+
+        <div class="card">
+            <h2>Current YouTube Topics</h2>
+            <div id="topicList" class="topic-list">
+                <div style="text-align: center; color: #999;">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function addYouTubeTopic() {
+            const input = document.getElementById('videoInput').value.trim();
+            const statusDiv = document.getElementById('status');
+            const previewDiv = document.getElementById('videoPreview');
+            const btn = document.getElementById('addBtn');
+
+            if (!input) {
+                showStatus('error', 'Please enter a YouTube video URL or ID');
+                return;
+            }
+
+            // Extract video ID from URL or use input as-is
+            const videoId = extractVideoId(input);
+            if (!videoId) {
+                showStatus('error', 'Invalid YouTube URL or video ID');
+                return;
+            }
+
+            btn.disabled = true;
+            showStatus('loading', 'Fetching video metadata from YouTube...');
+            previewDiv.classList.remove('show');
+
+            try {
+                const response = await fetch('/api/admin/youtube-topics', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ videoId })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to add video');
+                }
+
+                showStatus('success', `Successfully added: "${data.topic.video_title}"`);
+                showVideoPreview(data.topic);
+                document.getElementById('videoInput').value = '';
+
+                // Reload topic list
+                loadTopics();
+
+            } catch (error) {
+                showStatus('error', error.message);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function extractVideoId(input) {
+            // Match various YouTube URL formats
+            const patterns = [
+                /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+                /^([a-zA-Z0-9_-]{11})$/ // Just the ID
+            ];
+
+            for (const pattern of patterns) {
+                const match = input.match(pattern);
+                if (match) {
+                    return match[1];
+                }
+            }
+
+            return null;
+        }
+
+        function showStatus(type, message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+        }
+
+        function showVideoPreview(topic) {
+            const previewDiv = document.getElementById('videoPreview');
+            previewDiv.innerHTML = `
+                <h3>Video Added Successfully</h3>
+                <div class="field">
+                    <label>Title:</label>
+                    <div class="value">${topic.video_title}</div>
+                </div>
+                <div class="field">
+                    <label>Channel:</label>
+                    <div class="value">${topic.channel_name}</div>
+                </div>
+                <div class="field">
+                    <label>Link:</label>
+                    <div class="value">
+                        <a href="https://youtube.com/watch?v=${topic.youtube_video_id}" target="_blank">
+                            https://youtube.com/watch?v=${topic.youtube_video_id}
+                        </a>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Duration:</label>
+                    <div class="value">${formatDuration(topic.video_duration_seconds)}</div>
+                </div>
+            `;
+            previewDiv.classList.add('show');
+        }
+
+        function formatDuration(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+
+            if (hours > 0) {
+                return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        async function loadTopics() {
+            const listDiv = document.getElementById('topicList');
+
+            try {
+                const response = await fetch('/api/admin/youtube-topics');
+                const data = await response.json();
+
+                if (data.topics.length === 0) {
+                    listDiv.innerHTML = '<div style="text-align: center; color: #999;">No YouTube topics yet</div>';
+                    return;
+                }
+
+                listDiv.innerHTML = data.topics.map(topic => `
+                    <div class="topic-item">
+                        <div class="info">
+                            <div class="title">${topic.video_title}</div>
+                            <div class="channel">by ${topic.channel_name}</div>
+                        </div>
+                        <a href="https://youtube.com/watch?v=${topic.youtube_video_id}"
+                           target="_blank"
+                           class="link">
+                            View Video →
+                        </a>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                listDiv.innerHTML = '<div style="text-align: center; color: #999;">Error loading topics</div>';
+                console.error('Error loading topics:', error);
+            }
+        }
+
+        // Load topics on page load
+        loadTopics();
+
+        // Allow Enter key to submit
+        document.getElementById('videoInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addYouTubeTopic();
+            }
+        });
+    </script>
+</body>
+</html>

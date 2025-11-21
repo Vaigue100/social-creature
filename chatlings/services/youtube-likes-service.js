@@ -95,6 +95,28 @@ class YouTubeLikesService {
     try {
       await client.connect();
 
+      // Check if this is the first YouTube integration
+      const integrationCheck = await client.query(`
+        SELECT youtube_integrated_at
+        FROM oauth_accounts
+        WHERE user_id = $1 AND provider = 'youtube'
+        LIMIT 1
+      `, [userId]);
+
+      const isFirstIntegration = !integrationCheck.rows[0]?.youtube_integrated_at;
+
+      if (isFirstIntegration) {
+        // Mark as integrated and skip processing old likes
+        await client.query(`
+          UPDATE oauth_accounts
+          SET youtube_integrated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $1 AND provider = 'youtube'
+        `, [userId]);
+
+        console.log(`First YouTube integration for user ${userId} - skipping existing likes`);
+        return []; // Return empty array on first integration
+      }
+
       // Get user's liked videos
       const likedVideos = await this.getLikedVideos(accessToken);
 
