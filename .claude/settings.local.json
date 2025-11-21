@@ -62,7 +62,12 @@
       "Bash(timeout 60 node:*)",
       "Bash(timeout 90 node:*)",
       "Bash(/dev/null)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "WebSearch",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(npm view:*)",
+      "Bash(start-server-debug.bat)",
+      "Bash(copy run-migration-32.js run-migration-33.js)"
     ],
     "deny": [],
     "ask": []
