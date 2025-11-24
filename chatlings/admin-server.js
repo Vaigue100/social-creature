@@ -16,7 +16,7 @@ const YouTubeMetadataService = require('./services/youtube-metadata-service');
 const passport = require('./config/passport');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Database config
 const config = { ...require('./scripts/db-config'), database: 'chatlings' };
@@ -624,7 +624,8 @@ app.get('/api/user/collection', async (req, res) => {
         c.vibe as species_name,
         bt.body_type_name,
         ur.claimed_at,
-        ur.platform
+        ur.platform,
+        ur.found_count
       FROM user_rewards ur
       JOIN creatures c ON ur.creature_id = c.id
       LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
@@ -858,6 +859,8 @@ app.get('/api/auth/youtube/authorize', async (req, res) => {
  * YouTube OAuth - Callback (session-based, privacy-first)
  */
 app.get('/api/auth/youtube/callback', async (req, res) => {
+  const client = new Client(config);
+
   try {
     const { code, state } = req.query;
 
@@ -865,28 +868,39 @@ app.get('/api/auth/youtube/callback', async (req, res) => {
       return res.status(400).send('Authorization failed - no code provided');
     }
 
-    // Find session by ID (state parameter)
-    // Note: This is a simplified approach - in production, use a session store
-    const sessionId = state;
+    // Exchange code for tokens (including refresh token)
+    const tokens = await services.youtubeLikes.getTokensFromCode(code);
 
-    // Exchange code for access token (no refresh token - session only)
-    const accessToken = await services.youtubeLikes.getTokensFromCode(code);
-
-    // Store access token in session (temporary, no database)
-    req.session.youtubeAccessToken = accessToken;
+    // Store tokens in session temporarily
+    req.session.youtubeAccessToken = tokens.accessToken;
     req.session.youtubeConnectedAt = new Date();
 
     // Process liked videos and claim rewards immediately
     if (req.session.userId) {
+      await client.connect();
+
+      // Store refresh token in oauth_accounts for automatic checking
+      await client.query(`
+        INSERT INTO oauth_accounts (user_id, provider, provider_user_id, provider_email, refresh_token, access_token, token_expires_at, created_at, updated_at, last_used_at)
+        VALUES ($1, 'youtube', $2, $3, $4, $5, to_timestamp($6 / 1000.0), NOW(), NOW(), NOW())
+        ON CONFLICT (provider, provider_user_id)
+        DO UPDATE SET
+          user_id = $1,
+          refresh_token = $4,
+          access_token = $5,
+          token_expires_at = to_timestamp($6 / 1000.0),
+          updated_at = NOW(),
+          last_used_at = NOW()
+      `, [req.session.userId, tokens.googleUserId, tokens.email, tokens.refreshToken, tokens.accessToken, tokens.expiresAt]);
+
       const newRewards = await services.youtubeLikes.processLikesAndClaimRewards(
         req.session.userId,
-        accessToken
+        tokens.accessToken
       );
 
       console.log(`User ${req.session.userId} claimed ${newRewards.length} new rewards`);
 
-      // Clear token from session after processing (extra privacy)
-      // Token is only needed once per session
+      // Clear access token from session (refresh token is in database)
       delete req.session.youtubeAccessToken;
 
       // Redirect back with results
@@ -898,6 +912,232 @@ app.get('/api/auth/youtube/callback', async (req, res) => {
   } catch (error) {
     console.error('Error in YouTube callback:', error);
     res.status(500).send(`Error processing YouTube likes: ${error.message}`);
+  } finally {
+    try {
+      await client.end();
+    } catch (e) {
+      // Ignore
+    }
+  }
+});
+
+/**
+ * Get YouTube access token (refresh if needed)
+ */
+app.get('/api/youtube/token', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Check if this user has YouTube connected
+    const result = await client.query(`
+      SELECT access_token, refresh_token, token_expires_at
+      FROM oauth_accounts
+      WHERE user_id = $1 AND provider = 'youtube'
+    `, [req.session.userId]);
+
+    if (result.rows.length === 0) {
+      return res.json({ connected: false });
+    }
+
+    const tokenData = result.rows[0];
+    const now = new Date();
+    const expiresAt = new Date(tokenData.token_expires_at);
+
+    // Check if token is expired or will expire soon (within 5 minutes)
+    if (expiresAt <= new Date(now.getTime() + 5 * 60 * 1000)) {
+      // Token expired, refresh it
+      const newTokens = await services.youtubeLikes.refreshAccessToken(tokenData.refresh_token);
+
+      // Update stored token
+      await client.query(`
+        UPDATE oauth_accounts
+        SET access_token = $1,
+            token_expires_at = to_timestamp($2 / 1000.0),
+            updated_at = NOW()
+        WHERE user_id = $3 AND provider = 'youtube'
+      `, [newTokens.accessToken, newTokens.expiresAt, req.session.userId]);
+
+      return res.json({ connected: true, accessToken: newTokens.accessToken });
+    }
+
+    // Token is still valid
+    return res.json({ connected: true, accessToken: tokenData.access_token });
+
+  } catch (error) {
+    console.error('Error getting YouTube token:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Process YouTube liked videos (called by client-side auto-checker)
+ */
+app.post('/api/youtube/process-likes', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { likedVideos } = req.body;
+
+  if (!Array.isArray(likedVideos)) {
+    return res.status(400).json({ error: 'likedVideos must be an array' });
+  }
+
+  const client = new Client(config);
+  const newRewards = [];
+
+  try {
+    await client.connect();
+
+    // Process each video
+    for (const video of likedVideos) {
+      try {
+        // Check if user already has this reward
+        const alreadyClaimed = await client.query(`
+          SELECT ur.id
+          FROM user_rewards ur
+          WHERE ur.user_id = $1
+            AND ur.source_video_id = $2
+        `, [req.session.userId, video.videoId]);
+
+        if (alreadyClaimed.rows.length > 0) {
+          continue; // Skip if already claimed
+        }
+
+        // Get or assign reward for this video
+        const creature = await services.youtubeLikes.getOrAssignVideoReward(
+          video.videoId,
+          video.channelId,
+          video.channelTitle,
+          client
+        );
+
+        // Claim the reward for the user
+        await client.query(`
+          INSERT INTO user_rewards (user_id, creature_id, platform, source_video_id)
+          VALUES ($1, $2, 'YouTube', $3)
+          ON CONFLICT (user_id, creature_id) DO NOTHING
+        `, [req.session.userId, creature.id, video.videoId]);
+
+        newRewards.push({
+          creature_id: creature.id,
+          creature_name: creature.creature_name,
+          rarity_tier: creature.rarity_tier,
+          video_title: video.title
+        });
+
+        // Create notification
+        await client.query(`
+          INSERT INTO notifications (user_id, notification_type, title, message, metadata)
+          VALUES ($1, 'reward_claimed', $2, $3, $4)
+        `, [
+          req.session.userId,
+          'New Chatling Claimed!',
+          `You got ${creature.creature_name} from liking "${video.title}"`,
+          JSON.stringify({
+            creature_id: creature.id,
+            creature_name: creature.creature_name,
+            rarity_tier: creature.rarity_tier,
+            video_title: video.title
+          })
+        ]);
+
+      } catch (error) {
+        console.error(`Error processing video ${video.videoId}:`, error.message);
+        // Continue with other videos
+      }
+    }
+
+    // Update last check time
+    await client.query(`
+      UPDATE oauth_accounts
+      SET last_used_at = NOW()
+      WHERE user_id = $1 AND provider = 'youtube'
+    `, [req.session.userId]);
+
+    res.json({ newRewards: newRewards.length, rewards: newRewards });
+
+  } catch (error) {
+    console.error('Error processing YouTube likes:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+// ============================================================================
+// DAILY MYSTERY BOX ENDPOINTS
+// ============================================================================
+
+/**
+ * Check if user can claim daily mystery box
+ */
+app.get('/api/daily-box/can-claim', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const canClaim = await services.dailyMysteryBox.canClaimToday(req.session.userId);
+    res.json(canClaim);
+  } catch (error) {
+    console.error('Error checking daily box eligibility:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Claim daily mystery box
+ */
+app.post('/api/daily-box/claim', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const result = await services.dailyMysteryBox.claimDailyBox(req.session.userId);
+    console.log(`✨ Daily box claimed by user ${req.session.userId}`);
+    res.json(result);
+  } catch (error) {
+    console.error('Error claiming daily box:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// ADMIN ENDPOINTS
+// ============================================================================
+
+/**
+ * Manually trigger YouTube background check (Admin only)
+ */
+app.post('/admin/trigger-youtube-check', async (req, res) => {
+  try {
+    console.log('🔧 Manual YouTube check triggered from admin hub');
+
+    // Run the YouTube background check and get results
+    const summary = await services.youtubeBackground.checkAllUsers();
+
+    res.json({
+      success: true,
+      message: 'YouTube check completed successfully',
+      results: summary
+    });
+
+  } catch (error) {
+    console.error('Error triggering YouTube check:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 });
 
@@ -960,6 +1200,41 @@ app.post('/api/user/notifications/mark-read', async (req, res) => {
   }
 });
 
+/**
+ * Create a notification for the current user
+ */
+app.post('/api/notifications', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { type, message, link } = req.body;
+
+  if (!type || !message) {
+    return res.status(400).json({ error: 'Type and message are required' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      INSERT INTO notifications (user_id, type, message, link, is_read, created_at)
+      VALUES ($1, $2, $3, $4, false, NOW())
+      RETURNING *
+    `, [req.session.userId, type, message, link || null]);
+
+    res.json(result.rows[0]);
+
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
 // ============================================================================
 // OAUTH AUTHENTICATION (Google, GitHub, etc.)
 // ============================================================================
@@ -1001,13 +1276,49 @@ app.get('/auth/google/callback',
     try {
       await client.connect();
 
-      // Check if user has password set
+      // Check if user has password set and get login tracking data
       const userResult = await client.query(
-        'SELECT password_hash FROM users WHERE id = $1',
+        'SELECT password_hash, last_login_at, login_streak_days, last_streak_date FROM users WHERE id = $1',
         [req.user]
       );
 
       const hasPassword = userResult.rows.length > 0 && userResult.rows[0].password_hash;
+
+      // Track login and update streak
+      if (userResult.rows.length > 0) {
+        const user = userResult.rows[0];
+        await services.updateLoginStreak(req.user, user, client);
+      }
+
+      // Auto-transfer YouTube connection if it exists on another account
+      // Get this user's Google account provider_user_id
+      const googleAccount = await client.query(`
+        SELECT provider_user_id
+        FROM oauth_accounts
+        WHERE user_id = $1 AND provider = 'google'
+      `, [req.user]);
+
+      if (googleAccount.rows.length > 0) {
+        const googleUserId = googleAccount.rows[0].provider_user_id;
+
+        // Check if this Google account has YouTube linked to a DIFFERENT chatlings account
+        const youtubeOnOtherAccount = await client.query(`
+          SELECT user_id
+          FROM oauth_accounts
+          WHERE provider_user_id = $1 AND provider = 'youtube' AND user_id != $2
+        `, [googleUserId, req.user]);
+
+        if (youtubeOnOtherAccount.rows.length > 0) {
+          // Move YouTube connection to this account
+          await client.query(`
+            UPDATE oauth_accounts
+            SET user_id = $1, updated_at = NOW()
+            WHERE provider_user_id = $2 AND provider = 'youtube'
+          `, [req.user, googleUserId]);
+
+          console.log(`✓ Auto-transferred YouTube connection to user ${req.user} from abandoned account`);
+        }
+      }
 
       // Save session before redirecting
       req.session.save((err) => {

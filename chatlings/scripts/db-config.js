@@ -12,6 +12,7 @@ const dbConfig = {
   database: process.env.DB_NAME || 'chatlings',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 };
 
 module.exports = dbConfig;
