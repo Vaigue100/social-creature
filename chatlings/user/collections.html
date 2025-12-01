@@ -2,9 +2,24 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Chatlings - Collections</title>
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Theme color for mobile browsers -->
+    <meta name="theme-color" content="#667eea">
+
+    <!-- Apple iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Chatlings">
+    <link rel="apple-touch-icon" href="/assets/icon-192.png">
+
     <link rel="stylesheet" href="/user/components/shared-header-styles.css">
+    <script src="/user/config.js"></script>
+    <script src="/user/components/auth-check.js"></script>
     <style>
         * {
             margin: 0;
@@ -20,47 +35,38 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1600px;
             margin: 0 auto;
             padding: 20px;
-        }
-
-        h1 {
-            color: #667eea;
-            font-size: 2.5em;
-            margin: 0;
         }
 
         .content {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
-            padding: 40px;
+            padding: 30px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
             display: flex;
-            gap: 20px;
+            gap: 30px;
         }
 
+        /* Sidebar - Body Type Filter */
         .sidebar {
-            min-width: 200px;
-            max-width: 200px;
-        }
-
-        .main-content {
-            flex: 1;
+            width: 160px;
+            flex-shrink: 0;
         }
 
         .body-type-filters {
             background: rgba(102, 126, 234, 0.1);
             border-radius: 10px;
             padding: 15px;
-            margin-bottom: 20px;
         }
 
         .body-type-filters h3 {
             color: #667eea;
-            font-size: 1.1em;
-            margin-bottom: 15px;
+            font-size: 0.95em;
+            margin-bottom: 12px;
             text-align: center;
+            font-weight: 600;
         }
 
         .body-type-button {
@@ -68,31 +74,21 @@
             justify-content: space-between;
             align-items: center;
             width: 100%;
-            padding: 10px 15px;
-            margin-bottom: 8px;
+            padding: 8px 12px;
+            margin-bottom: 6px;
             background: white;
             border: 2px solid transparent;
-            border-radius: 8px;
+            border-radius: 6px;
             color: #333;
-            font-weight: 600;
-            font-size: 0.9em;
+            font-weight: 500;
+            font-size: 0.85em;
             cursor: pointer;
             transition: all 0.2s;
         }
 
-        .body-type-count {
-            color: #667eea;
-            font-weight: 700;
-            margin-left: 10px;
-        }
-
-        .body-type-button.active .body-type-count {
-            color: white;
-        }
-
         .body-type-button:hover {
-            background: rgba(102, 126, 234, 0.1);
             border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
         }
 
         .body-type-button.active {
@@ -101,299 +97,228 @@
             border-color: #667eea;
         }
 
-        .body-type-button:last-child {
-            margin-bottom: 0;
-        }
-
-        h2 {
-            color: #667eea;
-            margin-bottom: 30px;
-            font-size: 2em;
-        }
-
-        .filter-bar {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .filter-group label {
+        .body-type-count {
+            font-weight: 700;
             font-size: 0.9em;
-            color: #666;
-            font-weight: 600;
         }
 
-        .filter-group select {
-            padding: 8px 15px;
-            border: 2px solid #667eea;
-            border-radius: 8px;
-            font-size: 1em;
-            background: white;
-            cursor: pointer;
+        .body-type-button.active .body-type-count {
+            color: rgba(255, 255, 255, 0.9);
         }
 
-        .collection-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+        /* Main Content Area */
+        .main-content {
+            flex: 1;
         }
 
-        .chatling-card {
-            background: white;
+        /* Rarity Sections */
+        .rarity-section {
+            margin-bottom: 20px;
             border-radius: 12px;
-            padding: 15px;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            position: relative;
-            display: flex;
-            align-items: center;
-            gap: 15px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .rarity-header {
+            padding: 15px 20px;
             cursor: pointer;
-        }
-
-        .chatling-card:hover {
-            transform: translateX(5px);
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        }
-
-        .chatling-image {
-            width: 60px;
-            height: 60px;
-            object-fit: cover;
-            border-radius: 8px;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-            flex-shrink: 0;
-        }
-
-        .chatling-name {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
             font-size: 1.1em;
-            font-weight: bold;
-            color: #333;
-            min-width: 150px;
-            flex-shrink: 0;
+            transition: all 0.2s;
+            user-select: none;
         }
 
-        .chatling-info {
+        .rarity-header:hover {
+            filter: brightness(0.95);
+        }
+
+        .rarity-header .count {
             font-size: 0.9em;
-            color: #666;
-            margin-bottom: 5px;
+            opacity: 0.9;
         }
 
-        .overall-score {
-            font-size: 1.3em;
-            font-weight: bold;
-            color: #667eea;
-            min-width: 60px;
-            text-align: center;
-            flex-shrink: 0;
+        .rarity-header .toggle-icon {
+            font-size: 1.2em;
+            transition: transform 0.3s;
         }
 
-        .score-divider {
-            width: 1px;
-            height: 30px;
-            background: #ddd;
-            margin: 0 15px;
+        .rarity-header .toggle-icon.collapsed {
+            transform: rotate(-90deg);
         }
 
-        .rarity-badge {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            font-weight: bold;
-            margin-top: 10px;
+        /* Rarity Colors */
+        .rarity-legendary {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            color: #000;
         }
 
-        .rarity-common {
-            background: #95a5a6;
-            color: white;
-        }
-
-        .rarity-uncommon {
-            background: #27ae60;
-            color: white;
+        .rarity-ultra-rare {
+            background: linear-gradient(135deg, #9D50BB 0%, #6E48AA 100%);
+            color: #fff;
         }
 
         .rarity-rare {
-            background: #3498db;
-            color: white;
+            background: linear-gradient(135deg, #667eea 0%, #4F46E5 100%);
+            color: #fff;
         }
 
-        .rarity-epic {
-            background: #9b59b6;
-            color: white;
+        .rarity-uncommon {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: #fff;
         }
 
-        .rarity-legendary {
-            background: linear-gradient(135deg, #f39c12 0%, #e74c3c 100%);
-            color: white;
+        .rarity-common {
+            background: linear-gradient(135deg, #94A3B8 0%, #64748B 100%);
+            color: #fff;
         }
 
-        .encounter-count {
+        .rarity-content {
+            background: white;
+            padding: 20px;
+            display: none;
+        }
+
+        .rarity-content.expanded {
+            display: block;
+        }
+
+        /* Creature Grid */
+        .creatures-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .creature-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+
+        .creature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+
+        .creature-image-wrapper {
+            position: relative;
+            width: 100%;
+            padding-bottom: 100%;
+            background: #e0e0e0;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .creature-image {
             position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(102, 126, 234, 0.9);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: bold;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
-        .loading {
-            text-align: center;
-            padding: 40px;
+        .creature-image.lazy-image {
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .creature-image:not(.lazy-image) {
+            opacity: 1;
+        }
+
+        .creature-info {
+            padding: 12px;
+        }
+
+        .creature-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 1em;
+        }
+
+        .creature-name-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .zoom-button {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid #667eea;
+            border-radius: 6px;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 0.85em;
+            color: #667eea;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .zoom-button:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .creature-traits {
+            display: flex;
+            gap: 8px;
+            font-size: 0.85em;
             color: #666;
+        }
+
+        .trait {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .trait-icon {
+            font-size: 0.9em;
+        }
+
+        .trait-value {
+            font-weight: 600;
+            color: #667eea;
         }
 
         .empty-state {
             text-align: center;
             padding: 60px 20px;
-            color: #666;
-        }
-
-        .empty-state h3 {
-            color: #667eea;
-            margin-bottom: 15px;
-            font-size: 1.5em;
-        }
-
-        .empty-state p {
-            font-size: 1.1em;
-            margin-bottom: 20px;
-        }
-
-        .empty-state a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        /* Trait Badges */
-        .trait-badges {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-left: auto;
-            align-items: center;
-        }
-
-        .trait-badge {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 8px;
-            padding: 6px 10px;
-            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.2);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .trait-badge.high {
-            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
-        }
-
-        .trait-badge.low {
-            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-        }
-
-        .trait-badge:hover {
-            transform: scale(1.05);
-            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.4);
-        }
-
-        .trait-icon {
-            font-size: 1.1em;
-        }
-
-        .trait-score {
-            font-size: 0.9em;
-            font-weight: bold;
-            color: white;
-        }
-
-        .trait-name {
-            font-size: 0.7em;
-            color: rgba(255, 255, 255, 0.8);
-            text-align: center;
-            margin-top: 2px;
-        }
-
-        /* Loading state for traits */
-        .trait-badges-loading {
             color: #999;
-            font-size: 0.85em;
-            margin-left: auto;
         }
 
-        /* Tooltip for trait badges */
-        .trait-badge-tooltip {
-            position: relative;
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
         }
 
-        .trait-badge-tooltip:hover::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 0.75em;
-            white-space: nowrap;
-            margin-bottom: 5px;
-            z-index: 1000;
-        }
-
-        /* Pagination */
-        .pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            margin-top: 30px;
-            padding: 20px;
-        }
-
-        .pagination-button {
-            padding: 10px 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .pagination-button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        .pagination-button:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-
-        .pagination-info {
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
             color: #666;
-            font-weight: 600;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e0e0e0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -401,891 +326,353 @@
     <script src="/user/components/shared-header.js"></script>
     <div class="container">
         <script>initSharedHeader('collections');</script>
-
         <div class="content">
+            <!-- Left Sidebar - Body Type Filter -->
             <div class="sidebar">
                 <div class="body-type-filters">
                     <h3>Body Types</h3>
-                    <div id="body-type-buttons"></div>
+                    <div id="bodyTypeFilters">
+                        <!-- Filters will be populated here -->
+                    </div>
                 </div>
             </div>
 
+            <!-- Main Content - Rarity Sections -->
             <div class="main-content">
-                <div class="filter-bar">
-                    <div class="filter-group">
-                        <label for="filter-rarity">Rarity</label>
-                        <select id="filter-rarity">
-                            <option value="">All Rarities</option>
-                            <option value="Common">Common</option>
-                            <option value="Uncommon">Uncommon</option>
-                            <option value="Rare">Rare</option>
-                            <option value="Epic">Epic</option>
-                            <option value="Legendary">Legendary</option>
-                        </select>
+                <div id="collectionsContainer">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading your collection...</p>
                     </div>
-
-                    <div class="filter-group">
-                        <label for="filter-score">Overall Score</label>
-                        <select id="filter-score">
-                            <option value="">All Scores</option>
-                            <option value="vlow">Very Low (0-20)</option>
-                            <option value="low">Low (21-40)</option>
-                            <option value="medium">Medium (41-60)</option>
-                            <option value="high">High (61-80)</option>
-                            <option value="vhigh">Very High (81-94)</option>
-                            <option value="max">Max (95-100)</option>
-                        </select>
-                    </div>
-
-                    <div class="filter-group">
-                        <label for="sort-by">Sort By</label>
-                        <select id="sort-by">
-                            <option value="recent">Most Recent</option>
-                            <option value="rarity">Rarity</option>
-                            <option value="score">Overall Score</option>
-                            <option value="name">Name</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div id="loading" class="loading">Loading your collection...</div>
-                <div id="empty-state" class="empty-state" style="display: none;">
-                    <h3>No Chatlings Yet!</h3>
-                    <p>Start discovering chatlings by connecting your YouTube account and commenting on videos.</p>
-                    <a href="integrations.html">Connect YouTube</a>
-                </div>
-                <div id="collection-grid" class="collection-grid"></div>
-                <div id="pagination" class="pagination" style="display: none;">
-                    <button class="pagination-button" id="prev-page" onclick="changePage(-1)">Previous</button>
-                    <span class="pagination-info" id="page-info">Page 1</span>
-                    <button class="pagination-button" id="next-page" onclick="changePage(1)">Next</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Guide Modal -->
-    <div id="guide-modal" class="modal" onclick="closeGuideModal(event)" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8);">
-        <div class="modal-content" onclick="event.stopPropagation()" style="position: relative; background: white; margin: 2% auto; padding: 30px; width: 90%; max-width: 800px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
-            <span class="modal-close" onclick="closeGuideModal()" style="position: absolute; top: 15px; right: 20px; color: #667eea; font-size: 35px; font-weight: bold; cursor: pointer;">&times;</span>
-            <h1 style="text-align: center; color: #667eea; font-size: 2em; margin-bottom: 30px;">Collections Guide</h1>
-
-            <div style="max-height: 70vh; overflow-y: auto; padding-right: 10px;">
-                <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px;">Your Chatlings Collection</h3>
-                <p style="line-height: 1.6; color: #333; margin-bottom: 15px;">
-                    This is your personal collection of all the chatlings you've claimed. Each chatling is unique and represents a YouTube video you liked!
-                </p>
-
-                <h3 style="color: #667eea; margin-top: 30px; margin-bottom: 15px;">Filtering Your Collection</h3>
-                <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
-                    <li><strong>By Body Type:</strong> Use the sidebar to filter chatlings by their body type (Floofs, Noodles, Sleeks, etc.)</li>
-                    <li><strong>By Rarity:</strong> Filter by Common, Uncommon, Rare, Epic, or Legendary</li>
-                    <li><strong>By Overall Score:</strong> Filter chatlings by their overall trait score</li>
-                </ul>
-
-                <h3 style="color: #667eea; margin-top: 30px; margin-bottom: 15px;">Sorting Options</h3>
-                <p style="line-height: 1.6; color: #333; margin-bottom: 15px;">
-                    Sort your collection by:
-                </p>
-                <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
-                    <li><strong>Most Recent:</strong> See your latest additions first</li>
-                    <li><strong>Rarity:</strong> View your rarest chatlings at the top</li>
-                    <li><strong>Name:</strong> Alphabetical order by chatling name</li>
-                </ul>
-
-                <h3 style="color: #667eea; margin-top: 30px; margin-bottom: 15px;">Viewing Details</h3>
-                <p style="line-height: 1.6; color: #333; margin-bottom: 15px;">
-                    Click on any chatling card to view its full details, including all 8 social trait scores and a larger image.
-                </p>
-            </div>
-        </div>
-    </div>
-
     <script>
-        // Guide modal functions
-        function openGuideModal() {
-            const modal = document.getElementById('guide-modal');
-            modal.style.display = 'block';
-            document.body.style.overflow = 'hidden';
-        }
+        let allCreatures = [];
+        let bodyTypes = [];
+        let selectedBodyType = null;
 
-        function closeGuideModal(event) {
-            if (event && event.target.id !== 'guide-modal' && event.target.className !== 'modal-close') {
-                return;
-            }
-            const modal = document.getElementById('guide-modal');
-            if (modal) {
-                modal.style.display = 'none';
-                document.body.style.overflow = 'auto';
+        const rarityOrder = ['Legendary', 'Ultra Rare', 'Rare', 'Uncommon', 'Common'];
+
+        async function init() {
+            try {
+                await Promise.all([
+                    loadBodyTypes(),
+                    loadCollection()
+                ]);
+            } catch (error) {
+                console.error('Init error:', error);
+                document.getElementById('collectionsContainer').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <h3>Error Loading Collection</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
             }
         }
-    </script>
-
-    <script>
-        let allChatlings = [];
-        let filteredChatlings = [];
-        let selectedBodyType = '';
-        let currentPage = 1;
-        let bodyTypesList = [];
-        const CREATURES_PER_PAGE = 20;
 
         async function loadBodyTypes() {
-            try {
-                const response = await fetch('/api/body-types');
-                if (response.ok) {
-                    bodyTypesList = await response.json();
-                    renderBodyTypeButtons(bodyTypesList);
-                }
-            } catch (error) {
-                console.error('Error loading body types:', error);
-            }
+            const response = await fetch('/api/dimensions');
+            const data = await response.json();
+            bodyTypes = data.bodyTypes;
+
+            // Don't render filters yet - wait for creatures to load
         }
 
-        function renderBodyTypeButtons(bodyTypes) {
-            const container = document.getElementById('body-type-buttons');
-            container.innerHTML = '';
+        function renderBodyTypeFilters() {
+            const container = document.getElementById('bodyTypeFilters');
+            container.innerHTML = ''; // Clear existing buttons
 
-            bodyTypes.forEach((type, index) => {
-                // Count chatlings for this body type
-                const count = allChatlings.filter(c => c.body_type_name === type.display_name).length;
+            // Add "All" button
+            const allButton = document.createElement('button');
+            allButton.className = 'body-type-button active';
+            allButton.innerHTML = `
+                <span>All</span>
+                <span class="body-type-count" id="count-all">0</span>
+            `;
+            allButton.onclick = () => filterByBodyType(null);
+            container.appendChild(allButton);
 
-                const button = document.createElement('button');
-                button.className = 'body-type-button';
-                if (index === 0) {
-                    button.classList.add('active');
-                    selectedBodyType = type.display_name;
-                }
+            // Add body type buttons - only if user has at least one creature of that type
+            bodyTypes.forEach(bodyType => {
+                const count = allCreatures.filter(c => c.body_type_id === bodyType.id).length;
 
-                button.innerHTML = `
-                    <span>${type.display_name}</span>
-                    <span class="body-type-count">${count}</span>
-                `;
-                button.onclick = () => filterByBodyType(type.display_name);
-                container.appendChild(button);
-            });
-        }
-
-        function filterByBodyType(bodyType) {
-            selectedBodyType = bodyType;
-
-            // Update button active states
-            const buttons = document.querySelectorAll('.body-type-button');
-            buttons.forEach(btn => {
-                if (btn.textContent === bodyType) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
+                // Only show body types with at least one creature
+                if (count > 0) {
+                    const button = document.createElement('button');
+                    button.className = 'body-type-button';
+                    button.innerHTML = `
+                        <span>${bodyType.body_type_name}</span>
+                        <span class="body-type-count" id="count-${bodyType.id}">${count}</span>
+                    `;
+                    button.onclick = () => filterByBodyType(bodyType.id);
+                    container.appendChild(button);
                 }
             });
-
-            currentPage = 1;
-            filterAndSort();
         }
 
-        function changePage(direction) {
-            currentPage += direction;
-            displayCurrentPage();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+        function filterByBodyType(bodyTypeId) {
+            selectedBodyType = bodyTypeId;
 
-        function displayCurrentPage() {
-            const start = (currentPage - 1) * CREATURES_PER_PAGE;
-            const end = start + CREATURES_PER_PAGE;
-            const pageCreatures = filteredChatlings.slice(start, end);
+            // Update active button
+            document.querySelectorAll('.body-type-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.closest('.body-type-button').classList.add('active');
 
-            displayChatlings(pageCreatures);
-            updatePagination();
-        }
-
-        function updatePagination() {
-            const totalPages = Math.ceil(filteredChatlings.length / CREATURES_PER_PAGE);
-            const paginationDiv = document.getElementById('pagination');
-            const pageInfo = document.getElementById('page-info');
-            const prevButton = document.getElementById('prev-page');
-            const nextButton = document.getElementById('next-page');
-
-            if (totalPages <= 1) {
-                paginationDiv.style.display = 'none';
-            } else {
-                paginationDiv.style.display = 'flex';
-                pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
-                prevButton.disabled = currentPage === 1;
-                nextButton.disabled = currentPage === totalPages;
-            }
+            // Re-render with filter
+            renderCollections();
         }
 
         async function loadCollection() {
-            try {
-                const response = await fetch('/api/user/collection');
-                if (response.ok) {
-                    allChatlings = await response.json();
-                    if (allChatlings.length === 0) {
-                        document.getElementById('loading').style.display = 'none';
-                        document.getElementById('empty-state').style.display = 'block';
-                    } else {
-                        document.getElementById('loading').style.display = 'none';
-                        // Update body type buttons with counts
-                        if (bodyTypesList.length > 0) {
-                            renderBodyTypeButtons(bodyTypesList);
-                        }
-                        // Apply filters (including default first body type)
-                        filterAndSort();
-                    }
-                } else {
-                    // Not logged in - redirect
-                    window.location.href = '/user/login.html';
+            const response = await fetch('/api/user/collection');
+            const data = await response.json();
+            allCreatures = data.creatures || [];
+
+            renderCollections();
+            renderBodyTypeFilters(); // Render filters after creatures are loaded
+            updateBodyTypeCounts();
+        }
+
+        function updateBodyTypeCounts() {
+            // Count all
+            document.getElementById('count-all').textContent = allCreatures.length;
+
+            // Count by body type
+            bodyTypes.forEach(bodyType => {
+                const count = allCreatures.filter(c => c.body_type_id === bodyType.id).length;
+                const countEl = document.getElementById(`count-${bodyType.id}`);
+                if (countEl) {
+                    countEl.textContent = count;
                 }
-            } catch (error) {
-                console.error('Error loading collection:', error);
-                window.location.href = '/user/login.html';
-            }
-        }
-
-        function displayChatlings(chatlings) {
-            const grid = document.getElementById('collection-grid');
-            grid.innerHTML = '';
-
-            chatlings.forEach((chatling, index) => {
-                const card = document.createElement('div');
-                card.className = 'chatling-card';
-                card.onclick = () => openChatlingModal(chatling.id, index);
-
-                // Handle null or missing images
-                const hasImage = chatling.selected_image && chatling.selected_image !== 'null';
-                const imageSrc = hasImage ? `/thumbs/${chatling.selected_image}` : '';
-                const imageFallback = hasImage ? `/images/${chatling.selected_image}` : '';
-
-                card.innerHTML = `
-                    <img src="${imageSrc}"
-                         alt="${chatling.creature_name}"
-                         class="chatling-image"
-                         onerror="if(this.src !== '${imageFallback}') this.src='${imageFallback}'; else this.style.display='none';"
-                         style="${!hasImage ? 'display:none;' : ''}">
-                    <div class="chatling-name">${chatling.creature_name}</div>
-                    <div class="overall-score">${chatling.overall_score || 0}</div>
-                    <div class="score-divider"></div>
-                    <div id="traits-${chatling.id}" class="trait-badges-loading">Loading...</div>
-                `;
-
-                grid.appendChild(card);
-
-                // Load trait scores asynchronously
-                loadTraitScores(chatling.id);
             });
         }
 
-        async function loadTraitScores(creatureId) {
-            try {
-                const response = await fetch(`/api/creature/${creatureId}/traits`);
-                if (response.ok) {
-                    const traits = await response.json();
-                    displayTraitBadges(creatureId, traits);
-                } else {
-                    document.getElementById(`traits-${creatureId}`).style.display = 'none';
-                }
-            } catch (error) {
-                console.error('Error loading traits:', error);
-                document.getElementById(`traits-${creatureId}`).style.display = 'none';
-            }
-        }
+        function renderCollections() {
+            const container = document.getElementById('collectionsContainer');
 
-        function displayTraitBadges(creatureId, traits) {
-            const container = document.getElementById(`traits-${creatureId}`);
-            if (!container) return;
-
-            container.className = 'trait-badges';
-            container.innerHTML = '';
-
-            // Filter for very highs (81-100) and very lows (0-20)
-            const highs = traits.filter(t => t.score >= 81);
-            const lows = traits.filter(t => t.score <= 20);
-
-            // Show highs first (green)
-            highs.forEach(trait => {
-                const badge = document.createElement('div');
-                badge.className = 'trait-badge high trait-badge-tooltip';
-                badge.setAttribute('data-tooltip', `${trait.category_name}: ${trait.score}`);
-
-                badge.innerHTML = `
-                    <span class="trait-icon">${trait.icon}</span>
-                    <span class="trait-score">${trait.score}</span>
-                `;
-
-                container.appendChild(badge);
-            });
-
-            // Show lows (red)
-            lows.forEach(trait => {
-                const badge = document.createElement('div');
-                badge.className = 'trait-badge low trait-badge-tooltip';
-                badge.setAttribute('data-tooltip', `${trait.category_name}: ${trait.score}`);
-
-                badge.innerHTML = `
-                    <span class="trait-icon">${trait.icon}</span>
-                    <span class="trait-score">${trait.score}</span>
-                `;
-
-                container.appendChild(badge);
-            });
-
-            // If no extreme scores, show a message
-            if (highs.length === 0 && lows.length === 0) {
-                container.innerHTML = '<span style="color: #999; font-size: 0.85em;">Moderate scores</span>';
-            }
-        }
-
-        function filterAndSort() {
-            const rarity = document.getElementById('filter-rarity').value;
-            const scoreRange = document.getElementById('filter-score').value;
-            const sortBy = document.getElementById('sort-by').value;
-
-            let filtered = allChatlings;
-
-            // Filter by body type
+            // Filter creatures by body type if selected
+            let filteredCreatures = allCreatures;
             if (selectedBodyType) {
-                filtered = filtered.filter(c => c.body_type_name === selectedBodyType);
+                filteredCreatures = allCreatures.filter(c => c.body_type_id === selectedBodyType);
             }
 
-            // Filter by rarity
-            if (rarity) {
-                filtered = filtered.filter(c => c.rarity_tier === rarity);
+            if (filteredCreatures.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📦</div>
+                        <h3>No Chatlings Found</h3>
+                        <p>You don't have any chatlings${selectedBodyType ? ' with this body type' : ''} yet.</p>
+                        <p>Explore YouTube and like videos to collect more!</p>
+                    </div>
+                `;
+                return;
             }
 
-            // Filter by overall score range
-            if (scoreRange) {
-                filtered = filtered.filter(c => {
-                    const score = c.overall_score || 0;
-                    switch (scoreRange) {
-                        case 'vlow': return score >= 0 && score <= 20;
-                        case 'low': return score >= 21 && score <= 40;
-                        case 'medium': return score >= 41 && score <= 60;
-                        case 'high': return score >= 61 && score <= 80;
-                        case 'vhigh': return score >= 81 && score <= 94;
-                        case 'max': return score >= 95 && score <= 100;
-                        default: return true;
-                    }
-                });
-            }
+            // Group by rarity
+            const byRarity = {};
+            filteredCreatures.forEach(creature => {
+                const rarity = creature.rarity_tier || 'Common';
+                if (!byRarity[rarity]) {
+                    byRarity[rarity] = [];
+                }
+                byRarity[rarity].push(creature);
+            });
 
-            // Sort
-            filtered.sort((a, b) => {
-                switch (sortBy) {
-                    case 'recent':
-                        return new Date(b.claimed_at) - new Date(a.claimed_at);
-                    case 'rarity':
-                        const rarityOrder = { 'Legendary': 5, 'Epic': 4, 'Rare': 3, 'Uncommon': 2, 'Common': 1 };
-                        return (rarityOrder[b.rarity_tier] || 0) - (rarityOrder[a.rarity_tier] || 0);
-                    case 'score':
-                        return (b.overall_score || 0) - (a.overall_score || 0);
-                    case 'name':
-                        return a.creature_name.localeCompare(b.creature_name);
-                    default:
-                        return 0;
+            // Render sections in rarity order
+            let html = '';
+            rarityOrder.forEach(rarity => {
+                if (byRarity[rarity] && byRarity[rarity].length > 0) {
+                    html += renderRaritySection(rarity, byRarity[rarity]);
                 }
             });
 
-            filteredChatlings = filtered;
-            currentPage = 1;
-            displayCurrentPage();
+            container.innerHTML = html;
+
+            // All sections start collapsed - no need to expand any
         }
 
-        // Event listeners
-        document.getElementById('filter-rarity').addEventListener('change', filterAndSort);
-        document.getElementById('filter-score').addEventListener('change', filterAndSort);
-        document.getElementById('sort-by').addEventListener('change', filterAndSort);
+        function renderRaritySection(rarity, creatures) {
+            const rarityClass = `rarity-${rarity.toLowerCase().replace(' ', '-')}`;
+            const sectionId = `section-${rarity.replace(' ', '-')}`;
 
-        // Load body types first, then collection (to populate counts)
-        loadBodyTypes().then(() => {
-            loadCollection();
-        });
-    </script>
+            return `
+                <div class="rarity-section">
+                    <div class="rarity-header ${rarityClass}" onclick="toggleSection('${sectionId}')">
+                        <div>
+                            <span>${rarity}</span>
+                            <span class="count">(${creatures.length})</span>
+                        </div>
+                        <span class="toggle-icon collapsed" id="icon-${sectionId}">▼</span>
+                    </div>
+                    <div class="rarity-content" id="${sectionId}">
+                        <div class="creatures-grid">
+                            ${creatures.map(creature => renderCreatureCard(creature)).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
 
-    <!-- Chatling Detail Modal -->
-    <div id="chatling-modal" style="display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.9); overflow: auto;" onclick="closeChatlingModal(event)">
-        <div style="position: relative; max-width: 1200px; margin: 2% auto; padding: 0;">
-            <!-- Close Button -->
-            <span onclick="closeChatlingModal()" style="position: absolute; top: 15px; right: 30px; color: white; font-size: 40px; font-weight: bold; cursor: pointer; z-index: 2001; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">&times;</span>
+        function renderCreatureCard(creature) {
+            const imagePath = creature.selected_image ? getImageUrl(creature.selected_image) : '/assets/placeholder.png';
+            const cardId = `card-${creature.id}`;
 
-            <!-- Previous Button -->
-            <button id="prev-chatling" onclick="navigateChatling(-1); event.stopPropagation();" style="position: absolute; left: -60px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.9); border: none; font-size: 30px; padding: 15px 20px; cursor: pointer; border-radius: 50%; color: #667eea; font-weight: bold; transition: all 0.2s; z-index: 2001; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">‹</button>
-
-            <!-- Next Button -->
-            <button id="next-chatling" onclick="navigateChatling(1); event.stopPropagation();" style="position: absolute; right: -60px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.9); border: none; font-size: 30px; padding: 15px 20px; cursor: pointer; border-radius: 50%; color: #667eea; font-weight: bold; transition: all 0.2s; z-index: 2001; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">›</button>
-
-            <!-- Modal Content -->
-            <div onclick="event.stopPropagation()" style="background: white; border-radius: 20px; padding: 30px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); position: relative;">
-                <link rel="stylesheet" href="/user/components/creature-card-styles.css">
-
-                <div class="creature-display">
-                    <div class="image-with-traits">
-                        <div class="creature-frame-wrapper" id="modal-creature-frame">
-                            <div class="creature-frame-overlay" id="modal-frame-overlay" style="display: none;"></div>
-                            <div class="creature-frame-content">
-                                <!-- Image with badges positioned on corners -->
-                                <div class="creature-image-container">
-                                    <div class="rarity-badge" id="modal-rarity-badge" style="display: none;"></div>
-                                    <div class="overall-score-badge" id="modal-overall-score-badge" style="display: none; cursor: pointer;" title="Click to view traits"></div>
-                                    <div class="bodytype-badge" id="modal-bodytype-badge" style="display: none; cursor: pointer;" title="Click to view body type lore"></div>
-                                    <img id="modal-creature-image" class="creature-image" src="" alt="Creature" style="display: none;">
-                                    <div class="loading" id="modal-image-loading">Loading image...</div>
-                                </div>
-
-                                <!-- Creature Lore attached to bottom -->
-                                <div class="creature-lore-section" id="modal-creature-lore-section" style="display: none;">
-                                    <h3 style="color: #9b59b6; margin-bottom: 10px; font-size: 1.1em;">📖 <span id="modal-creature-lore-title">Tale</span></h3>
-                                    <p id="modal-creature-lore" style="color: #666; line-height: 1.6; margin: 0;">
-                                        Loading creature lore...
-                                    </p>
-                                </div>
+            return `
+                <div class="creature-card" data-creature-id="${creature.id}">
+                    <div class="creature-image-wrapper" id="${cardId}" onclick="playAnimation('${creature.id}', '${cardId}')">
+                        <video class="creature-image creature-video" style="display: none;" muted playsinline></video>
+                        <img data-src="${imagePath}" alt="${creature.creature_name}" class="creature-image lazy-image" onerror="this.src='/assets/placeholder.png'">
+                    </div>
+                    <div class="creature-info">
+                        <div class="creature-name-row">
+                            <div class="creature-name">${creature.creature_name}</div>
+                            <button class="zoom-button" onclick="viewCreature('${creature.id}')" title="View full details">🔍</button>
+                        </div>
+                        <div class="creature-traits">
+                            <div class="trait">
+                                <span class="trait-icon">🎯</span>
+                                <span class="trait-value">${creature.ability_score || 0}</span>
+                            </div>
+                            <div class="trait">
+                                <span class="trait-icon">💪</span>
+                                <span class="trait-value">${creature.strength_score || 0}</span>
+                            </div>
+                            <div class="trait">
+                                <span class="trait-icon">❤️</span>
+                                <span class="trait-value">${creature.affection_score || 0}</span>
+                            </div>
+                            <div class="trait">
+                                <span class="trait-icon">🎨</span>
+                                <span class="trait-value">${creature.uniqueness_score || 0}</span>
                             </div>
                         </div>
                     </div>
                 </div>
+            `;
+        }
 
-                <!-- Body Type Lore Modal -->
-                <div id="modal-bodytype-modal" class="lore-modal" style="display: none;">
-                    <div class="lore-modal-content">
-                        <span class="lore-modal-close" data-modal="modal-bodytype-modal">&times;</span>
-                        <h2 style="color: #2ecc71; margin-bottom: 15px;">🎨 <span id="modal-bodytype-modal-title">Body Type</span> Lineage</h2>
-                        <p id="modal-bodytype-modal-lore" style="color: #666; line-height: 1.8;">
-                            Loading body type lore...
-                        </p>
-                    </div>
-                </div>
+        function toggleSection(sectionId) {
+            const content = document.getElementById(sectionId);
+            const icon = document.getElementById(`icon-${sectionId}`);
 
-                <!-- Traits Modal -->
-                <div id="modal-traits-modal" class="lore-modal" style="display: none;">
-                    <div class="lore-modal-content">
-                        <span class="lore-modal-close" data-modal="modal-traits-modal">&times;</span>
-                        <h2 style="color: #667eea; margin-bottom: 20px; text-align: center;">
-                            <span id="modal-traits-modal-title">Chatling</span> Traits
-                        </h2>
-                        <div id="modal-traits-modal-container" style="display: flex; flex-direction: column; gap: 10px;">
-                            <!-- Traits will be loaded here -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Team Assignment Buttons (Outside Frame) -->
-            <div id="modal-team-assignment-container" onclick="event.stopPropagation()" style="margin-top: 20px; padding: 20px; background: rgba(255,255,255,0.95); border-radius: 15px; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-                <h4 style="color: #667eea; margin-bottom: 15px; text-align: center; font-size: 1.2em;">🏆 Assign to Team Role</h4>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-                    <button onclick="assignToTeam(1); event.stopPropagation();" class="team-assign-btn">
-                        <span style="display: block; font-size: 0.75em; color: #999;">Slot 1</span>
-                        <span style="display: block; font-weight: bold;">Prime Chatling</span>
-                    </button>
-                    <button onclick="assignToTeam(2); event.stopPropagation();" class="team-assign-btn">
-                        <span style="display: block; font-size: 0.75em; color: #999;">Slot 2</span>
-                        <span style="display: block; font-weight: bold;">Viral Catalyst</span>
-                    </button>
-                    <button onclick="assignToTeam(3); event.stopPropagation();" class="team-assign-btn">
-                        <span style="display: block; font-size: 0.75em; color: #999;">Slot 3</span>
-                        <span style="display: block; font-weight: bold;">Community Builder</span>
-                    </button>
-                    <button onclick="assignToTeam(4); event.stopPropagation();" class="team-assign-btn">
-                        <span style="display: block; font-size: 0.75em; color: #999;">Slot 4</span>
-                        <span style="display: block; font-weight: bold;">Engagement Maven</span>
-                    </button>
-                    <button onclick="assignToTeam(5); event.stopPropagation();" class="team-assign-btn">
-                        <span style="display: block; font-size: 0.75em; color: #999;">Slot 5 <span style="color: #e74c3c;">★ Required</span></span>
-                        <span style="display: block; font-weight: bold;">Community Ambassador</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="/user/components/creature-card-script.js"></script>
-    <script>
-        let currentModalIndex = -1;
-        let modalFilteredList = []; // The list of chatlings to navigate through
-        let frameConfigCache = {}; // Cache frame configs by body type name
-
-        function openChatlingModal(creatureId, indexInPage) {
-            // If called from header without parameters, use currentCreatureId from shared-header
-            if (!creatureId && typeof currentCreatureId !== 'undefined') {
-                creatureId = currentCreatureId;
-                indexInPage = 0;
-                // When opening from header, just show single creature (no navigation)
-                modalFilteredList = [];
-                currentModalIndex = 0;
-            } else if (creatureId && indexInPage !== undefined) {
-                // Called from collections grid with parameters
-                const start = (currentPage - 1) * CREATURES_PER_PAGE;
-                currentModalIndex = start + indexInPage;
-                modalFilteredList = filteredChatlings;
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                icon.classList.add('collapsed');
             } else {
-                console.error('openChatlingModal called without valid parameters');
+                content.classList.add('expanded');
+                icon.classList.remove('collapsed');
+
+                // Lazy load images when section is expanded
+                const lazyImages = content.querySelectorAll('img.lazy-image[data-src]');
+                lazyImages.forEach(img => {
+                    img.src = img.getAttribute('data-src');
+                    img.removeAttribute('data-src');
+                    img.classList.remove('lazy-image');
+                });
+            }
+        }
+
+        async function playAnimation(creatureId, cardId) {
+            console.log('playAnimation called:', { creatureId, cardId });
+
+            const wrapper = document.getElementById(cardId);
+            if (!wrapper) {
+                console.error('Wrapper not found for cardId:', cardId);
                 return;
             }
 
-            loadChatlingInModal(creatureId);
-            document.getElementById('chatling-modal').style.display = 'block';
-            document.body.style.overflow = 'hidden';
-            updateNavigationButtons();
-        }
+            const video = wrapper.querySelector('video');
+            const img = wrapper.querySelector('img');
 
-        function closeChatlingModal(event) {
-            if (event && event.target.id !== 'chatling-modal') {
-                return;
-            }
-            document.getElementById('chatling-modal').style.display = 'none';
-            document.body.style.overflow = 'auto';
-        }
-
-        function navigateChatling(direction) {
-            currentModalIndex += direction;
-
-            if (currentModalIndex >= 0 && currentModalIndex < modalFilteredList.length) {
-                const chatling = modalFilteredList[currentModalIndex];
-                loadChatlingInModal(chatling.id);
-                updateNavigationButtons();
-            }
-        }
-
-        function updateNavigationButtons() {
-            const prevBtn = document.getElementById('prev-chatling');
-            const nextBtn = document.getElementById('next-chatling');
-
-            prevBtn.style.opacity = currentModalIndex > 0 ? '1' : '0.3';
-            prevBtn.style.cursor = currentModalIndex > 0 ? 'pointer' : 'not-allowed';
-            prevBtn.disabled = currentModalIndex <= 0;
-
-            nextBtn.style.opacity = currentModalIndex < modalFilteredList.length - 1 ? '1' : '0.3';
-            nextBtn.style.cursor = currentModalIndex < modalFilteredList.length - 1 ? 'pointer' : 'not-allowed';
-            nextBtn.disabled = currentModalIndex >= modalFilteredList.length - 1;
-        }
-
-        async function loadBodyTypeFrame(bodyTypeName) {
-            const frameWrapper = document.getElementById('modal-creature-frame');
-            const frameOverlay = document.getElementById('modal-frame-overlay');
-            const creatureImage = document.getElementById('modal-creature-image');
-            const imageContainer = creatureImage.closest('.creature-image-container');
-
-            // Reset frame state
-            frameWrapper.classList.remove('has-frame');
-            frameOverlay.style.display = 'none';
-            frameOverlay.style.backgroundImage = '';
-
-            if (!bodyTypeName) {
-                console.log('No body type name provided');
+            if (!video || !img) {
+                console.error('Video or image not found in wrapper');
                 return;
             }
 
-            // Load frame configuration from database (with caching)
-            let config;
-            if (frameConfigCache[bodyTypeName]) {
-                // Use cached config
-                config = frameConfigCache[bodyTypeName];
-                console.log(`✓ Using cached frame config for ${bodyTypeName}`);
-            } else {
-                // Fetch and cache config
+            console.log('Elements found:', { video, img, videoSrc: video.src });
+
+            // Check if video already has a source loaded
+            if (!video.src || video.src === window.location.href) {
+                console.log('Fetching animations for creature:', creatureId);
                 try {
-                    const configResponse = await fetch(`/api/body-type-frame-config/${bodyTypeName}`);
-                    if (configResponse.ok) {
-                        config = await configResponse.json();
-                        frameConfigCache[bodyTypeName] = config;
-                        console.log(`✓ Loaded and cached frame config for ${bodyTypeName}:`, config);
+                    // Fetch available animations for this creature
+                    const response = await fetch(`/api/creatures/${creatureId}/animations`);
+                    console.log('Animation API response status:', response.status);
+
+                    if (response.ok) {
+                        const animationsGrouped = await response.json();
+                        console.log('Animations received:', animationsGrouped);
+
+                        // API returns grouped object like {pose: {...}, idle: {...}}
+                        // Check if there's a 'pose' animation first, otherwise use first available type
+                        let animationData = null;
+
+                        if (animationsGrouped.pose && animationsGrouped.pose.animations && animationsGrouped.pose.animations.length > 0) {
+                            animationData = animationsGrouped.pose.animations[0];
+                            console.log('Using pose animation:', animationData);
+                        } else {
+                            // Find first available animation from any type
+                            const types = Object.keys(animationsGrouped);
+                            for (const type of types) {
+                                if (animationsGrouped[type].animations && animationsGrouped[type].animations.length > 0) {
+                                    animationData = animationsGrouped[type].animations[0];
+                                    console.log(`Using ${type} animation:`, animationData);
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (animationData && animationData.file_name) {
+                            const animationUrl = getAnimationUrl(animationData.file_name);
+                            console.log('Setting animation URL:', animationUrl);
+                            video.src = animationUrl;
+                        } else {
+                            console.log('No animations available for this creature');
+                            return;
+                        }
                     } else {
-                        console.log(`Using default frame config for ${bodyTypeName}`);
+                        console.log('API call failed with status:', response.status);
+                        return;
                     }
                 } catch (error) {
-                    console.error('Error loading frame config:', error);
+                    console.error('Error fetching animations:', error);
+                    return;
                 }
             }
 
-            // Apply sizing configuration to image if config exists
-            if (config) {
-                creatureImage.style.width = `${config.image_width_percent}%`;
-                creatureImage.style.maxWidth = `${config.image_max_width_px}px`;
-                creatureImage.style.maxHeight = `${config.image_max_height_vh}vh`;
-                creatureImage.style.minWidth = `${config.image_min_width_px}px`;
+            // Play the animation
+            console.log('Playing animation...');
+            img.style.display = 'none';
+            video.style.display = 'block';
+            video.currentTime = 0;
 
-                // Apply margin-top to the image container (moves image + badges together)
-                if (imageContainer) {
-                    imageContainer.style.marginTop = `${config.image_margin_top_px || 0}px`;
-                }
-            }
-
-            // Try to load frame image (case insensitive)
-            const frameFileName = bodyTypeName.toLowerCase() + '.png';
-            const framePath = `/artwork/frame/${frameFileName}`;
-
-            console.log(`Checking for frame: ${framePath}`);
-
-            // Use Image object to check if frame exists
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => {
-                    // Frame exists, apply it
-                    console.log(`✓ Frame found! Applying to overlay...`);
-                    frameWrapper.classList.add('has-frame');
-                    frameOverlay.style.backgroundImage = `url('${framePath}')`;
-                    frameOverlay.style.display = 'block';
-                    console.log(`Frame overlay display: ${frameOverlay.style.display}, bg: ${frameOverlay.style.backgroundImage}`);
-                    resolve();
-                };
-                img.onerror = () => {
-                    // No frame found, use default white frame
-                    console.log(`✗ No frame found for "${bodyTypeName}", using default white frame`);
-                    resolve();
-                };
-                img.src = framePath;
-            });
-        }
-
-        async function loadChatlingInModal(creatureId) {
             try {
-                // Load creature details with traits
-                const creatureResponse = await fetch(`/api/creature/${creatureId}/details`);
-                if (!creatureResponse.ok) {
-                    throw new Error('Failed to fetch creature details');
-                }
-
-                const data = await creatureResponse.json();
-
-                // Update rarity badge
-                const rarityBadge = document.getElementById('modal-rarity-badge');
-                if (data.rarity_tier) {
-                    rarityBadge.textContent = data.rarity_tier;
-                    rarityBadge.className = 'rarity-badge rarity-' + data.rarity_tier.toLowerCase();
-                    rarityBadge.style.display = 'block';
-                }
-
-                // Name badge removed - name is displayed in lore section
-
-                // Update body type badge and check for frame
-                const bodytypeBadge = document.getElementById('modal-bodytype-badge');
-                if (data.body_type_name) {
-                    bodytypeBadge.textContent = data.body_type_name;
-                    bodytypeBadge.style.display = 'block';
-
-                    document.getElementById('modal-bodytype-modal-title').textContent = data.body_type_name;
-                    document.getElementById('modal-bodytype-modal-lore').textContent = `The ${data.body_type_name} are a fascinating lineage of Chatlings known for their unique characteristics. These creatures embody specific traits that make them stand out in the world of Social Streams. Their distinctive form reflects the type of content and community energy from which they emerged.`;
-
-                    // Try to load custom frame for this body type
-                    await loadBodyTypeFrame(data.body_type_name);
-                }
-
-                // Update creature lore
-                if (data.creature_name) {
-                    document.getElementById('modal-creature-lore-title').textContent = `${data.creature_name}'s`;
-                    document.getElementById('modal-creature-lore').textContent = `${data.creature_name} is a unique Chatling with an overall power level of ${data.overall_score || 'unknown'}. This remarkable being possesses a distinctive combination of social traits that define its personality and behavior in the realm of Social Streams. Born from the energy of its source content, ${data.creature_name} carries the essence of that moment forever.`;
-                    document.getElementById('modal-creature-lore-section').style.display = 'block';
-                }
-
-                // Update image
-                const img = document.getElementById('modal-creature-image');
-                const imgLoading = document.getElementById('modal-image-loading');
-                img.src = `/images/${data.selected_image}`;
+                await video.play();
+                console.log('Video playing successfully');
+            } catch (error) {
+                console.error('Error playing video:', error);
+                // Revert to image if play fails
+                video.style.display = 'none';
                 img.style.display = 'block';
-                imgLoading.style.display = 'none';
-
-                // Update overall score badge
-                const scoreBadge = document.getElementById('modal-overall-score-badge');
-                if (data.overall_score !== undefined) {
-                    scoreBadge.className = 'overall-score-badge ' + getScoreClassForBadge(data.overall_score);
-                    scoreBadge.innerHTML = `<span>⭐</span><span>${data.overall_score}</span>`;
-                    scoreBadge.style.display = 'block';
-                }
-
-                // Store traits data for modal
-                window.currentCreatureData = {
-                    name: data.creature_name,
-                    traits: data.traits,
-                    primaryColor: data.primary_color
-                };
-
-                // Store current creature ID for team assignment
-                window.currentModalCreatureId = creatureId;
-
-                // Show team assignment container
-                const teamAssignmentContainer = document.getElementById('modal-team-assignment-container');
-                if (teamAssignmentContainer) {
-                    teamAssignmentContainer.style.display = 'block';
-
-                    // Fetch team data and highlight buttons for assigned roles
-                    await highlightAssignedRoles(creatureId);
-                }
-
-            } catch (error) {
-                console.error('Error loading chatling:', error);
-                document.getElementById('modal-image-loading').textContent = 'Failed to load chatling details.';
-                document.getElementById('modal-image-loading').className = 'error';
-            }
-        }
-
-        function getScoreClassForBadge(score) {
-            if (score >= 95) return 'score-max';
-            if (score >= 81) return 'score-vhigh';
-            if (score >= 61) return 'score-high';
-            if (score >= 41) return 'score-medium';
-            if (score >= 21) return 'score-low';
-            return 'score-vlow';
-        }
-
-        // Highlight team role buttons if creature is assigned
-        async function highlightAssignedRoles(creatureId) {
-            try {
-                // Fetch current team composition
-                const teamResponse = await fetch('/api/user/team');
-                if (!teamResponse.ok) return;
-
-                const teamData = await teamResponse.json();
-
-                // Reset all buttons to default style first
-                for (let slot = 1; slot <= 5; slot++) {
-                    const buttons = document.querySelectorAll(`button[onclick*="assignToTeam(${slot})"]`);
-                    buttons.forEach(btn => {
-                        btn.style.background = 'white';
-                        btn.style.color = '#333';
-                        btn.style.border = '2px solid #667eea';
-                    });
-                }
-
-                // Check which slots have this creature assigned
-                teamData.team.forEach(member => {
-                    if (member.creature && member.creature.id === creatureId) {
-                        // Highlight this slot's button
-                        const buttons = document.querySelectorAll(`button[onclick*="assignToTeam(${member.slot})"]`);
-                        buttons.forEach(btn => {
-                            btn.style.background = 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)';
-                            btn.style.color = 'white';
-                            btn.style.border = '2px solid #27ae60';
-                            btn.style.boxShadow = '0 4px 12px rgba(46, 204, 113, 0.4)';
-                        });
-                    }
-                });
-
-            } catch (error) {
-                console.error('Error highlighting assigned roles:', error);
-            }
-        }
-
-        // Assign creature to team slot
-        async function assignToTeam(slot) {
-            if (!window.currentModalCreatureId) {
-                console.error('No creature ID stored');
-                return;
             }
 
-            const roleNames = {
-                1: 'Prime Chatling',
-                2: 'Viral Catalyst',
-                3: 'Community Builder',
-                4: 'Engagement Maven',
-                5: 'Community Ambassador'
+            // Return to static image when video ends
+            video.onended = () => {
+                console.log('Video ended, returning to image');
+                video.style.display = 'none';
+                img.style.display = 'block';
             };
-
-            try {
-                const response = await fetch('/api/user/team/assign', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        creatureId: window.currentModalCreatureId,
-                        slot: slot
-                    })
-                });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Failed to assign to team');
-                }
-
-                // Reload team icons in header
-                if (typeof loadTeamIcons === 'function') {
-                    await loadTeamIcons();
-                }
-
-                // Refresh role button highlighting
-                await highlightAssignedRoles(window.currentModalCreatureId);
-
-                // Show success message
-                alert(`✅ Successfully assigned to ${roleNames[slot]}!`);
-
-            } catch (error) {
-                console.error('Error assigning to team:', error);
-                alert(`Failed to assign: ${error.message}`);
-            }
         }
 
-        // Modal click handlers for sub-modals
-        document.addEventListener('click', (e) => {
-            const bodytypeBadge = document.getElementById('modal-bodytype-badge');
-            const bodytypeModal = document.getElementById('modal-bodytype-modal');
-            const scoreBadge = document.getElementById('modal-overall-score-badge');
-            const traitsModal = document.getElementById('modal-traits-modal');
-
-            // Open body type modal when badge is clicked
-            if (e.target === bodytypeBadge) {
-                bodytypeModal.style.display = 'flex';
-            }
-
-            // Open traits modal when score badge is clicked
-            if (e.target === scoreBadge || e.target.parentElement === scoreBadge) {
-                openTraitsModalInChatlingModal();
-            }
-
-            // Close modal when X is clicked
-            if (e.target.classList.contains('lore-modal-close')) {
-                const modalId = e.target.getAttribute('data-modal');
-                document.getElementById(modalId).style.display = 'none';
-            }
-
-            // Close modal when clicking outside the content
-            if (e.target.classList.contains('lore-modal')) {
-                e.target.style.display = 'none';
-            }
-        });
-
-        function openTraitsModalInChatlingModal() {
-            if (!window.currentCreatureData) return;
-
-            const modal = document.getElementById('modal-traits-modal');
-            const container = document.getElementById('modal-traits-modal-container');
-            const title = document.getElementById('modal-traits-modal-title');
-
-            title.textContent = window.currentCreatureData.name || 'Chatling';
-            container.innerHTML = '';
-
-            const traits = window.currentCreatureData.traits || [];
-            traits.forEach(trait => {
-                const traitDiv = document.createElement('div');
-                traitDiv.className = 'trait-modal-item';
-                traitDiv.innerHTML = `
-                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(102, 126, 234, 0.08); border-radius: 10px; transition: background 0.2s;">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <span style="font-size: 1.5em;">${trait.icon || '⭐'}</span>
-                            <div>
-                                <div style="font-weight: 600; color: #333; font-size: 1em;">${trait.category_name}</div>
-                                <div style="font-size: 0.85em; color: #666; margin-top: 2px;">${trait.description || ''}</div>
-                            </div>
-                        </div>
-                        <div style="font-weight: bold; font-size: 1.2em; color: #667eea; min-width: 40px; text-align: right;">
-                            ${trait.score}
-                        </div>
-                    </div>
-                `;
-                container.appendChild(traitDiv);
-            });
-
-            modal.style.display = 'flex';
+        function viewCreature(creatureId) {
+            window.location.href = `/user/view-creature.html?id=${creatureId}`;
         }
 
-        // Keyboard navigation
-        document.addEventListener('keydown', (e) => {
-            const modal = document.getElementById('chatling-modal');
-            if (modal.style.display === 'block') {
-                if (e.key === 'ArrowLeft' && currentModalIndex > 0) {
-                    navigateChatling(-1);
-                } else if (e.key === 'ArrowRight' && currentModalIndex < modalFilteredList.length - 1) {
-                    navigateChatling(1);
-                } else if (e.key === 'Escape') {
-                    closeChatlingModal();
-                }
-            }
-        });
+        init();
     </script>
 </body>
 </html>
