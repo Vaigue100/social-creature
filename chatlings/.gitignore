@@ -53,9 +53,11 @@ temp/
 
 # Azure deployment files (contain secrets!)
 azure/SECRETS_CHECKLIST.md
-azure/deployment-outputs-*.json
+azure/deployment-outputs*.json
+azure/deployment-output*.json
 azure/*.zip
 azure/parameters*.json
+.azure/
 
 # Local parameters with secrets
 azure/parameters.local.json
