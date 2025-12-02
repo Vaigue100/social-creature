@@ -1,0 +1,254 @@
+/**
+ * Universal Modal Styles
+ */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-container {
+    background: white;
+    border-radius: 16px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(40px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    padding: 24px 28px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px 16px 0 0;
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 1.5em;
+    font-weight: 700;
+    color: white;
+}
+
+.modal-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    font-size: 2em;
+    line-height: 1;
+    cursor: pointer;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    padding: 0;
+}
+
+.modal-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
+}
+
+.modal-content {
+    padding: 24px 28px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Notification Styles within Modal */
+.notifications-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.notification-item {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+    border-left: 4px solid transparent;
+}
+
+.notification-item:hover {
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.notification-item.unread {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+    border-left-color: #667eea;
+}
+
+.notification-item.clickable {
+    cursor: pointer;
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.notification-left {
+    flex: 1;
+}
+
+.notification-icon-type {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.notification-icon {
+    font-size: 1.5em;
+}
+
+.notification-type {
+    font-size: 0.85em;
+    color: #667eea;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.notification-title {
+    font-weight: 600;
+    color: #333;
+    font-size: 1.05em;
+    margin-bottom: 6px;
+}
+
+.notification-message {
+    color: #666;
+    font-size: 0.95em;
+    line-height: 1.5;
+}
+
+.notification-time {
+    font-size: 0.85em;
+    color: #999;
+    margin-bottom: 8px;
+    white-space: nowrap;
+}
+
+.notification-status {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.notification-status.unread {
+    background: #667eea;
+    color: white;
+}
+
+.notification-status.read {
+    background: #f0f0f0;
+    color: #999;
+}
+
+.mark-all-btn {
+    transition: all 0.2s;
+}
+
+.mark-all-btn:hover {
+    background: #5568d3 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.mark-all-btn:active {
+    transform: translateY(0);
+}
+
+.mark-all-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .modal-container {
+        max-width: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+        margin: 0;
+    }
+
+    .modal-header {
+        border-radius: 0;
+        padding: 20px;
+    }
+
+    .modal-title {
+        font-size: 1.3em;
+    }
+
+    .modal-content {
+        padding: 20px;
+    }
+
+    .notification-item {
+        padding: 14px;
+    }
+
+    .notification-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .notification-time {
+        margin-bottom: 4px;
+    }
+}

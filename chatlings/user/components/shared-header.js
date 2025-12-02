@@ -20,6 +20,22 @@ function getPageTitle(activePage) {
 function initSharedHeader(activePage = 'home') {
     const pageTitle = getPageTitle(activePage);
 
+    // Dynamically load modal system if not already loaded
+    if (!document.getElementById('modal-css')) {
+        const modalCSS = document.createElement('link');
+        modalCSS.id = 'modal-css';
+        modalCSS.rel = 'stylesheet';
+        modalCSS.href = '/user/styles/modal.css';
+        document.head.appendChild(modalCSS);
+    }
+
+    if (!document.getElementById('modal-js')) {
+        const modalJS = document.createElement('script');
+        modalJS.id = 'modal-js';
+        modalJS.src = '/user/components/modal-manager.js';
+        document.head.appendChild(modalJS);
+    }
+
     const headerHTML = `
         <header>
             <div class="header-left">
@@ -37,8 +53,8 @@ function initSharedHeader(activePage = 'home') {
                         🔔
                     </button>
                     <div class="dropdown-content" id="notifications-dropdown">
-                        <div class="dropdown-header" onclick="window.location.href='notifications.html'" style="cursor: pointer;">
-                            Click to open Notifications page
+                        <div class="dropdown-header" onclick="modalManager.openNotificationsModal(); closeAllDropdowns();" style="cursor: pointer;">
+                            Click to view all notifications
                         </div>
                         <div id="notifications-list">
                             <div class="dropdown-empty">Loading notifications...</div>
