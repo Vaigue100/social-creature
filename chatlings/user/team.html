@@ -2,9 +2,29 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>My Team - Chatlings</title>
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Theme color for mobile browsers -->
+    <meta name="theme-color" content="#667eea">
+
+    <!-- Apple iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Chatlings">
+    <link rel="apple-touch-icon" href="/assets/icon-192.png">
+
+    <script src="/user/config.js"></script>
+  <script src="/user/components/auth-check.js"></script>
     <link rel="stylesheet" href="components/shared-header-styles.css">
+    <script src="/user/config.js"></script>
+  <script src="/user/components/auth-check.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/orgchart@3.8.0/dist/css/jquery.orgchart.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/orgchart@3.8.0/dist/js/jquery.orgchart.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -271,63 +291,141 @@
         <script>initSharedHeader('team');</script>
 
         <div style="background: rgba(255, 255, 255, 0.95); border-radius: 15px; padding: 40px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1); margin-top: 20px;">
-        <div class="team-header">
-            <h1 style="color: #667eea;">🏆 My Team</h1>
-            <p style="color: #666;">Your elite squad of Chatlings</p>
-        </div>
-
-        <div id="loading" class="loading">Loading team...</div>
-
-        <!-- CEO Section -->
-        <div class="ceo-section" id="ceo-section" style="display: none;">
-            <div class="ceo-card">
-                <div class="ceo-icon">👤</div>
-                <div class="ceo-info">
-                    <div class="role-title">🎯 Social Architect</div>
-                    <h2 id="ceo-name">You</h2>
-                    <p class="email" id="ceo-email"></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Team Members Grid -->
-        <div class="team-grid" id="team-grid"></div>
-
-        <!-- Team Analysis -->
-        <div class="team-analysis" id="team-analysis" style="display: none;">
-            <h2>📊 Team Analysis</h2>
-            <div class="analysis-grid">
-                <!-- Strengths -->
-                <div class="analysis-section">
-                    <h3>💪 Team Strengths</h3>
-                    <div id="strengths-content"></div>
-                </div>
-
-                <!-- Weaknesses -->
-                <div class="analysis-section">
-                    <h3>⚠️ Areas for Growth</h3>
-                    <div id="weaknesses-content"></div>
-                </div>
-
-                <!-- Synergy -->
-                <div class="analysis-section">
-                    <h3>🤝 Team Synergy</h3>
-                    <div id="synergy-content"></div>
-                </div>
+            <div id="back-button-container" style="display: none; margin-bottom: 20px; text-align: center;">
+                <button id="back-to-creature-btn" style="padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 14px; font-weight: bold; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: all 0.3s;">
+                    ← Back to <span id="creature-name-display"></span>
+                </button>
             </div>
 
-            <!-- Team Insights -->
-            <div class="analysis-section" style="margin-top: 25px;">
-                <h3>💡 Team Insights</h3>
-                <ul class="insights-list" id="insights-list"></ul>
-            </div>
-        </div>
+            <p style="text-align: center; color: #666; margin-bottom: 30px; font-weight: bold;">Click nodes to expand/collapse. Double-click to assign or change roles.</p>
+
+            <div id="loading" class="loading" style="color: #667eea;">Loading team...</div>
+
+            <!-- OrgChart Container -->
+            <div id="team-orgchart" style="background: white; min-height: 500px; display: none;"></div>
         </div><!-- Close content wrapper -->
     </div><!-- Close container -->
 
-    <script>
+    <style>
+        /* OrgChart Library Custom Styles */
+        /* Remove grid background */
+        #team-orgchart {
+            background: white !important;
+        }
 
-        let teamData = null;
+        #team-orgchart .orgchart {
+            background: white !important;
+            background-image: none !important;
+        }
+
+        #team-orgchart .orgchart .node {
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 160px !important;
+            min-height: 60px !important;
+            padding: 0 !important;
+            margin: 15px !important;
+            font-size: 14px !important;
+            background: white !important;
+            border: none !important;
+            color: white !important;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #team-orgchart .orgchart .node .title {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            font-size: 13px !important;
+            padding: 18px 8px !important;
+            line-height: 1.3;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-weight: 600;
+            width: 100% !important;
+            box-sizing: border-box;
+        }
+
+        #team-orgchart .orgchart .node:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        #team-orgchart .orgchart .node.architect-node {
+            cursor: default !important;
+        }
+
+        /* Style for nodes with creature images */
+        #team-orgchart .orgchart .node .creature-img {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto;
+            aspect-ratio: 1;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Style for empty status */
+        #team-orgchart .orgchart .node .empty-status {
+            padding: 15px 8px;
+            color: #999;
+            font-size: 12px;
+            text-align: center;
+            background: #f8f9fa;
+            width: 100% !important;
+            box-sizing: border-box;
+        }
+
+        #team-orgchart .orgchart .lines .downLine,
+        #team-orgchart .orgchart .lines .leftLine,
+        #team-orgchart .orgchart .lines .rightLine,
+        #team-orgchart .orgchart .lines .topLine {
+            border-color: #667eea;
+        }
+
+        /* Style for expand/collapse toggle buttons */
+        #team-orgchart .orgchart .toggleBtn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            border: 2px solid white !important;
+            width: 28px !important;
+            height: 28px !important;
+            border-radius: 50% !important;
+            cursor: pointer !important;
+            transition: all 0.3s !important;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4) !important;
+        }
+
+        #team-orgchart .orgchart .toggleBtn:hover {
+            transform: scale(1.15) !important;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.6) !important;
+        }
+
+        #team-orgchart .orgchart .toggleBtn::before {
+            color: white !important;
+            font-weight: bold !important;
+            font-size: 16px !important;
+        }
+
+        #back-to-creature-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+    </style>
+
+    <script>
+        let returnToCreature = null;
+        let returnToCreatureName = null;
+
+        // Check if we came from a creature view
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('creatureId')) {
+            returnToCreature = urlParams.get('creatureId');
+            returnToCreatureName = urlParams.get('creatureName');
+        }
 
         async function loadTeam() {
             try {
@@ -336,13 +434,23 @@
                     throw new Error('Failed to fetch team');
                 }
 
-                const data = await response.json();
-                teamData = data;
+                const teamData = await response.json();
+
+                // If we came from a creature view, show the back button
+                if (returnToCreature && returnToCreatureName) {
+                    document.getElementById('creature-name-display').textContent = decodeURIComponent(returnToCreatureName);
+                    document.getElementById('back-button-container').style.display = 'block';
+
+                    // Add click handler for back button
+                    document.getElementById('back-to-creature-btn').onclick = function() {
+                        window.location.href = `view-creature.html?id=${returnToCreature}`;
+                    };
+                }
 
                 document.getElementById('loading').style.display = 'none';
-                displayCEO(data.userEmail);
-                displayTeamMembers(data.team);
-                analyzeTeam(data.team);
+                document.getElementById('team-orgchart').style.display = 'block';
+
+                await initializeOrgChart(teamData.team);
 
             } catch (error) {
                 console.error('Error loading team:', error);
@@ -350,235 +458,110 @@
             }
         }
 
-        function displayCEO(email) {
-            document.getElementById('ceo-email').textContent = email;
-            document.getElementById('ceo-section').style.display = 'block';
-        }
-
-        function displayTeamMembers(team) {
-            const grid = document.getElementById('team-grid');
-            grid.innerHTML = '';
-
+        async function initializeOrgChart(team) {
+            // Create a map of slot to creature data
+            const slotCreatureMap = {};
             team.forEach(member => {
-                const card = document.createElement('div');
-                card.className = 'team-member-card';
-
-                // Add "Required" indicator for Community Ambassador (slot 5)
-                const requiredLabel = member.slot === 5 ? ' <span style="color: #e74c3c; font-size: 0.85em;">★ Required</span>' : '';
-                let content = `<div class="role-badge">${member.role}${requiredLabel}</div>`;
-
                 if (member.creature) {
-                    // Make card clickable for filled slots
-                    card.style.cursor = 'pointer';
-                    card.onclick = () => {
-                        window.location.href = `view-creature.html?id=${member.creature.id}&from=team`;
-                    };
-
-                    content += `
-                        <div class="creature-slot">
-                            <div class="creature-image-wrapper">
-                                <img src="/images/${member.creature.image}" alt="${member.creature.name}">
-                            </div>
-                            <div class="creature-name">${member.creature.name}</div>
-                            <div class="creature-rarity rarity-${member.creature.rarity.toLowerCase()}">${member.creature.rarity}</div>
-                            <div style="color: #666; font-size: 0.9em;">${member.creature.bodyType || 'Unknown Type'}</div>
-                        </div>
-                    `;
-                } else {
-                    content += `
-                        <div class="creature-slot">
-                            <div class="empty-slot">?</div>
-                            <div style="color: #999; font-style: italic;">No chatling assigned</div>
-                            <div style="color: #999; font-size: 0.85em; margin-top: 10px;">Assign from your collection</div>
-                        </div>
-                    `;
+                    slotCreatureMap[member.slot] = member.creature;
                 }
-
-                card.innerHTML = content;
-                grid.appendChild(card);
             });
-        }
 
-        function analyzeTeam(team) {
-            const members = team.filter(m => m.creature !== null);
-
-            if (members.length === 0) {
-                document.getElementById('team-analysis').style.display = 'none';
-                return;
-            }
-
-            // Calculate average trait scores
-            const traitScores = {};
-            let traitCounts = {};
-
-            members.forEach(member => {
-                member.traits.forEach(trait => {
-                    if (!traitScores[trait.category_name]) {
-                        traitScores[trait.category_name] = 0;
-                        traitCounts[trait.category_name] = 0;
+            // Build org chart data structure with Architect at the top
+            const orgData = {
+                'name': 'Architect',
+                'title': 'You',
+                'className': 'architect-node',
+                'slot': 0, // Special slot for the user
+                'children': [
+                    {
+                        'name': 'Prime Chatling',
+                        'title': slotCreatureMap[1] ? 'Assigned' : 'Empty',
+                        'className': slotCreatureMap[1] ? 'assigned' : '',
+                        'slot': 1,
+                        'creature': slotCreatureMap[1]
+                    },
+                    {
+                        'name': 'Viral Catalyst',
+                        'title': slotCreatureMap[2] ? 'Assigned' : 'Empty',
+                        'className': slotCreatureMap[2] ? 'assigned' : '',
+                        'slot': 2,
+                        'creature': slotCreatureMap[2]
+                    },
+                    {
+                        'name': 'Community Builder',
+                        'title': slotCreatureMap[3] ? 'Assigned' : 'Empty',
+                        'className': slotCreatureMap[3] ? 'assigned' : '',
+                        'slot': 3,
+                        'creature': slotCreatureMap[3]
+                    },
+                    {
+                        'name': 'Engagement Maven',
+                        'title': slotCreatureMap[4] ? 'Assigned' : 'Empty',
+                        'className': slotCreatureMap[4] ? 'assigned' : '',
+                        'slot': 4,
+                        'creature': slotCreatureMap[4]
+                    },
+                    {
+                        'name': 'Ambassador',
+                        'title': slotCreatureMap[5] ? 'Assigned ★' : 'Empty - Required ★',
+                        'className': slotCreatureMap[5] ? 'assigned' : '',
+                        'slot': 5,
+                        'creature': slotCreatureMap[5]
                     }
-                    traitScores[trait.category_name] += trait.score;
-                    traitCounts[trait.category_name]++;
-                });
-            });
+                ]
+            };
 
-            // Calculate averages
-            const avgTraits = {};
-            Object.keys(traitScores).forEach(trait => {
-                avgTraits[trait] = Math.round(traitScores[trait] / traitCounts[trait]);
-            });
+            // Initialize the org chart
+            $('#team-orgchart').empty();
+            $('#team-orgchart').orgchart({
+                'data': orgData,
+                'nodeTemplate': function(data) {
+                    let html = `<div class="title">${data.name}</div>`;
 
-            // Display strengths (top 3 traits)
-            const sortedTraits = Object.entries(avgTraits).sort((a, b) => b[1] - a[1]);
-            const strengths = sortedTraits.slice(0, 3);
-            const weaknesses = sortedTraits.slice(-3).reverse();
+                    if (data.creature) {
+                        html += `<img src="${getImageUrl(data.creature.image)}" class="creature-img" alt="${data.creature.name}" />`;
+                    } else if (data.slot !== 0) {
+                        html += `<div class="empty-status">${data.title}</div>`;
+                    }
 
-            displayStrengths(strengths);
-            displayWeaknesses(weaknesses);
-            calculateSynergy(members, avgTraits);
-            generateInsights(members, avgTraits, sortedTraits);
+                    return html;
+                },
+                'pan': true,
+                'zoom': true,
+                'nodeID': 'slot',
+                'createNode': function($node, data) {
+                    // Add tooltips to expand/collapse buttons
+                    setTimeout(() => {
+                        const $toggleBtn = $node.find('.toggleBtn');
+                        if ($toggleBtn.length > 0) {
+                            $toggleBtn.attr('title', 'Click to expand/collapse team members');
+                        }
+                    }, 100);
 
-            document.getElementById('team-analysis').style.display = 'block';
-        }
+                    // Skip double-click handler for architect node
+                    if (data.slot !== 0) {
+                        // Double click to view/assign role
+                        $node.on('dblclick', function(e) {
+                            e.stopPropagation();
+                            viewRoleSlot(data.slot);
+                        });
 
-        function displayStrengths(strengths) {
-            const content = document.getElementById('strengths-content');
-            content.innerHTML = '';
-
-            strengths.forEach(([trait, score]) => {
-                const bar = document.createElement('div');
-                bar.className = 'stat-bar';
-                bar.innerHTML = `
-                    <div class="stat-label">
-                        <span>${trait}</span>
-                        <span>${score}</span>
-                    </div>
-                    <div class="stat-progress">
-                        <div class="stat-fill" style="width: ${score}%"></div>
-                    </div>
-                `;
-                content.appendChild(bar);
-            });
-        }
-
-        function displayWeaknesses(weaknesses) {
-            const content = document.getElementById('weaknesses-content');
-            content.innerHTML = '';
-
-            weaknesses.forEach(([trait, score]) => {
-                const bar = document.createElement('div');
-                bar.className = 'stat-bar';
-                bar.innerHTML = `
-                    <div class="stat-label">
-                        <span>${trait}</span>
-                        <span>${score}</span>
-                    </div>
-                    <div class="stat-progress">
-                        <div class="stat-fill" style="width: ${score}%; background: linear-gradient(90deg, #e74c3c, #c0392b);"></div>
-                    </div>
-                `;
-                content.appendChild(bar);
+                        // Add tooltip
+                        $node.attr('title', 'Double-click to view or assign chatling');
+                    }
+                }
             });
         }
 
-        function calculateSynergy(members, avgTraits) {
-            // Calculate team synergy based on trait variance and balance
-            const traitValues = Object.values(avgTraits);
-            const avgScore = traitValues.reduce((a, b) => a + b, 0) / traitValues.length;
-
-            // Calculate variance (lower = more balanced = better synergy)
-            const variance = traitValues.reduce((sum, val) => sum + Math.pow(val - avgScore, 2), 0) / traitValues.length;
-            const stdDev = Math.sqrt(variance);
-
-            let synergyScore;
-            let synergyLevel;
-            let synergyClass;
-            let synergyText;
-
-            if (stdDev < 10 && avgScore > 70) {
-                synergyLevel = 'Excellent';
-                synergyClass = 'synergy-excellent';
-                synergyScore = 95;
-                synergyText = 'Your team is exceptionally well-balanced with strong overall performance!';
-            } else if (stdDev < 15 && avgScore > 60) {
-                synergyLevel = 'Good';
-                synergyClass = 'synergy-good';
-                synergyScore = 75;
-                synergyText = 'Your team works well together with good balance across traits.';
-            } else if (stdDev < 20 || avgScore > 50) {
-                synergyLevel = 'Average';
-                synergyClass = 'synergy-average';
-                synergyScore = 50;
-                synergyText = 'Your team has potential but could benefit from more balanced members.';
+        function viewRoleSlot(slot) {
+            // Open collections page with filter to allow assignment
+            // If we came from a creature view, add return parameter
+            if (returnToCreature) {
+                window.location.href = `collections.html?assignToSlot=${slot}&returnTo=view-creature.html?id=${returnToCreature}`;
             } else {
-                synergyLevel = 'Needs Improvement';
-                synergyClass = 'synergy-poor';
-                synergyScore = 25;
-                synergyText = 'Consider diversifying your team to improve overall synergy.';
+                window.location.href = `collections.html?assignToSlot=${slot}`;
             }
-
-            const content = document.getElementById('synergy-content');
-            content.innerHTML = `
-                <div class="synergy-indicator ${synergyClass}">
-                    ${synergyLevel} (${Math.round(synergyScore)}%)
-                </div>
-                <p style="text-align: center; margin-top: 15px; color: #666;">${synergyText}</p>
-                <div style="margin-top: 15px;">
-                    <div class="stat-label">
-                        <span>Team Size</span>
-                        <span>${members.length}/5</span>
-                    </div>
-                    <div class="stat-progress">
-                        <div class="stat-fill" style="width: ${(members.length/5)*100}%"></div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function generateInsights(members, avgTraits, sortedTraits) {
-            const insights = [];
-
-            // Team size insight
-            if (members.length < 5) {
-                insights.push(`🔍 You have ${5 - members.length} empty slot${5 - members.length > 1 ? 's' : ''}. Fill your team to unlock maximum potential!`);
-            } else {
-                insights.push('✅ Your team is complete with all 5 positions filled!');
-            }
-
-            // Strength insight
-            if (sortedTraits[0] && sortedTraits[0][1] > 80) {
-                insights.push(`💎 Your team excels at ${sortedTraits[0][0]} - this is a major competitive advantage!`);
-            }
-
-            // Weakness insight
-            if (sortedTraits[sortedTraits.length - 1] && sortedTraits[sortedTraits.length - 1][1] < 40) {
-                insights.push(`📈 Consider recruiting chatlings with higher ${sortedTraits[sortedTraits.length - 1][0]} to shore up this weakness.`);
-            }
-
-            // Rarity insight
-            const rarityCount = {};
-            members.forEach(m => {
-                rarityCount[m.creature.rarity] = (rarityCount[m.creature.rarity] || 0) + 1;
-            });
-
-            if (rarityCount['Legendary']) {
-                insights.push(`🌟 You have ${rarityCount['Legendary']} legendary chatling${rarityCount['Legendary'] > 1 ? 's' : ''} on your team!`);
-            }
-
-            // Balance insight
-            const scores = Object.values(avgTraits);
-            const isBalanced = Math.max(...scores) - Math.min(...scores) < 20;
-            if (isBalanced) {
-                insights.push('⚖️ Your team has excellent trait balance - versatility is key to success!');
-            }
-
-            const list = document.getElementById('insights-list');
-            list.innerHTML = '';
-            insights.forEach(insight => {
-                const li = document.createElement('li');
-                li.textContent = insight;
-                list.appendChild(li);
-            });
         }
 
         // Load team on page load

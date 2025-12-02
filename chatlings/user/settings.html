@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Settings - Chatlings</title>
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Theme color for mobile browsers -->
+    <meta name="theme-color" content="#667eea">
+
+    <!-- Apple iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Chatlings">
+    <link rel="apple-touch-icon" href="/assets/icon-192.png">
+
+    <script src="/user/config.js"></script>
+    <script src="/user/components/auth-check.js"></script>
+    <link rel="stylesheet" href="/user/components/shared-header-styles.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            color: #667eea;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-description {
+            color: #666;
+            font-size: 0.95em;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .master-toggle {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .master-toggle-content {
+            flex: 1;
+        }
+
+        .master-toggle h3 {
+            margin-bottom: 5px;
+            font-size: 1.2em;
+        }
+
+        .master-toggle p {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .notification-option {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .notification-option:hover {
+            background: #f0f0f0;
+        }
+
+        .notification-option.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .notification-info {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 1.05em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .notification-description {
+            color: #666;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 30px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(30px);
+        }
+
+        .status-message {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .status-message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+
+        .browser-support-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .save-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            display: none;
+        }
+
+        .save-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .save-button.show {
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header and nav will be injected by shared-header.js -->
+
+        <div class="content">
+            <h2>⚙️ Settings</h2>
+
+            <div id="loading" class="loading">
+                Loading settings...
+            </div>
+
+            <div id="settings-content" style="display: none;">
+                <!-- Status messages -->
+                <div id="status-message" class="status-message"></div>
+                <div id="browser-warning" class="browser-support-warning"></div>
+
+                <!-- Push Notifications Section -->
+                <div class="section">
+                    <div class="section-title">
+                        <span>🔔</span>
+                        <span>Push Notifications</span>
+                    </div>
+                    <p class="section-description">
+                        Receive notifications on your phone even when the app is closed.
+                        You can customize which types of notifications you want to receive.
+                    </p>
+
+                    <!-- Master Toggle -->
+                    <div class="master-toggle">
+                        <div class="master-toggle-content">
+                            <h3>Enable Push Notifications</h3>
+                            <p id="push-status-text">Turn on to receive notifications on this device</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="push-enabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- Individual Notification Types -->
+                    <div id="notification-types">
+                        <div class="notification-option" data-type="daily_box">
+                            <div class="notification-info">
+                                <div class="notification-title">
+                                    <span>🎁</span>
+                                    <span>Daily Mystery Box</span>
+                                </div>
+                                <div class="notification-description">
+                                    Get notified when your daily mystery box is ready to open
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" data-pref="daily_box">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="notification-option" data-type="new_chatling">
+                            <div class="notification-info">
+                                <div class="notification-title">
+                                    <span>✨</span>
+                                    <span>New Chatling Discovery</span>
+                                </div>
+                                <div class="notification-description">
+                                    Get notified when you discover a brand new chatling for the first time
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" data-pref="new_chatling">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="notification-option" data-type="achievement">
+                            <div class="notification-info">
+                                <div class="notification-title">
+                                    <span>🏆</span>
+                                    <span>Achievement Unlocked</span>
+                                </div>
+                                <div class="notification-description">
+                                    Get notified when you unlock a new achievement
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" data-pref="achievement">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="notification-option" data-type="chatroom">
+                            <div class="notification-info">
+                                <div class="notification-title">
+                                    <span>💬</span>
+                                    <span>Chatroom Activity</span>
+                                </div>
+                                <div class="notification-description">
+                                    Get notified about chatroom events (new conversations, chatling returns, etc.)
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" data-pref="chatroom">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="notification-option" data-type="youtube_reminder">
+                            <div class="notification-info">
+                                <div class="notification-title">
+                                    <span>▶️</span>
+                                    <span>YouTube Reminders</span>
+                                </div>
+                                <div class="notification-description">
+                                    Get reminded to like YouTube videos to collect more chatlings
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" data-pref="youtube_reminder">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Save Button -->
+                <button id="save-button" class="save-button">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/user/components/shared-header.js"></script>
+    <script>
+        // Initialize header
+        initSharedHeader('settings');
+
+        let currentPreferences = {};
+        let hasChanges = false;
+        let pushSubscription = null;
+
+        async function init() {
+            await loadPreferences();
+            await checkPushSupport();
+            setupEventListeners();
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('settings-content').style.display = 'block';
+        }
+
+        async function loadPreferences() {
+            try {
+                const response = await fetch('/api/user/push-preferences');
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentPreferences = data.preferences || {};
+                    updateUIFromPreferences();
+                } else if (response.status === 404) {
+                    // No preferences yet, use defaults
+                    currentPreferences = {
+                        enabled: false,
+                        daily_box: true,
+                        new_chatling: true,
+                        achievement: true,
+                        chatroom: false,
+                        youtube_reminder: false
+                    };
+                    updateUIFromPreferences();
+                }
+            } catch (error) {
+                console.error('Error loading preferences:', error);
+                showMessage('Failed to load settings', 'error');
+            }
+        }
+
+        function updateUIFromPreferences() {
+            document.getElementById('push-enabled').checked = currentPreferences.enabled || false;
+
+            document.querySelectorAll('[data-pref]').forEach(checkbox => {
+                const pref = checkbox.getAttribute('data-pref');
+                checkbox.checked = currentPreferences[pref] || false;
+            });
+
+            updateNotificationOptionsState();
+        }
+
+        function updateNotificationOptionsState() {
+            const masterEnabled = document.getElementById('push-enabled').checked;
+            const options = document.querySelectorAll('.notification-option');
+
+            options.forEach(option => {
+                if (masterEnabled) {
+                    option.classList.remove('disabled');
+                } else {
+                    option.classList.add('disabled');
+                }
+            });
+
+            updatePushStatusText();
+        }
+
+        async function checkPushSupport() {
+            // Check if push notifications are supported
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                showBrowserWarning('Push notifications are not supported in this browser. Please use Chrome, Firefox, or Safari on iOS 16.4+');
+                return;
+            }
+
+            // Check if we have an existing subscription
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                pushSubscription = await registration.pushManager.getSubscription();
+
+                if (pushSubscription) {
+                    updatePushStatusText(true);
+                }
+            } catch (error) {
+                console.error('Error checking push subscription:', error);
+            }
+        }
+
+        function updatePushStatusText(isSubscribed = false) {
+            const statusText = document.getElementById('push-status-text');
+            const masterEnabled = document.getElementById('push-enabled').checked;
+
+            if (masterEnabled && isSubscribed) {
+                statusText.textContent = '✓ Notifications enabled on this device';
+            } else if (masterEnabled && !isSubscribed) {
+                statusText.textContent = 'Click Save to enable notifications on this device';
+            } else {
+                statusText.textContent = 'Turn on to receive notifications on this device';
+            }
+        }
+
+        function setupEventListeners() {
+            // Master toggle
+            document.getElementById('push-enabled').addEventListener('change', (e) => {
+                updateNotificationOptionsState();
+                markAsChanged();
+            });
+
+            // Individual preferences
+            document.querySelectorAll('[data-pref]').forEach(checkbox => {
+                checkbox.addEventListener('change', markAsChanged);
+            });
+
+            // Save button
+            document.getElementById('save-button').addEventListener('click', savePreferences);
+        }
+
+        function markAsChanged() {
+            hasChanges = true;
+            document.getElementById('save-button').classList.add('show');
+        }
+
+        async function savePreferences() {
+            const saveButton = document.getElementById('save-button');
+            saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
+
+            try {
+                // Collect preferences
+                const preferences = {
+                    enabled: document.getElementById('push-enabled').checked,
+                    daily_box: document.querySelector('[data-pref="daily_box"]').checked,
+                    new_chatling: document.querySelector('[data-pref="new_chatling"]').checked,
+                    achievement: document.querySelector('[data-pref="achievement"]').checked,
+                    chatroom: document.querySelector('[data-pref="chatroom"]').checked,
+                    youtube_reminder: document.querySelector('[data-pref="youtube_reminder"]').checked
+                };
+
+                // If enabling push, request permission and subscribe
+                if (preferences.enabled && !pushSubscription) {
+                    const subscribed = await subscribeToPush();
+                    if (!subscribed) {
+                        saveButton.disabled = false;
+                        saveButton.textContent = 'Save Changes';
+                        return;
+                    }
+                }
+
+                // If disabling push, unsubscribe
+                if (!preferences.enabled && pushSubscription) {
+                    await unsubscribeFromPush();
+                }
+
+                // Save preferences to backend
+                const response = await fetch('/api/user/push-preferences', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ preferences })
+                });
+
+                if (response.ok) {
+                    currentPreferences = preferences;
+                    hasChanges = false;
+                    saveButton.classList.remove('show');
+                    showMessage('✓ Settings saved successfully!', 'success');
+                } else {
+                    throw new Error('Failed to save preferences');
+                }
+
+            } catch (error) {
+                console.error('Error saving preferences:', error);
+                showMessage('Failed to save settings. Please try again.', 'error');
+            } finally {
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save Changes';
+            }
+        }
+
+        async function subscribeToPush() {
+            try {
+                // Request notification permission
+                const permission = await Notification.requestPermission();
+
+                if (permission !== 'granted') {
+                    showMessage('Notification permission denied. Please enable notifications in your browser settings.', 'error');
+                    return false;
+                }
+
+                // Get service worker registration
+                const registration = await navigator.serviceWorker.ready;
+
+                // Get VAPID public key from backend
+                const keyResponse = await fetch('/api/push/vapid-public-key');
+                const { publicKey } = await keyResponse.json();
+
+                // Subscribe to push
+                pushSubscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(publicKey)
+                });
+
+                // Send subscription to backend
+                const response = await fetch('/api/user/push-subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        subscription: pushSubscription.toJSON(),
+                        userAgent: navigator.userAgent
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save subscription');
+                }
+
+                updatePushStatusText(true);
+                return true;
+
+            } catch (error) {
+                console.error('Error subscribing to push:', error);
+                showMessage('Failed to enable push notifications. Please try again.', 'error');
+                return false;
+            }
+        }
+
+        async function unsubscribeFromPush() {
+            try {
+                if (pushSubscription) {
+                    await pushSubscription.unsubscribe();
+
+                    // Remove subscription from backend
+                    await fetch('/api/user/push-unsubscribe', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            endpoint: pushSubscription.endpoint
+                        })
+                    });
+
+                    pushSubscription = null;
+                    updatePushStatusText(false);
+                }
+            } catch (error) {
+                console.error('Error unsubscribing from push:', error);
+            }
+        }
+
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding)
+                .replace(/\-/g, '+')
+                .replace(/_/g, '/');
+
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('status-message');
+            messageEl.textContent = text;
+            messageEl.className = `status-message ${type}`;
+
+            setTimeout(() => {
+                messageEl.className = 'status-message';
+            }, 5000);
+        }
+
+        function showBrowserWarning(text) {
+            const warningEl = document.getElementById('browser-warning');
+            warningEl.textContent = '⚠️ ' + text;
+            warningEl.style.display = 'block';
+        }
+
+        // Initialize on page load
+        init();
+    </script>
+</body>
+</html>

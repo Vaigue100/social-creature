@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS user_chat_likelihood (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_chat_likelihood_score ON user_chat_likelihood(likelihood_score DESC);
-CREATE INDEX idx_chat_likelihood_updated ON user_chat_likelihood(updated_at);
+CREATE INDEX IF NOT EXISTS idx_chat_likelihood_score ON user_chat_likelihood(likelihood_score DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_likelihood_updated ON user_chat_likelihood(updated_at);
 
 COMMENT ON TABLE user_chat_likelihood IS 'Tracks dynamic probability of conversation generation per user';
 COMMENT ON COLUMN user_chat_likelihood.likelihood_score IS 'Calculated probability (0-1) of generating conversation';
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS inactivity_topics (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_inactivity_topics_active ON inactivity_topics(is_active);
+CREATE INDEX IF NOT EXISTS idx_inactivity_topics_active ON inactivity_topics(is_active);
 
 COMMENT ON TABLE inactivity_topics IS 'Special topics that appear when user is inactive';
 

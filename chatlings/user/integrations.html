@@ -2,8 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Chatlings - Integrations</title>
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Theme color for mobile browsers -->
+    <meta name="theme-color" content="#667eea">
+
+    <!-- Apple iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Chatlings">
+    <link rel="apple-touch-icon" href="/assets/icon-192.png">
+
+    <script src="/user/config.js"></script>
+  <script src="/user/components/auth-check.js"></script>
     <link rel="stylesheet" href="/user/components/shared-header-styles.css">
     <style>
         * {
@@ -218,42 +233,43 @@
                         <div id="rewards-claimed-msg"></div>
                     </div>
 
+                    <div id="youtube-status" style="margin-bottom: 15px; padding: 15px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-radius: 10px; display: none;">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: #667eea;">🤖 Community Ambassador Status</div>
+                        <div id="auto-check-status" style="color: #666; font-size: 0.95em;">Checking for new Chatlings...</div>
+                    </div>
+
                     <div class="integration-actions">
                         <button id="connect-youtube-btn" class="btn btn-primary" onclick="connectYouTube()">
-                            Claim Rewards from Liked Videos
+                            Connect YouTube to Find Chatlings
                         </button>
                     </div>
 
                     <div style="margin-top: 20px; padding: 15px; background: #f0f9ff; border-left: 4px solid #667eea; border-radius: 5px;">
-                        <strong style="color: #667eea;">🔒 Privacy Notice</strong>
+                        <strong style="color: #667eea;">🤖 Automatic Checking</strong>
                         <p style="margin: 10px 0 0 0; font-size: 0.9em; color: #666;">
-                            Your YouTube access is session-only. We fetch your liked videos once,
-                            claim rewards, and immediately discard the access token.
-                            No user data or video history is ever stored.
+                            You must log in at least once every 24 hours to keep automatic checking active.
                         </p>
                     </div>
                 </div>
             </div>
 
             <div class="how-it-works">
-                <h3>How it works:</h3>
-                <ol>
-                    <li>Click "Claim Rewards from Liked Videos"</li>
-                    <li>Authorize with Google (read-only access to your liked videos)</li>
-                    <li>We fetch your 50 most recently liked videos</li>
-                    <li>Each video is assigned a unique chatling (valid for 24 hours)</li>
-                    <li>You claim the chatling - it's yours forever!</li>
-                    <li>If another user likes the same video within 24 hours, they get the same chatling</li>
-                    <li>After 24 hours, the video gets a new chatling</li>
-                </ol>
+                <h3>How It Works</h3>
 
-                <h3 style="margin-top: 30px;">Privacy Features:</h3>
+                <div style="margin-top: 25px; padding: 20px; background: rgba(102, 126, 234, 0.05); border-radius: 10px; border-left: 4px solid #667eea;">
+                    <p style="line-height: 1.7; color: #555; margin: 0;">
+                        Your Community Ambassador loves exploring! They'll visit the social circles around videos you like and make friends with the chatlings hanging out there.
+                        <strong>Stay active</strong> to keep your Ambassador energized, and they'll notify you whenever they've befriended new chatlings for your collection! 🎉
+                    </p>
+                </div>
+
+                <h3 style="margin-top: 30px;">Privacy</h3>
                 <ul style="line-height: 1.8; color: #666;">
-                    <li>No long-term OAuth tokens stored</li>
-                    <li>Access token discarded immediately after use</li>
-                    <li>No video history or user identity stored</li>
-                    <li>Only claimed rewards are kept (decoupled from videos)</li>
-                    <li>Video-chatling mappings auto-expire after 24 hours</li>
+                    <li>We only check which videos you've liked - nothing else</li>
+                    <li>We store a refresh token to enable background checking</li>
+                    <li>No video history or watch data is viewed or stored</li>
+                    <li>No chat is viewed or stored</li>
+                    <li>You can disconnect anytime through your Google account settings</li>
                 </ul>
             </div>
         </div>
@@ -266,31 +282,32 @@
             <h1 style="text-align: center; color: #667eea; font-size: 2em; margin-bottom: 30px;">Integrations Guide</h1>
 
             <div style="max-height: 70vh; overflow-y: auto; padding-right: 10px;">
-                <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px;">Connecting Your YouTube Account</h3>
-                <p style="line-height: 1.6; color: #333; margin-bottom: 15px;">
-                    Connect your YouTube account to claim chatlings from the videos you've liked. This is a privacy-first, session-only connection.
-                </p>
-
-                <h3 style="color: #667eea; margin-top: 30px; margin-bottom: 15px;">How It Works</h3>
-                <ol style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
-                    <li>Click "Claim Rewards from Liked Videos"</li>
-                    <li>Authorize with Google (read-only access)</li>
-                    <li>We fetch your 50 most recently liked videos</li>
-                    <li>Each video generates a unique chatling (valid for 24 hours)</li>
-                    <li>You claim the chatlings - they're yours forever!</li>
+                <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px;">How It Works</h3>
+                <ol style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8; color: #333;">
+                    <li><strong>Like videos on YouTube</strong> that you enjoy</li>
+                    <li><strong>Click "Connect YouTube to Find Chatlings"</strong> once</li>
+                    <li><strong>Discover new chatlings</strong> - each with their own unique personality!</li>
                 </ol>
 
-                <h3 style="color: #667eea; margin-top: 30px; margin-bottom: 15px;">Privacy Features</h3>
-                <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
-                    <li><strong>Session-Only:</strong> Access tokens are never stored long-term</li>
-                    <li><strong>No History:</strong> We don't store your video history or identity</li>
-                    <li><strong>Auto-Expire:</strong> Video-chatling mappings expire after 24 hours</li>
-                    <li><strong>Decoupled:</strong> Only claimed rewards are kept, separate from videos</li>
+                <div style="margin: 25px 0; padding: 20px; background: rgba(102, 126, 234, 0.05); border-radius: 10px; border-left: 4px solid #667eea;">
+                    <p style="line-height: 1.7; color: #555; margin: 0;">
+                        Your Community Ambassador loves exploring! They'll visit the social circles around videos you like and make friends with the chatlings hanging out there.
+                        <strong>Stay active</strong> to keep your Ambassador energized, and they'll notify you whenever they've befriended new chatlings for your collection! 🎉
+                    </p>
+                </div>
+
+                <h3 style="color: #667eea; margin-top: 30px; margin-bottom: 15px;">Privacy</h3>
+                <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8; color: #333;">
+                    <li>We only check which videos you've liked - nothing else</li>
+                    <li>We store a refresh token to enable background checking</li>
+                    <li>No video history or watch data is viewed or stored</li>
+                    <li>No chat is viewed or stored</li>
+                    <li>You can disconnect anytime through your Google account settings</li>
                 </ul>
 
                 <h3 style="color: #667eea; margin-top: 30px; margin-bottom: 15px;">Shared Chatlings</h3>
                 <p style="line-height: 1.6; color: #333; margin-bottom: 15px;">
-                    If another user likes the same video within 24 hours, they get the same chatling! After 24 hours, that video generates a new chatling. This creates a fun shared experience while maintaining your privacy.
+                    If another user likes the same video, they might meet the same chatling! This creates a fun shared experience while maintaining your privacy.
                 </p>
             </div>
         </div>
@@ -317,6 +334,8 @@
     </script>
 
     <script>
+        let hasIntegrated = false;
+
         async function connectYouTube() {
             const btn = document.getElementById('connect-youtube-btn');
             btn.disabled = true;
@@ -333,13 +352,31 @@
                     const error = await response.json();
                     alert(error.error || 'Failed to initiate YouTube connection');
                     btn.disabled = false;
-                    btn.textContent = 'Claim Rewards from Liked Videos';
+                    btn.textContent = hasIntegrated ? 'Community Ambassador Exploring' : 'Connect YouTube to Find Chatlings';
                 }
             } catch (error) {
                 console.error('Error connecting YouTube:', error);
                 alert('Error connecting to YouTube. Make sure you\'re logged in.');
                 btn.disabled = false;
-                btn.textContent = 'Claim Rewards from Liked Videos';
+                btn.textContent = hasIntegrated ? 'Check for New Chatlings' : 'Connect YouTube to Find Chatlings';
+            }
+        }
+
+        async function checkIntegrationStatus() {
+            try {
+                // Check if youtube_integrated_at is set by looking for URL params from previous integration
+                // If user has successfully integrated before, they'll have been redirected with rewards_claimed param
+                const hasIntegratedBefore = localStorage.getItem('youtube_integrated');
+
+                if (hasIntegratedBefore === 'true') {
+                    hasIntegrated = true;
+                    const btn = document.getElementById('connect-youtube-btn');
+                    btn.textContent = 'Community Ambassador Exploring';
+                    btn.classList.remove('btn-primary');
+                    btn.classList.add('btn-secondary');
+                }
+            } catch (error) {
+                console.error('Error checking integration status:', error);
             }
         }
 
@@ -349,6 +386,9 @@
         const error = urlParams.get('error');
 
         if (rewardsClaimed !== null) {
+            // Mark as integrated
+            localStorage.setItem('youtube_integrated', 'true');
+
             const statusMsg = document.getElementById('youtube-status-message');
             const rewardsMsg = document.getElementById('rewards-claimed-msg');
 
@@ -368,11 +408,50 @@
                 statusMsg.style.display = 'block';
             }
 
+            // Update button to show integrated state
+            hasIntegrated = true;
+            const btn = document.getElementById('connect-youtube-btn');
+            btn.textContent = 'Community Ambassador Exploring';
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-secondary');
+
             // Clean URL
             window.history.replaceState({}, document.title, window.location.pathname);
         } else if (error) {
             alert('Error: ' + error);
             window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        // ========================================
+        // Server-side checking status update
+        // ========================================
+        async function updateYouTubeStatus() {
+            // Check if current user is connected to YouTube
+            const tokenResponse = await fetch('/api/youtube/token');
+            const tokenData = await tokenResponse.json();
+
+            if (tokenData.connected) {
+                // Show status indicating server-side checking is active
+                const statusDiv = document.getElementById('youtube-status');
+                if (statusDiv) {
+                    statusDiv.style.display = 'block';
+                }
+
+                // Update button to show checking is active
+                hasIntegrated = true;
+                const btn = document.getElementById('connect-youtube-btn');
+                btn.textContent = '✓ Connected - Server checks every 15 minutes';
+                btn.disabled = true;
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
+                btn.style.cursor = 'not-allowed';
+
+                // Update status text
+                const statusText = document.getElementById('auto-check-status');
+                if (statusText) {
+                    statusText.textContent = 'Your Community Ambassador checks for new Chatlings every 15 minutes (server-side)';
+                }
+            }
         }
 
         // Check if logged in
@@ -381,6 +460,11 @@
                 const response = await fetch('/api/user/me');
                 if (!response.ok) {
                     window.location.href = '/user/login.html';
+                } else {
+                    // Check integration status after confirming auth
+                    await checkIntegrationStatus();
+                    // Update YouTube status if connected
+                    await updateYouTubeStatus();
                 }
             } catch (error) {
                 window.location.href = '/user/login.html';

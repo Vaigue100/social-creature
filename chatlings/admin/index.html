@@ -89,17 +89,22 @@
         <p class="subtitle">Administration & Quality Control</p>
 
         <div class="admin-links">
-            <a href="/family-browser.html" class="admin-link">
+            <a href="/admin/family-browser.html" class="admin-link">
                 <div class="title">👨‍👩‍👧‍👦 Family Browser</div>
                 <div class="description">Browse and manage all chatlings</div>
             </a>
 
-            <a href="/image-selection.html" class="admin-link">
+            <a href="/admin/image-selection.html" class="admin-link">
                 <div class="title">🖼️ Image Selection</div>
                 <div class="description">Select images for new creatures</div>
             </a>
 
-            <a href="/review-conversations.html" class="admin-link">
+            <a href="/admin/manage-animations.html" class="admin-link">
+                <div class="title">🎬 Manage Animations</div>
+                <div class="description">Upload and manage creature animations</div>
+            </a>
+
+            <a href="/admin/review-conversations.html" class="admin-link">
                 <div class="title">🔍 Review Conversations</div>
                 <div class="description">View and flag recent chatroom conversations</div>
             </a>
@@ -109,7 +114,7 @@
                 <div class="description">Test the client polling interface</div>
             </a>
 
-            <a href="/add-youtube-topic.html" class="admin-link">
+            <a href="/admin/add-youtube-topic.html" class="admin-link">
                 <div class="title">📺 Add YouTube Topics</div>
                 <div class="description">Add YouTube videos as conversation topics</div>
             </a>
@@ -118,6 +123,18 @@
                 <div class="title">👥 User Hub</div>
                 <div class="description">Main user interface</div>
             </a>
+
+            <!-- YouTube Check Trigger -->
+            <button onclick="triggerYouTubeCheck()" id="youtube-check-btn" class="admin-link" style="border: none; cursor: pointer; font-family: inherit;">
+                <div class="title">▶️ Trigger YouTube Check</div>
+                <div class="description">Manually run YouTube likes check for active users</div>
+            </button>
+        </div>
+
+        <!-- YouTube Check Results -->
+        <div id="youtube-results" style="display: none; margin-top: 20px; padding: 20px; background: #f0f0ff; border-radius: 10px; border-left: 4px solid #667eea;">
+            <h3 style="color: #667eea; margin-bottom: 15px;">📊 YouTube Check Results</h3>
+            <div id="results-content"></div>
         </div>
 
         <div class="status">
@@ -126,5 +143,112 @@
             <strong>Flow Rules:</strong> 19 state transitions
         </div>
     </div>
+
+    <script>
+        async function triggerYouTubeCheck() {
+            const btn = document.getElementById('youtube-check-btn');
+            const resultsDiv = document.getElementById('youtube-results');
+            const resultsContent = document.getElementById('results-content');
+
+            // Disable button and show loading state
+            btn.disabled = true;
+            btn.style.opacity = '0.6';
+            btn.querySelector('.description').textContent = 'Running YouTube check...';
+
+            // Show results area with loading message
+            resultsDiv.style.display = 'block';
+            resultsContent.innerHTML = '<p style="color: #667eea;">🔄 Running YouTube check... This may take a minute.</p>';
+
+            try {
+                const response = await fetch('/admin/trigger-youtube-check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const results = data.results;
+                    const timestamp = new Date(results.timestamp).toLocaleString();
+
+                    resultsContent.innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+                            <div style="background: white; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 2em; color: #667eea;">👥</div>
+                                <div style="font-size: 1.5em; font-weight: bold; color: #333;">${results.totalEligible || results.totalUsers}</div>
+                                <div style="color: #666; font-size: 0.9em;">Total Eligible</div>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 2em; color: #3498db;">📦</div>
+                                <div style="font-size: 1.5em; font-weight: bold; color: #333;">${results.batchSize || results.totalUsers}</div>
+                                <div style="color: #666; font-size: 0.9em;">Batch Size</div>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 2em; color: #27ae60;">✅</div>
+                                <div style="font-size: 1.5em; font-weight: bold; color: #333;">${results.successCount}</div>
+                                <div style="color: #666; font-size: 0.9em;">Checked</div>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 2em; color: #f39c12;">🎁</div>
+                                <div style="font-size: 1.5em; font-weight: bold; color: #333;">${results.newChatlings}</div>
+                                <div style="color: #666; font-size: 0.9em;">New Chatlings</div>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 2em; color: ${results.errorCount > 0 ? '#e74c3c' : '#95a5a6'};">❌</div>
+                                <div style="font-size: 1.5em; font-weight: bold; color: #333;">${results.errorCount}</div>
+                                <div style="color: #666; font-size: 0.9em;">Errors</div>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 2em; color: #e67e22;">⚡</div>
+                                <div style="font-size: 1.5em; font-weight: bold; color: #333;">${results.quotaUsed || (results.successCount * 3)}</div>
+                                <div style="color: #666; font-size: 0.9em;">Quota Used</div>
+                            </div>
+
+                            <div style="background: white; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 2em; color: #9b59b6;">⏱️</div>
+                                <div style="font-size: 1.5em; font-weight: bold; color: #333;">${results.duration.toFixed(1)}s</div>
+                                <div style="color: #666; font-size: 0.9em;">Duration</div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 15px; padding: 12px; background: rgba(255,255,255,0.7); border-radius: 6px; font-size: 0.9em; color: #666;">
+                            <strong>Completed:</strong> ${timestamp}
+                        </div>
+
+                        <div style="margin-top: 10px; padding: 10px; background: rgba(39, 174, 96, 0.1); border-radius: 6px; color: #27ae60; font-size: 0.9em;">
+                            ✓ Check completed successfully! Console has detailed output.
+                        </div>
+                    `;
+                } else {
+                    resultsContent.innerHTML = `
+                        <div style="padding: 15px; background: rgba(231, 76, 60, 0.1); border-radius: 6px; color: #e74c3c;">
+                            <strong>❌ Error:</strong> ${data.error || 'Unknown error occurred'}
+                        </div>
+                    `;
+                }
+
+            } catch (error) {
+                console.error('Error triggering YouTube check:', error);
+                resultsContent.innerHTML = `
+                    <div style="padding: 15px; background: rgba(231, 76, 60, 0.1); border-radius: 6px; color: #e74c3c;">
+                        <strong>❌ Error:</strong> ${error.message || 'Unknown error occurred'}
+                        <br><small>Check browser console for details</small>
+                    </div>
+                `;
+            } finally {
+                // Re-enable button
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.querySelector('.description').textContent = 'Manually run YouTube likes check for active users';
+            }
+        }
+    </script>
 </body>
 </html>

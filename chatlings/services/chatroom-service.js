@@ -412,12 +412,13 @@ class ChatroomService {
    */
   async createConversationNotification(userId, participantCount, client) {
     await client.query(`
-      INSERT INTO notifications (user_id, notification_type, title, message, metadata)
-      VALUES ($1, 'new_conversation', $2, $3, $4)
+      INSERT INTO notifications (user_id, notification_type, title, message, link, metadata)
+      VALUES ($1, 'new_conversation', $2, $3, $4, $5)
     `, [
       userId,
       'New Chatroom Activity!',
       `${participantCount} of your chatlings just had a conversation. Check it out!`,
+      '/user/chatroom.html',
       JSON.stringify({ participant_count: participantCount })
     ]);
   }

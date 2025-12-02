@@ -4,6 +4,8 @@
  */
 
 const path = require('path');
+// Try .env.azure first (for migrations), then parent .env
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.azure') });
 require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
 
 const dbConfig = {

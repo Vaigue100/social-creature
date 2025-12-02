@@ -32,23 +32,63 @@ class YouTubeLikesService {
    */
   getAuthorizationUrl(sessionId) {
     const scopes = [
-      'https://www.googleapis.com/auth/youtube.readonly'
+      'https://www.googleapis.com/auth/youtube.readonly',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile'
     ];
 
     return this.oauth2Client.generateAuthUrl({
-      access_type: 'online', // No refresh token needed - session-based only
+      access_type: 'offline', // Request refresh token for background checking
       scope: scopes,
       state: sessionId, // Pass session ID to link back after OAuth
-      prompt: 'select_account'
+      prompt: 'consent' // Force consent screen to ensure refresh token
     });
   }
 
   /**
-   * Exchange authorization code for access token (session-based)
+   * Exchange authorization code for tokens (including refresh token)
    */
   async getTokensFromCode(code) {
     const { tokens } = await this.oauth2Client.getToken(code);
-    return tokens.access_token; // Only return access token, no storage
+
+    // Create a new OAuth2 client with the tokens to fetch user info
+    const { OAuth2 } = google.auth;
+    const authenticatedClient = new OAuth2(
+      this.clientId,
+      this.clientSecret,
+      this.redirectUri
+    );
+    authenticatedClient.setCredentials(tokens);
+
+    // Get user info to retrieve provider_user_id
+    const oauth2 = google.oauth2({ version: 'v2', auth: authenticatedClient });
+    const userInfo = await oauth2.userinfo.get();
+
+    return {
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      expiresAt: tokens.expiry_date,
+      googleUserId: userInfo.data.id,
+      email: userInfo.data.email
+    };
+  }
+
+  /**
+   * Refresh access token using refresh token
+   */
+  async refreshAccessToken(refreshToken) {
+    try {
+      this.oauth2Client.setCredentials({ refresh_token: refreshToken });
+      const { credentials } = await this.oauth2Client.refreshAccessToken();
+
+      return {
+        accessToken: credentials.access_token,
+        expiresAt: credentials.expiry_date
+      };
+    } catch (error) {
+      console.error('Error refreshing YouTube token:', error);
+      throw new Error('Failed to refresh YouTube access token');
+    }
   }
 
   /**
@@ -75,7 +115,8 @@ class YouTubeLikesService {
         videoId: item.snippet.resourceId.videoId,
         title: item.snippet.title,
         channelId: item.snippet.channelId,
-        channelTitle: item.snippet.channelTitle
+        channelTitle: item.snippet.channelTitle,
+        likedAt: item.snippet.publishedAt // When the user liked this video
       }));
 
     } catch (error) {
@@ -273,8 +314,8 @@ class YouTubeLikesService {
    */
   async createRewardNotification(userId, creature, video, client) {
     await client.query(`
-      INSERT INTO notifications (user_id, notification_type, title, message, metadata)
-      VALUES ($1, 'reward_claimed', $2, $3, $4)
+      INSERT INTO notifications (user_id, notification_type, title, message, metadata, link)
+      VALUES ($1, 'reward_claimed', $2, $3, $4, $5)
     `, [
       userId,
       'New Chatling Claimed!',
@@ -284,7 +325,8 @@ class YouTubeLikesService {
         creature_name: creature.creature_name,
         rarity_tier: creature.rarity_tier,
         video_title: video.title
-      })
+      }),
+      `/user/view-creature.html?id=${creature.id}`
     ]);
   }
 
@@ -324,8 +366,8 @@ class YouTubeLikesService {
 
         // Create notification
         await client.query(`
-          INSERT INTO notifications (user_id, notification_type, title, message, metadata)
-          VALUES ($1, 'achievement_unlocked', $2, $3, $4)
+          INSERT INTO notifications (user_id, notification_type, title, message, metadata, link)
+          VALUES ($1, 'achievement_unlocked', $2, $3, $4, $5)
         `, [
           userId,
           'Achievement Unlocked!',
@@ -333,7 +375,8 @@ class YouTubeLikesService {
           JSON.stringify({
             achievement_id: achievement.id,
             points: achievement.points
-          })
+          }),
+          '/user/achievements.html'
         ]);
 
         console.log(`  Achievement unlocked: ${achievement.title}`);
@@ -394,13 +437,14 @@ class YouTubeLikesService {
       `, [userId, ach.id]);
 
       await client.query(`
-        INSERT INTO notifications (user_id, notification_type, title, message, metadata)
-        VALUES ($1, 'achievement_unlocked', $2, $3, $4)
+        INSERT INTO notifications (user_id, notification_type, title, message, metadata, link)
+        VALUES ($1, 'achievement_unlocked', $2, $3, $4, $5)
       `, [
         userId,
         'Achievement Unlocked!',
         ach.title,
-        JSON.stringify({ achievement_id: ach.id, points: ach.points })
+        JSON.stringify({ achievement_id: ach.id, points: ach.points }),
+        '/user/achievements.html'
       ]);
     }
   }

@@ -6,6 +6,7 @@ package-lock.json
 .env
 .env.local
 .env.*.local
+.env.azure
 
 # Database config (if contains sensitive info)
 # scripts/db-config.js
@@ -31,8 +32,16 @@ Thumbs.db
 # Artwork folder (large image files, managed separately)
 artwork/
 
+# Animations (video files, stored in Azure Blob Storage)
+animations/processed/
+animations/*.mp4
+animations/*.webm
+animations/*.mov
+
 # Database backups (large files, managed separately)
 backups/
+data/
+*.sql
 
 # Session store
 sessions/
@@ -41,3 +50,20 @@ sessions/
 tmp/
 temp/
 *.tmp
+
+# Azure deployment files (contain secrets!)
+azure/SECRETS_CHECKLIST.md
+azure/deployment-outputs-*.json
+azure/*.zip
+azure/parameters*.json
+
+# Local parameters with secrets
+azure/parameters.local.json
+
+# Python scripts (data generation utilities, not needed for deployment)
+scripts/*.py
+
+# Misc
+nul
+*.zip
+*.bat

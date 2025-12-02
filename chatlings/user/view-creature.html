@@ -2,9 +2,27 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>View Chatling - Chatlings</title>
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Theme color for mobile browsers -->
+    <meta name="theme-color" content="#667eea">
+
+    <!-- Apple iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Chatlings">
+    <link rel="apple-touch-icon" href="/assets/icon-192.png">
+
     <link rel="stylesheet" href="/user/components/creature-card-styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/orgchart@3.8.0/dist/css/jquery.orgchart.min.css">
+    <script src="/user/config.js"></script>
+  <script src="/user/components/auth-check.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/orgchart@3.8.0/dist/js/jquery.orgchart.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -79,6 +97,176 @@
             color: #e74c3c;
             font-size: 1.1em;
         }
+
+        /* Animation Badge - positioned to the left of overall score badge */
+        .animation-badge {
+            position: absolute;
+            bottom: 25px;
+            right: calc(50% + 45px);
+            padding: 8px 12px;
+            border-radius: 50%;
+            font-size: 1.5em;
+            z-index: 10;
+            transition: all 0.3s;
+            cursor: pointer;
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            border: 2px solid #8e44ad;
+            box-shadow: 0 2px 8px rgba(155, 89, 182, 0.4);
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .animation-badge:hover:not(.disabled) {
+            transform: translateY(-2px) scale(1.1);
+            box-shadow: 0 6px 16px rgba(155, 89, 182, 0.6);
+        }
+
+        .animation-badge.disabled {
+            background: #e0e0e0;
+            border-color: #ccc;
+            cursor: not-allowed;
+            opacity: 0.5;
+            box-shadow: none;
+        }
+
+        /* Team Badge - positioned to the right of overall score badge */
+        .team-badge {
+            position: absolute;
+            bottom: 25px;
+            left: calc(50% + 45px);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1em;
+            z-index: 10;
+            transition: all 0.3s;
+            border: 2px solid;
+        }
+
+        .team-badge.not-assigned {
+            background: #e0e0e0;
+            color: #999;
+            border-color: #ccc;
+        }
+
+        .team-badge.assigned {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+            border-color: #27ae60;
+            box-shadow: 0 2px 8px rgba(46, 204, 113, 0.4);
+        }
+
+        .team-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        /* OrgChart Library Custom Styles */
+        /* Remove grid background */
+        #team-orgchart {
+            background: white !important;
+        }
+
+        #team-orgchart .orgchart {
+            background: white !important;
+            background-image: none !important;
+        }
+
+        #team-orgchart .orgchart .node {
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 160px !important;
+            min-height: 60px !important;
+            padding: 0 !important;
+            margin: 15px !important;
+            font-size: 14px !important;
+            background: white !important;
+            border: none !important;
+            color: white !important;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #team-orgchart .orgchart .node .title {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            font-size: 13px !important;
+            padding: 18px 8px !important;
+            line-height: 1.3;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-weight: 600;
+            width: 100% !important;
+            box-sizing: border-box;
+        }
+
+        #team-orgchart .orgchart .node:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        #team-orgchart .orgchart .node.architect-node {
+            cursor: default !important;
+        }
+
+        /* Style for nodes with creature images */
+        #team-orgchart .orgchart .node .creature-img {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto;
+            aspect-ratio: 1;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Style for empty status */
+        #team-orgchart .orgchart .node .empty-status {
+            padding: 15px 8px;
+            color: #999;
+            font-size: 12px;
+            text-align: center;
+            background: #f8f9fa;
+            width: 100% !important;
+            box-sizing: border-box;
+        }
+
+        /* Customize lines color */
+        #team-orgchart .orgchart .lines .downLine,
+        #team-orgchart .orgchart .lines .leftLine,
+        #team-orgchart .orgchart .lines .rightLine,
+        #team-orgchart .orgchart .lines .topLine {
+            border-color: #667eea;
+        }
+
+        /* Style for expand/collapse toggle buttons */
+        #team-orgchart .orgchart .toggleBtn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            border: 2px solid white !important;
+            width: 28px !important;
+            height: 28px !important;
+            border-radius: 50% !important;
+            cursor: pointer !important;
+            transition: all 0.3s !important;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4) !important;
+        }
+
+        #team-orgchart .orgchart .toggleBtn:hover {
+            transform: scale(1.15) !important;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.6) !important;
+        }
+
+        #team-orgchart .orgchart .toggleBtn::before {
+            color: white !important;
+            font-weight: bold !important;
+            font-size: 16px !important;
+        }
     </style>
 </head>
 <body>
@@ -97,8 +285,15 @@
                             <!-- Image with badges positioned on corners -->
                             <div class="creature-image-container">
                                 <div class="rarity-badge" id="rarity-badge" style="display: none;"></div>
+                                <div class="animation-badge" id="animation-badge" style="display: none;" title="Play animation">
+                                    🎬
+                                </div>
                                 <div class="overall-score-badge" id="overall-score-badge" style="display: none; cursor: pointer;" title="Click to view traits"></div>
                                 <div class="bodytype-badge" id="bodytype-badge" style="display: none; cursor: pointer;" title="Click to view body type lore"></div>
+                                <div class="team-badge" id="team-badge" style="display: none; cursor: pointer;" title="Click to manage team assignment">
+                                    <span id="team-badge-icon">👥</span>
+                                </div>
+                                <video id="creature-video" class="creature-image" muted playsinline style="display: none;"></video>
                                 <img id="creature-image" class="creature-image" src="" alt="Creature" style="display: none;">
                                 <div class="loading" id="image-loading">Loading chatling...</div>
                             </div>
@@ -138,39 +333,27 @@
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Team Assignment Buttons -->
-        <div id="team-assignment-container" style="margin-top: 20px; padding: 20px; background: rgba(255,255,255,0.95); border-radius: 15px; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-            <h4 style="color: #667eea; margin-bottom: 15px; text-align: center; font-size: 1.2em;">🏆 Assign to Team Role</h4>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-                <button onclick="assignToTeam(1); event.stopPropagation();" class="team-assign-btn">
-                    <span style="display: block; font-size: 0.75em; color: #999;">Slot 1</span>
-                    <span style="display: block; font-weight: bold;">Prime Chatling</span>
-                </button>
-                <button onclick="assignToTeam(2); event.stopPropagation();" class="team-assign-btn">
-                    <span style="display: block; font-size: 0.75em; color: #999;">Slot 2</span>
-                    <span style="display: block; font-weight: bold;">Viral Catalyst</span>
-                </button>
-                <button onclick="assignToTeam(3); event.stopPropagation();" class="team-assign-btn">
-                    <span style="display: block; font-size: 0.75em; color: #999;">Slot 3</span>
-                    <span style="display: block; font-weight: bold;">Community Builder</span>
-                </button>
-                <button onclick="assignToTeam(4); event.stopPropagation();" class="team-assign-btn">
-                    <span style="display: block; font-size: 0.75em; color: #999;">Slot 4</span>
-                    <span style="display: block; font-weight: bold;">Engagement Maven</span>
-                </button>
-                <button onclick="assignToTeam(5); event.stopPropagation();" class="team-assign-btn">
-                    <span style="display: block; font-size: 0.75em; color: #999;">Slot 5 <span style="color: #e74c3c;">★ Required</span></span>
-                    <span style="display: block; font-weight: bold;">Community Ambassador</span>
-                </button>
+            <!-- Team Assignment Org Chart Modal -->
+            <div id="team-modal" class="lore-modal" style="display: none;">
+                <div class="lore-modal-content" style="max-width: 900px;">
+                    <span class="lore-modal-close" data-modal="team-modal">&times;</span>
+                    <h2 style="color: #667eea; margin-bottom: 25px; text-align: center;">
+                        🏆 Assign Team Role
+                    </h2>
+
+                    <!-- OrgChart Container -->
+                    <div id="team-orgchart" style="background: white; padding: 20px; border-radius: 10px; min-height: 400px;"></div>
+                </div>
             </div>
         </div>
+
         </div><!-- Close creature-view-container -->
         </div><!-- Close modal-container -->
     </div><!-- Close modal-overlay -->
 
     <script src="/user/components/creature-card-script.js"></script>
+    <script src="/user/components/animation-player.js"></script>
     <script>
         let frameConfigCache = {};
         let currentCreatureId = null;
@@ -248,12 +431,62 @@
                     document.getElementById('creature-lore-section').style.display = 'block';
                 }
 
-                // Update image
+                // Update image (use blob storage)
                 const img = document.getElementById('creature-image');
+                const video = document.getElementById('creature-video');
                 const imgLoading = document.getElementById('image-loading');
-                img.src = `/images/${data.selected_image}`;
+
+                img.src = getImageUrl(data.selected_image);
                 img.style.display = 'block';
                 imgLoading.style.display = 'none';
+
+                // Load animations for this creature
+                try {
+                    const animResponse = await fetch(`/api/creatures/${creatureId}/animations`);
+                    if (animResponse.ok) {
+                        const animations = await animResponse.json();
+
+                        // If there are animations, make the image clickable to play them
+                        if (animations && animations.length > 0) {
+                            // Pick the first animation (or you could pick 'pose' type specifically)
+                            const primaryAnimation = animations.find(a => a.animation_type === 'pose') || animations[0];
+
+                            if (primaryAnimation) {
+                                const animationUrl = getAnimationUrl(primaryAnimation.file_name);
+                                video.src = animationUrl;
+
+                                // Play animation on hover
+                                img.style.cursor = 'default';
+                                img.title = 'Hover to play animation';
+
+                                // Play animation when mouse enters
+                                img.onmouseenter = () => {
+                                    // Hide image, show video
+                                    img.style.display = 'none';
+                                    video.style.display = 'block';
+                                    video.currentTime = 0; // Start from beginning
+                                    video.play();
+                                };
+
+                                // When video ends, return to image
+                                video.onended = () => {
+                                    video.style.display = 'none';
+                                    img.style.display = 'block';
+                                };
+
+                                // Also return to image if mouse leaves during playback
+                                video.onmouseleave = () => {
+                                    if (!video.ended && !video.paused) {
+                                        // Let it finish playing even if mouse leaves
+                                        return;
+                                    }
+                                };
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.log('No animations available for this creature');
+                }
 
                 // Update overall score badge
                 const scoreBadge = document.getElementById('overall-score-badge');
@@ -270,12 +503,11 @@
                     primaryColor: data.primary_color
                 };
 
-                // Show team assignment container and highlight assigned roles
-                const teamAssignmentContainer = document.getElementById('team-assignment-container');
-                if (teamAssignmentContainer) {
-                    teamAssignmentContainer.style.display = 'block';
-                    await highlightAssignedRoles(creatureId);
-                }
+                // Show and update team badge
+                await updateTeamBadge(creatureId);
+
+                // Check for animations and update animation badge
+                await updateAnimationBadge(data.creature_name);
 
             } catch (error) {
                 console.error('Error loading creature:', error);
@@ -288,6 +520,7 @@
             const frameWrapper = document.getElementById('creature-frame');
             const frameOverlay = document.getElementById('frame-overlay');
             const creatureImage = document.getElementById('creature-image');
+            const imageContainer = creatureImage.closest('.creature-image-container');
 
             // Reset frame state
             frameWrapper.classList.remove('has-frame');
@@ -295,30 +528,70 @@
             frameOverlay.style.backgroundImage = '';
 
             if (!bodyTypeName) {
+                console.log('No body type name provided');
                 return;
             }
 
-            // Load frame configuration
+            // Load frame configuration from database (with caching)
             let config;
             if (frameConfigCache[bodyTypeName]) {
+                // Use cached config
                 config = frameConfigCache[bodyTypeName];
+                console.log(`✓ Using cached frame config for ${bodyTypeName}`);
             } else {
+                // Fetch and cache config
                 try {
                     const configResponse = await fetch(`/api/body-type-frame-config/${bodyTypeName}`);
                     if (configResponse.ok) {
                         config = await configResponse.json();
                         frameConfigCache[bodyTypeName] = config;
+                        console.log(`✓ Loaded and cached frame config for ${bodyTypeName}:`, config);
+                    } else {
+                        console.log(`Using default frame config for ${bodyTypeName}`);
                     }
                 } catch (error) {
-                    console.log('No frame config for', bodyTypeName);
+                    console.error('Error loading frame config:', error);
                 }
             }
 
-            if (config && config.frame_image) {
-                frameWrapper.classList.add('has-frame');
-                frameOverlay.style.backgroundImage = `url('/frames/${config.frame_image}')`;
-                frameOverlay.style.display = 'block';
+            // Apply sizing configuration to image if config exists
+            if (config) {
+                creatureImage.style.width = `${config.image_width_percent}%`;
+                creatureImage.style.maxWidth = `${config.image_max_width_px}px`;
+                creatureImage.style.maxHeight = `${config.image_max_height_vh}vh`;
+                creatureImage.style.minWidth = `${config.image_min_width_px}px`;
+
+                // Apply margin-top to the image container (moves image + badges together)
+                if (imageContainer) {
+                    imageContainer.style.marginTop = `${config.image_margin_top_px || 0}px`;
+                }
             }
+
+            // Try to load frame image (case insensitive)
+            const frameFileName = bodyTypeName.toLowerCase() + '.png';
+            const framePath = getArtworkUrl(`frame/${frameFileName}`);
+
+            console.log(`Checking for frame: ${framePath}`);
+
+            // Use Image object to check if frame exists
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Frame exists, apply it
+                    console.log(`✓ Frame found! Applying to overlay...`);
+                    frameWrapper.classList.add('has-frame');
+                    frameOverlay.style.backgroundImage = `url('${framePath}')`;
+                    frameOverlay.style.display = 'block';
+                    console.log(`Frame overlay display: ${frameOverlay.style.display}, bg: ${frameOverlay.style.backgroundImage}`);
+                    resolve();
+                };
+                img.onerror = () => {
+                    // No frame found, use default white frame
+                    console.log(`✗ No frame found for "${bodyTypeName}", using default white frame`);
+                    resolve();
+                };
+                img.src = framePath;
+            });
         }
 
         function getScoreClass(score) {
@@ -330,40 +603,147 @@
             return 'score-vlow';
         }
 
-        // Highlight team role buttons if creature is assigned
-        async function highlightAssignedRoles(creatureId) {
+        // Update team badge based on whether creature is assigned
+        async function updateTeamBadge(creatureId) {
+            const teamBadge = document.getElementById('team-badge');
+            const teamBadgeIcon = document.getElementById('team-badge-icon');
+
+            if (!teamBadge) return;
+
+            try {
+                const teamResponse = await fetch('/api/user/team');
+                if (!teamResponse.ok) {
+                    teamBadge.style.display = 'none';
+                    return;
+                }
+
+                const teamData = await teamResponse.json();
+
+                // Check if this creature is assigned to any role
+                const assignedRole = teamData.team.find(member =>
+                    member.creature && member.creature.id === creatureId
+                );
+
+                teamBadge.style.display = 'block';
+
+                if (assignedRole) {
+                    // Creature is assigned
+                    teamBadge.className = 'team-badge assigned';
+                    const roleIcons = {
+                        1: '⭐',
+                        2: '🚀',
+                        3: '🤝',
+                        4: '💬',
+                        5: '🤖'
+                    };
+                    teamBadgeIcon.textContent = roleIcons[assignedRole.slot] || '👥';
+                } else {
+                    // Creature not assigned
+                    teamBadge.className = 'team-badge not-assigned';
+                    teamBadgeIcon.textContent = '👥';
+                }
+
+                // Update org chart nodes when modal is shown
+                await updateOrgChartNodes(creatureId);
+
+            } catch (error) {
+                console.error('Error updating team badge:', error);
+                teamBadge.style.display = 'none';
+            }
+        }
+
+        // Initialize and update the OrgChart
+        async function initializeOrgChart(creatureId) {
             try {
                 const teamResponse = await fetch('/api/user/team');
                 if (!teamResponse.ok) return;
 
                 const teamData = await teamResponse.json();
 
-                // Reset all buttons
-                for (let slot = 1; slot <= 5; slot++) {
-                    const buttons = document.querySelectorAll(`button[onclick*="assignToTeam(${slot})"]`);
-                    buttons.forEach(btn => {
-                        btn.style.background = 'white';
-                        btn.style.color = '#333';
-                        btn.style.border = '2px solid #667eea';
-                    });
-                }
+                // Find which slots this creature is assigned to
+                const assignedSlots = teamData.team
+                    .filter(member => member.creature && member.creature.id === creatureId)
+                    .map(member => member.slot);
 
-                // Highlight assigned slots
-                teamData.team.forEach(member => {
-                    if (member.creature && member.creature.id === creatureId) {
-                        const buttons = document.querySelectorAll(`button[onclick*="assignToTeam(${member.slot})"]`);
-                        buttons.forEach(btn => {
-                            btn.style.background = 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)';
-                            btn.style.color = 'white';
-                            btn.style.border = '2px solid #27ae60';
-                            btn.style.boxShadow = '0 4px 12px rgba(46, 204, 113, 0.4)';
-                        });
+                // Build org chart data structure with Architect at the top
+                const orgData = {
+                    'name': 'Architect',
+                    'title': 'You',
+                    'className': 'architect-node',
+                    'slot': 0, // Special slot for the user
+                    'children': [
+                        {
+                            'name': 'Prime Chatling',
+                            'title': assignedSlots.includes(1) ? 'Assigned' : 'Empty',
+                            'className': assignedSlots.includes(1) ? 'assigned' : '',
+                            'slot': 1
+                        },
+                        {
+                            'name': 'Viral Catalyst',
+                            'title': assignedSlots.includes(2) ? 'Assigned' : 'Empty',
+                            'className': assignedSlots.includes(2) ? 'assigned' : '',
+                            'slot': 2
+                        },
+                        {
+                            'name': 'Community Builder',
+                            'title': assignedSlots.includes(3) ? 'Assigned' : 'Empty',
+                            'className': assignedSlots.includes(3) ? 'assigned' : '',
+                            'slot': 3
+                        },
+                        {
+                            'name': 'Engagement Maven',
+                            'title': assignedSlots.includes(4) ? 'Assigned' : 'Empty',
+                            'className': assignedSlots.includes(4) ? 'assigned' : '',
+                            'slot': 4
+                        },
+                        {
+                            'name': 'Ambassador',
+                            'title': assignedSlots.includes(5) ? 'Assigned ★' : 'Empty - Required ★',
+                            'className': assignedSlots.includes(5) ? 'assigned' : '',
+                            'slot': 5
+                        }
+                    ]
+                };
+
+                // Initialize or update the org chart
+                $('#team-orgchart').empty();
+                const oc = $('#team-orgchart').orgchart({
+                    'data': orgData,
+                    'nodeContent': 'title',
+                    'pan': true,
+                    'zoom': true,
+                    'nodeID': 'slot',
+                    'createNode': function($node, data) {
+                        // Add tooltips to expand/collapse buttons
+                        setTimeout(() => {
+                            const $toggleBtn = $node.find('.toggleBtn');
+                            if ($toggleBtn.length > 0) {
+                                $toggleBtn.attr('title', 'Click to expand/collapse team members');
+                            }
+                        }, 100);
+
+                        // Skip double-click handler for architect node
+                        if (data.slot !== 0) {
+                            // Double click to assign
+                            $node.on('dblclick', function(e) {
+                                e.stopPropagation();
+                                assignToTeam(data.slot);
+                            });
+
+                            // Add tooltip to show double-click instruction
+                            $node.attr('title', 'Double-click to assign role');
+                        }
                     }
                 });
 
             } catch (error) {
-                console.error('Error highlighting assigned roles:', error);
+                console.error('Error initializing org chart:', error);
             }
+        }
+
+        // Alias for backward compatibility
+        async function updateOrgChartNodes(creatureId) {
+            await initializeOrgChart(creatureId);
         }
 
         // Assign creature to team slot
@@ -396,13 +776,19 @@
                     throw new Error(error.error || 'Failed to assign to team');
                 }
 
+                // Close the team modal
+                const teamModal = document.getElementById('team-modal');
+                if (teamModal) {
+                    teamModal.style.display = 'none';
+                }
+
                 // Reload team icons in header
                 if (typeof loadTeamIcons === 'function') {
                     await loadTeamIcons();
                 }
 
-                // Refresh role button highlighting
-                await highlightAssignedRoles(currentCreatureId);
+                // Refresh team badge and org chart
+                await updateTeamBadge(currentCreatureId);
 
                 // Show success message
                 alert(`✅ Successfully assigned to ${roleNames[slot]}!`);
@@ -419,10 +805,20 @@
             const bodytypeModal = document.getElementById('bodytype-modal');
             const scoreBadge = document.getElementById('overall-score-badge');
             const traitsModal = document.getElementById('traits-modal');
+            const teamBadge = document.getElementById('team-badge');
+            const teamModal = document.getElementById('team-modal');
 
             // Body type badge click
             if (e.target === bodytypeBadge) {
                 bodytypeModal.style.display = 'flex';
+            }
+
+            // Team badge click - navigate to team page
+            if (e.target === teamBadge || teamBadge.contains(e.target)) {
+                if (currentCreatureId && window.currentCreatureData) {
+                    const creatureName = encodeURIComponent(window.currentCreatureData.name);
+                    window.location.href = `team.html?creatureId=${currentCreatureId}&creatureName=${creatureName}`;
+                }
             }
 
             // Score badge click
@@ -463,6 +859,111 @@
                 e.target.style.display = 'none';
             }
         });
+
+        // Animation Badge Functions
+        let availableAnimations = [];
+
+        async function updateAnimationBadge(creatureName) {
+            const animationBadge = document.getElementById('animation-badge');
+
+            if (!creatureName) {
+                console.log('No creature name provided for animation check');
+                return;
+            }
+
+            // Check for creature-specific animations in the animation folder
+            // Animation files should be named like: creaturename_1.mp4, creaturename_2.mp4, etc.
+            // For now, we'll check if any exist by attempting to load one
+            const baseFileName = creatureName.toLowerCase().replace(/\s+/g, '');
+
+            // Try to check for animations (we'll assume they exist if the creature has any)
+            // In a production environment, you'd have an API endpoint to list available animations
+            availableAnimations = await checkForAnimations(baseFileName);
+
+            if (availableAnimations.length > 0) {
+                // Enable the badge
+                animationBadge.classList.remove('disabled');
+                animationBadge.style.display = 'block';
+                animationBadge.style.cursor = 'pointer';
+                animationBadge.onclick = playCreatureAnimation;
+            } else {
+                // Disable the badge
+                animationBadge.classList.add('disabled');
+                animationBadge.style.display = 'block';
+                animationBadge.style.cursor = 'not-allowed';
+                animationBadge.onclick = null;
+            }
+        }
+
+        async function checkForAnimations(baseFileName) {
+            // Check for animations by attempting to load metadata
+            // For now, we return empty array - animations would be added manually
+            // In production, this would call an API endpoint
+            const possibleAnimations = [];
+
+            // Try checking for up to 5 possible animation files
+            for (let i = 1; i <= 5; i++) {
+                const fileName = `${baseFileName}_${i}.mp4`;
+                // We'll just return the filename for now
+                // In production, you'd verify the file exists via an API call
+                possibleAnimations.push(fileName);
+            }
+
+            // For now, return empty to disable badge until animations are added
+            // Change this to `return possibleAnimations;` when you have animation files
+            return [];
+        }
+
+        function playCreatureAnimation() {
+            if (availableAnimations.length === 0) {
+                console.log('No animations available');
+                return;
+            }
+
+            // Create fullscreen overlay for animation
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 0, 0, 0.95);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+
+            // Create container for animation
+            const animationContainer = document.createElement('div');
+            animationContainer.style.cssText = `
+                max-width: 1200px;
+                width: 90%;
+            `;
+
+            overlay.appendChild(animationContainer);
+            document.body.appendChild(overlay);
+
+            // Create animation player
+            const player = new AnimationPlayer('animation', () => {
+                // Remove overlay when animation completes
+                document.body.removeChild(overlay);
+            });
+
+            // Override the animation list with creature-specific animations
+            player.animations = availableAnimations;
+
+            // Play animation
+            player.play(animationContainer);
+
+            // Allow clicking overlay to close
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    document.body.removeChild(overlay);
+                }
+            });
+        }
     </script>
 </body>
 </html>

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chatlings Admin - Image Selection</title>
+    <script src="/user/config.js"></script>
     <style>
         * {
             margin: 0;
@@ -296,7 +297,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <img src="assets/logo.png" alt="Chatlings Logo" class="header-logo">
+            <img src="/assets/logo.png" alt="Chatlings Logo" class="header-logo">
             <div class="header-text">
                 <h1>Chatlings Image Selection Console</h1>
                 <div class="progress-bar">
@@ -437,7 +438,7 @@
                         ${images.map((img, index) => `
                             <div class="image-card" onclick="selectImage(${index})" data-image="${img}">
                                 <div class="image-number">${index + 1}</div>
-                                <img src="/artwork/${img}" alt="Option ${index + 1}">
+                                <img src="${getArtworkUrl(img)}" alt="Option ${index + 1}">
                             </div>
                         `).join('')}
                     </div>

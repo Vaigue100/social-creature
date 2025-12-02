@@ -1,5 +1,5 @@
 /**
- * Migration 33: YouTube Integration Tracking
+ * Migration 33: Login Tracking and Daily Login Achievements
  */
 
 const { Client } = require('pg');
@@ -12,11 +12,11 @@ async function runMigration() {
 
   try {
     await client.connect();
-    console.log('Migration 33: YouTube Integration Tracking\n');
+    console.log('Migration 33: Login Tracking and Daily Login Achievements\n');
     console.log('='.repeat(80));
 
     // Read and execute SQL file
-    const sqlPath = path.join(__dirname, 'sql', '33_youtube_integration_tracking.sql');
+    const sqlPath = path.join(__dirname, 'sql', '33_login_tracking_achievements.sql');
     const sql = fs.readFileSync(sqlPath, 'utf8');
 
     await client.query(sql);
@@ -28,14 +28,25 @@ async function runMigration() {
     const columns = await client.query(`
       SELECT column_name, data_type
       FROM information_schema.columns
-      WHERE table_name = 'oauth_accounts'
-        AND column_name = 'youtube_integrated_at'
+      WHERE table_name = 'users'
+        AND column_name IN ('last_login_at', 'login_streak_days', 'last_streak_date')
+      ORDER BY column_name
     `);
 
-    if (columns.rows.length > 0) {
-      console.log('\nColumn added:');
-      console.log(`  ✓ oauth_accounts.youtube_integrated_at (${columns.rows[0].data_type})`);
-    }
+    console.log('\nColumns added to users table:');
+    columns.rows.forEach(row => console.log(`  ✓ ${row.column_name} (${row.data_type})`));
+
+    const achievements = await client.query(`
+      SELECT achievement_key, title, requirement_value
+      FROM achievements
+      WHERE requirement_type = 'login_streak'
+      ORDER BY requirement_value
+    `);
+
+    console.log('\nLogin streak achievements:');
+    achievements.rows.forEach(ach => {
+      console.log(`  ✓ ${ach.title} (${ach.requirement_value} days) - ${ach.achievement_key}`);
+    });
 
   } catch (error) {
     console.error('\n❌ Error:', error.message);
@@ -47,7 +58,7 @@ async function runMigration() {
 }
 
 console.log('================================================================================');
-console.log('Migration 33: YouTube Integration Tracking');
+console.log('Migration 33: Login Tracking and Daily Login Achievements');
 console.log('================================================================================\n');
 
 runMigration();

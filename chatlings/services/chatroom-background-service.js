@@ -22,8 +22,8 @@ class ChatroomBackgroundService {
     this.isRunning = false;
 
     // Configuration
-    this.runIntervalMinutes = 15;
-    this.maxConversationsPerRun = 10; // Generate max 10 conversations per 15-min run
+    this.runIntervalMinutes = 360; // Run every 6 hours (4 times per day)
+    this.maxConversationsPerRun = 1; // Generate 1 conversation per run = max 4 per day
     this.inactivityDaysThreshold = 3; // Days before inactivity topics appear
   }
 

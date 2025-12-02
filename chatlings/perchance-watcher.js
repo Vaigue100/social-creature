@@ -7,17 +7,17 @@
  * Features:
  * - Auto-detects new ZIP files in artwork folder
  * - Recursively searches for images in subfolders (e.g., galleries/general)
- * - Creates new creature records with unique names and dimension info
- * - Assigns creature to correct prompt family
+ * - Creates new creature records with unique names
+ * - Prompts user to select body type for all images
  * - Moves processed ZIPs to archive folder
  * - Logs all activity
  *
  * Workflow:
  * 1. ZIP file appears in artwork folder
  * 2. Extract and find all JSON/JPG pairs
- * 3. Match prompt to database prompt family
+ * 3. Prompt user to select body type for all images
  * 4. Generate unique name from curated list
- * 5. Create new creature record with all dimension info
+ * 5. Create new creature record with body type
  * 6. Copy image to linked folder with creature ID
  * 7. Archive ZIP to processed_zips folder
  *
@@ -301,85 +301,7 @@ async function processZipFile(zipFile) {
         continue;
       }
 
-      log(`   📝 Full prompt: "${prompt.substring(0, 150)}..."`);
-
-
-      // Match prompt to database
-      // Try exact match first, then fuzzy match
-      let promptResult = await client.query(
-        `SELECT id, prompt FROM creature_prompts WHERE prompt = $1`,
-        [prompt]
-      );
-
-      let matchType = 'exact';
-
-      if (promptResult.rows.length === 0) {
-        // Try fuzzy matching since Perchance may add extra text
-        promptResult = await client.query(
-          `SELECT id, prompt,
-                  length(prompt) as prompt_length,
-                  CASE
-                    WHEN $1 LIKE prompt || '%' THEN 1  -- Database prompt is prefix
-                    WHEN $1 LIKE '%' || prompt || '%' THEN 2  -- Database prompt is substring
-                    ELSE 3
-                  END as match_priority
-           FROM creature_prompts
-           WHERE $1 LIKE '%' || prompt || '%'
-           ORDER BY match_priority, length(prompt) DESC
-           LIMIT 1`,
-          [prompt]
-        );
-        matchType = 'fuzzy';
-      }
-
-      if (promptResult.rows.length === 0) {
-        log(`   ⚠️  Prompt not found in database (custom design)`);
-        log(`      Perchance prompt: ${prompt.substring(0, 100)}...`);
-        // Store unmatched image for later processing
-        unmatchedImages.push({
-          jsonPath,
-          jpegPath,
-          baseName,
-          imageId,
-          prompt
-        });
-        skippedCount++;
-        continue;
-      }
-
-      const matchedPrompt = promptResult.rows[0];
-      const promptId = matchedPrompt.id;
-
-      log(`   ✓ Matched to prompt ID ${promptId} (${matchType})`);
-      log(`      DB prompt: "${matchedPrompt.prompt.substring(0, 100)}..."`);
-
-      // Get full prompt details including body type
-      const promptDetails = await client.query(`
-        SELECT
-          cp.id,
-          cp.prompt,
-          bt.body_type_name,
-          sa.activity_name,
-          sm.mood_name,
-          cs.scheme_name,
-          sq.quirk_name,
-          sc.size_name
-        FROM creature_prompts cp
-        LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
-        LEFT JOIN dim_social_activity sa ON cp.activity_id = sa.id
-        LEFT JOIN dim_social_mood sm ON cp.mood_id = sm.id
-        LEFT JOIN dim_color_scheme cs ON cp.color_scheme_id = cs.id
-        LEFT JOIN dim_special_quirk sq ON cp.quirk_id = sq.id
-        LEFT JOIN dim_size_category sc ON cp.size_id = sc.id
-        WHERE cp.id = $1
-      `, [promptId]);
-
-      if (promptDetails.rows.length > 0) {
-        const details = promptDetails.rows[0];
-        log(`      Body Type: ${details.body_type_name}`);
-        log(`      Activity: ${details.activity_name}, Mood: ${details.mood_name}`);
-        log(`      Colors: ${details.scheme_name}, Quirk: ${details.quirk_name}, Size: ${details.size_name}`);
-      }
+      log(`   📝 Prompt captured: "${prompt.substring(0, 150)}..."`);
 
       // Check if this specific image has already been imported
       const existingImage = await client.query(`
@@ -389,9 +311,6 @@ async function processZipFile(zipFile) {
         LIMIT 1
       `, [imageId]);
 
-      let creatureId;
-      let creatureName;
-
       if (existingImage.rows.length > 0) {
         // This exact image already imported - skip
         log(`   ⊘ Image already imported as: ${existingImage.rows[0].creature_name} (skipping)`);
@@ -399,48 +318,19 @@ async function processZipFile(zipFile) {
         continue;
       }
 
-      // Generate a unique name for this creature
-      const newName = await getRandomName(client);
-
-      // Create new creature record (dimensions are stored in creature_prompts, not creatures)
-      const creatureResult = await client.query(`
-        INSERT INTO creatures
-          (creature_name, prompt_id, selected_image, rarity_tier, perchance_image_id)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id
-      `, [
-        newName,
-        promptId,
-        null,  // selected_image - will set after copying file
-        'Common',
-        imageId
-      ]);
-
-      creatureId = creatureResult.rows[0].id;
-      creatureName = newName;
-
-      // Rename JPEG to creature_id.jpg and move to linked folder
-      const newFilename = `${creatureId}.jpg`;
-      const newPath = path.join(LINKED_DIR, newFilename);
-
-      fs.copyFileSync(jpegPath, newPath);
-
-      // Create thumbnail
-      await createThumbnail(newPath, creatureId);
-
-      // Update creature with image filename
-      await client.query(
-        'UPDATE creatures SET selected_image = $1 WHERE id = $2',
-        [newFilename, creatureId]
-      );
-
-      log(`   ✅ Created: ${creatureName}`);
-      assignedCount++;
+      // Store all images for body type assignment
+      unmatchedImages.push({
+        jsonPath,
+        jpegPath,
+        baseName,
+        imageId,
+        prompt
+      });
     }
 
-    // Handle unmatched images (custom designs)
+    // Process all collected images
     if (unmatchedImages.length > 0) {
-      log(`\n   📋 Processing ${unmatchedImages.length} unmatched image(s)...`);
+      log(`\n   📋 Processing ${unmatchedImages.length} image(s)...`);
 
       const bodyTypeName = await promptUserForBodyType(client, unmatchedImages.length);
 
@@ -452,47 +342,13 @@ async function processZipFile(zipFile) {
         );
 
         if (bodyTypeResult.rows.length === 0) {
-          log(`   ❌ Body type "${bodyTypeName}" not found. Skipping unmatched images.`);
+          log(`   ❌ Body type "${bodyTypeName}" not found. Skipping images.`);
         } else {
           const bodyType = bodyTypeResult.rows[0];
           log(`   ✓ Assigning to body type: ${bodyType.body_type_name}`);
 
-          // Process each unmatched image
+          // Process each image
           for (const unmatched of unmatchedImages) {
-            // Find any available prompt from this body type that hasn't been used yet
-            // Prefer prompts that haven't been exported yet, then fall back to any prompt
-            const availablePrompt = await client.query(`
-              SELECT cp.id
-              FROM creature_prompts cp
-              WHERE cp.body_type_id = $1
-                AND NOT EXISTS (
-                  SELECT 1 FROM creatures c WHERE c.prompt_id = cp.id
-                )
-              ORDER BY RANDOM()
-              LIMIT 1
-            `, [bodyType.id]);
-
-            let promptId;
-
-            if (availablePrompt.rows.length > 0) {
-              promptId = availablePrompt.rows[0].id;
-            } else {
-              // All prompts have been used at least once, just pick a random one
-              const anyPrompt = await client.query(`
-                SELECT id FROM creature_prompts
-                WHERE body_type_id = $1
-                ORDER BY RANDOM()
-                LIMIT 1
-              `, [bodyType.id]);
-
-              if (anyPrompt.rows.length === 0) {
-                log(`   ❌ No prompts found for ${bodyType.body_type_name}. Skipping ${unmatched.baseName}`);
-                continue;
-              }
-
-              promptId = anyPrompt.rows[0].id;
-            }
-
             // Check if this specific image has already been imported
             const existingImage = await client.query(
               'SELECT id, creature_name FROM creatures WHERE perchance_image_id = $1',
@@ -507,15 +363,15 @@ async function processZipFile(zipFile) {
             // Generate a unique name for this creature
             const newName = await getRandomName(client);
 
-            // Create new creature record
+            // Create new creature record with body type ID but no prompt
             const creatureResult = await client.query(`
               INSERT INTO creatures
-                (creature_name, prompt_id, selected_image, rarity_tier, perchance_image_id)
+                (creature_name, body_type_id, selected_image, rarity_tier, perchance_image_id)
               VALUES ($1, $2, $3, $4, $5)
               RETURNING id
             `, [
               newName,
-              promptId,
+              bodyType.id,
               null,
               'Common',
               unmatched.imageId
@@ -539,11 +395,10 @@ async function processZipFile(zipFile) {
 
             log(`   ✅ Created: ${newName} (${bodyType.body_type_name})`);
             assignedCount++;
-            skippedCount--; // Remove from skipped count since we processed it
           }
         }
       } else {
-        log(`   ⊘ Skipping ${unmatchedImages.length} unmatched image(s)`);
+        log(`   ⊘ Skipping ${unmatchedImages.length} image(s)`);
       }
     }
 

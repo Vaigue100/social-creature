@@ -10,7 +10,9 @@ function getPageTitle(activePage) {
         'achievements': 'Achievements',
         'integrations': 'Integrations',
         'team': 'Team',
-        'chatroom': 'Chatroom'
+        'chatroom': 'Chatroom',
+        'notifications': 'Notifications',
+        'settings': 'Settings'
     };
     return titles[activePage] || 'Home';
 }
@@ -35,11 +37,16 @@ function initSharedHeader(activePage = 'home') {
                         🔔
                     </button>
                     <div class="dropdown-content" id="notifications-dropdown">
-                        <div class="dropdown-header" onclick="window.location.href='notifications.html'">
+                        <div class="dropdown-header" onclick="window.location.href='notifications.html'" style="cursor: pointer;">
                             Click to open Notifications page
                         </div>
                         <div id="notifications-list">
                             <div class="dropdown-empty">Loading notifications...</div>
+                        </div>
+                        <div class="dropdown-footer" id="mark-all-read-footer" style="display: none;">
+                            <button class="mark-all-read-button" onclick="markAllNotificationsAsRead(event)">
+                                Mark All as Read
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -66,6 +73,10 @@ function initSharedHeader(activePage = 'home') {
                                 <div style="font-size: 1.3em; font-weight: bold; color: #667eea;" id="user-dropdown-achievements">0</div>
                                 <div style="font-size: 0.75em; color: #999;">Achievements</div>
                             </div>
+                        </div>
+                        <div class="dropdown-item" onclick="window.location.href='settings.html'" style="justify-content: center;">
+                            <span class="dropdown-item-icon">⚙️</span>
+                            <span class="dropdown-item-text">Settings</span>
                         </div>
                         <div class="dropdown-item" onclick="logout()" style="justify-content: center;">
                             <span class="dropdown-item-icon">🚪</span>
@@ -167,6 +178,36 @@ function initSharedHeader(activePage = 'home') {
                 background: rgba(118, 75, 162, 0.5) !important;
                 box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3) !important;
             }
+            #notifications-list {
+                max-height: 400px;
+                overflow-y: auto;
+            }
+            .dropdown-footer {
+                padding: 10px;
+                border-top: 1px solid #eee;
+                background: #f9f9f9;
+            }
+            .mark-all-read-button {
+                width: 100%;
+                padding: 10px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 0.9em;
+                font-weight: 600;
+                transition: transform 0.2s, box-shadow 0.2s;
+            }
+            .mark-all-read-button:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            }
+            .mark-all-read-button:disabled {
+                background: #ccc;
+                cursor: not-allowed;
+                transform: none;
+            }
         </style>
     `;
 
@@ -190,8 +231,42 @@ async function loadUserDataForHeader() {
 
         // Load team icons
         await loadTeamIcons();
+
+        // Check for notifications to update bell indicator
+        await checkNotificationIndicator();
     } catch (error) {
         console.error('Error loading user data for header:', error);
+    }
+}
+
+async function checkNotificationIndicator() {
+    try {
+        // Check daily box
+        let hasNotifications = false;
+        try {
+            const dailyBoxResponse = await fetch('/api/daily-box/can-claim');
+            if (dailyBoxResponse.ok) {
+                const dailyBoxData = await dailyBoxResponse.json();
+                if (dailyBoxData.canClaim) {
+                    hasNotifications = true;
+                }
+            }
+        } catch (err) {
+            console.log('Could not check daily box:', err);
+        }
+
+        // Check regular notifications if no daily box
+        if (!hasNotifications) {
+            const notifResponse = await fetch('/api/user/notifications?limit=1');
+            if (notifResponse.ok) {
+                const data = await notifResponse.json();
+                hasNotifications = (data.notifications || []).length > 0;
+            }
+        }
+
+        updateBellIndicator(hasNotifications, hasNotifications ? 1 : 0);
+    } catch (error) {
+        console.error('Error checking notification indicator:', error);
     }
 }
 
@@ -234,7 +309,7 @@ async function loadTeamIcons() {
 
             if (member.creature) {
                 const img = document.createElement('img');
-                img.src = `/images/${member.creature.image}`;
+                img.src = getImageUrl(member.creature.image);
                 img.alt = member.creature.name;
                 img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
                 img.title = `${member.role}: ${member.creature.name}`;
@@ -344,11 +419,71 @@ document.addEventListener('click', function(event) {
 });
 
 async function loadRecentNotifications() {
+    console.log('loadRecentNotifications called');
     try {
+        // Check daily box first
+        let dailyBoxNotification = null;
+        try {
+            // Check if user has already opened the daily box page today
+            const lastOpened = localStorage.getItem('daily-box-opened');
+            const today = new Date().toDateString();
+            const lastOpenedDate = lastOpened ? new Date(parseInt(lastOpened)).toDateString() : null;
+
+            // Only show notification if not opened today
+            if (lastOpenedDate !== today) {
+                const dailyBoxResponse = await fetch('/api/daily-box/can-claim');
+                if (dailyBoxResponse.ok) {
+                    const dailyBoxData = await dailyBoxResponse.json();
+                    if (dailyBoxData.canClaim) {
+                        dailyBoxNotification = {
+                            id: 'daily_box_' + today, // Special ID for daily box
+                            type: 'daily_box',
+                            message: 'Your daily mystery box is ready to open!',
+                            created_at: new Date().toISOString(),
+                            link: '/user/daily-box.html'
+                        };
+                    }
+                }
+            }
+        } catch (err) {
+            console.log('Could not check daily box:', err);
+        }
+
+        // Load regular notifications
         const response = await fetch('/api/user/notifications?limit=10');
         if (response.ok) {
-            const notifications = await response.json();
-            displayNotifications(notifications);
+            const data = await response.json();
+            let notifications = data.notifications || [];
+
+            console.log('Loaded notifications from API:', notifications.length);
+
+            // Prepend daily box notification if available
+            if (dailyBoxNotification) {
+                notifications = [dailyBoxNotification, ...notifications];
+                console.log('Added daily box, total notifications:', notifications.length);
+            }
+
+            // Check for duplicates by ID
+            const uniqueNotifications = [];
+            const seenIds = new Set();
+            for (const notif of notifications) {
+                if (!seenIds.has(notif.id)) {
+                    seenIds.add(notif.id);
+                    uniqueNotifications.push(notif);
+                } else {
+                    console.warn('Duplicate notification detected:', notif.id, notif.message);
+                }
+            }
+
+            console.log('Unique notifications:', uniqueNotifications.length);
+            displayNotifications(uniqueNotifications);
+            updateBellIndicator(uniqueNotifications.length > 0, uniqueNotifications.length);
+
+            // Show/hide "Mark All as Read" footer
+            const footer = document.getElementById('mark-all-read-footer');
+            if (footer) {
+                footer.style.display = uniqueNotifications.length > 0 ? 'block' : 'none';
+            }
         } else {
             const list = document.getElementById('notifications-list');
             if (list) {
@@ -373,29 +508,207 @@ function displayNotifications(notifications) {
         return;
     }
 
-    container.innerHTML = notifications.map(notif => {
-        const icon = getNotificationIcon(notif.type);
+    console.log('Displaying notifications:', notifications);
+
+    // Clear container first
+    container.innerHTML = '';
+
+    // Create and append each notification element
+    notifications.forEach((notif, index) => {
+        const notifType = notif.notification_type || notif.type;
+        const icon = getNotificationIcon(notifType);
         const timeAgo = formatTimeAgo(notif.created_at);
 
-        return `
-            <div class="dropdown-item">
-                <span class="dropdown-item-icon">${icon}</span>
-                <span class="dropdown-item-text">${notif.message}</span>
-                <span class="dropdown-item-time">${timeAgo}</span>
-            </div>
+        // Build link from notification data
+        let link = notif.link;
+
+        // If no link but has metadata, try to build link from metadata
+        if (!link || link === '#' || link === null || link === 'null') {
+            try {
+                const metadata = typeof notif.metadata === 'string' ? JSON.parse(notif.metadata) : notif.metadata;
+
+                // For reward_claimed notifications, link to creature
+                if (notifType === 'reward_claimed' && metadata?.creature_id) {
+                    link = `/user/view-creature.html?id=${metadata.creature_id}`;
+                }
+                // For achievement notifications, link to achievements page
+                else if ((notifType === 'achievement_unlocked' || notifType === 'achievement') && metadata?.achievement_id) {
+                    link = '/user/achievements.html';
+                }
+            } catch (e) {
+                console.error('Error parsing notification metadata:', e);
+            }
+        }
+
+        const hasLink = link && link !== '#' && link !== null && link !== 'null';
+
+        console.log(`Notification ${index}:`, {
+            id: notif.id,
+            link: link,
+            hasLink,
+            message: notif.message,
+            metadata: notif.metadata,
+            fullNotif: notif
+        });
+
+        const notifElement = document.createElement('div');
+        notifElement.className = `dropdown-item ${hasLink ? 'notification-clickable' : ''}`;
+        notifElement.setAttribute('data-notification-id', notif.id || '');
+        notifElement.setAttribute('data-notification-link', link || '');
+
+        // ALWAYS add click handler for debugging
+        notifElement.style.cursor = 'pointer';
+        notifElement.addEventListener('click', () => {
+            console.log('Click event fired for notification:', notif.id, 'hasLink:', hasLink, 'link:', link);
+            if (hasLink) {
+                handleNotificationClick(notif.id, link);
+            } else {
+                console.warn('Notification clicked but has no valid link:', notif);
+            }
+        });
+
+        notifElement.innerHTML = `
+            <span class="dropdown-item-icon">${icon}</span>
+            <span class="dropdown-item-text">${notif.message}</span>
+            <span class="dropdown-item-time">${timeAgo}</span>
         `;
-    }).join('');
+
+        container.appendChild(notifElement);
+    });
+
+    console.log('Notifications rendered, clickable count:', container.querySelectorAll('.notification-clickable').length);
+}
+
+async function handleNotificationClick(notificationId, link) {
+    console.log('Notification clicked:', { notificationId, link });
+
+    try {
+        // Handle daily box notification specially
+        if (notificationId && notificationId.toString().startsWith('daily_box_')) {
+            console.log('Handling daily box notification');
+            // Mark as opened in localStorage so it doesn't show again today
+            localStorage.setItem('daily-box-opened', Date.now().toString());
+        }
+        // Mark regular notification as read
+        else if (notificationId && notificationId !== 'undefined' && notificationId !== 'null') {
+            console.log('Marking notification as read:', notificationId);
+            const response = await fetch('/api/user/notifications/mark-read', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notificationIds: [notificationId] })
+            });
+
+            console.log('Mark as read response status:', response.status);
+            const responseData = await response.json();
+            console.log('Mark as read response:', responseData);
+
+            if (response.ok) {
+                console.log('Notification marked as read successfully, reloading notifications...');
+                // Reload notifications to update the dropdown
+                await loadRecentNotifications();
+            } else {
+                console.error('Failed to mark notification as read:', responseData);
+            }
+        }
+
+        // Navigate to link if provided AFTER marking as read completes
+        if (link && link !== '' && link !== '#' && link !== 'null' && link !== 'undefined') {
+            console.log('Navigating to:', link);
+            window.location.href = link;
+        } else {
+            console.log('No valid link to navigate to:', link);
+            // If no link, just close the dropdown
+            const dropdown = document.getElementById('notifications-dropdown');
+            if (dropdown) {
+                dropdown.classList.remove('show');
+            }
+        }
+    } catch (error) {
+        console.error('Error handling notification click:', error);
+        // Still navigate even if mark-as-read fails
+        if (link && link !== '' && link !== '#' && link !== 'null' && link !== 'undefined') {
+            window.location.href = link;
+        }
+    }
 }
 
 function getNotificationIcon(type) {
     const icons = {
+        'daily_box': '🎁',
         'new_chatling': '🎁',
+        'reward_claimed': '✨',
         'daily_visit': '🌟',
         'achievement': '🏆',
+        'achievement_unlocked': '🏆',
         'rare_find': '💎',
-        'collection_milestone': '📚'
+        'collection_milestone': '📚',
+        'youtube_reminder': '🤖',
+        'new_conversation': '💬',
+        'chatling_runaway': '🏃',
+        'chatling_recovered': '🎉'
     };
     return icons[type] || '🔔';
+}
+
+function updateBellIndicator(hasNotifications, count = 0) {
+    const bellButton = document.querySelector('.bell-button');
+    if (!bellButton) return;
+
+    if (hasNotifications && count > 0) {
+        // Add ringing animation
+        bellButton.classList.add('bell-ringing');
+
+        // Update or create notification badge with count
+        let badge = bellButton.querySelector('.notification-badge');
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'notification-badge';
+            bellButton.style.position = 'relative';
+            bellButton.appendChild(badge);
+        }
+        badge.textContent = count > 9 ? '9+' : count;
+        badge.style.cssText = `
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            min-width: 18px;
+            height: 18px;
+            background: #e74c3c;
+            color: white;
+            border-radius: 9px;
+            border: 2px solid white;
+            font-size: 11px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+        `;
+
+        // Add animation styles if not already added
+        if (!document.getElementById('bell-animation-styles')) {
+            const style = document.createElement('style');
+            style.id = 'bell-animation-styles';
+            style.textContent = `
+                @keyframes bellRing {
+                    0%, 100% { transform: rotate(0deg); }
+                    10%, 30%, 50%, 70%, 90% { transform: rotate(-10deg); }
+                    20%, 40%, 60%, 80% { transform: rotate(10deg); }
+                }
+
+                .bell-ringing {
+                    animation: bellRing 2s ease-in-out infinite;
+                    transform-origin: top center;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    } else {
+        // Remove animation and indicator
+        bellButton.classList.remove('bell-ringing');
+        const badge = bellButton.querySelector('.notification-badge');
+        if (badge) badge.remove();
+    }
 }
 
 function formatTimeAgo(timestamp) {
@@ -541,5 +854,137 @@ async function confirmAbandonAccount() {
         cancelBtn.disabled = false;
         passwordInput.disabled = false;
         confirmBtn.textContent = 'Yes, Abandon Account';
+    }
+}
+
+// ============================================================================
+// Daily Box Notification - Now integrated into bell notifications
+// ============================================================================
+// Popup notification disabled - daily box now shows in bell dropdown
+
+// ============================================================================
+// YouTube Connection Check
+// ============================================================================
+(function() {
+    let lastNotificationTime = localStorage.getItem('last_youtube_reminder');
+    const CHECK_INTERVAL = 10 * 60 * 1000; // Check every 10 minutes
+    const NOTIFICATION_COOLDOWN = 6 * 60 * 60 * 1000; // Only notify once every 6 hours
+
+    async function checkYouTubeConnection() {
+        try {
+            const response = await fetch('/api/youtube/token');
+            if (!response.ok) return;
+
+            const data = await response.json();
+
+            // If YouTube is not connected, send a notification
+            if (!data.connected) {
+                const now = Date.now();
+                const lastNotif = lastNotificationTime ? parseInt(lastNotificationTime) : 0;
+
+                // Only send notification if cooldown has passed
+                if (now - lastNotif > NOTIFICATION_COOLDOWN) {
+                    await sendYouTubeReminderNotification();
+                    localStorage.setItem('last_youtube_reminder', now.toString());
+                    lastNotificationTime = now.toString();
+                }
+            } else {
+                // If connected, clear the last notification time
+                localStorage.removeItem('last_youtube_reminder');
+                lastNotificationTime = null;
+            }
+        } catch (error) {
+            console.error('Error checking YouTube connection:', error);
+        }
+    }
+
+    async function sendYouTubeReminderNotification() {
+        try {
+            const response = await fetch('/api/notifications', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    type: 'youtube_reminder',
+                    message: '🤖 Your Community Ambassador is waiting! Connect YouTube to discover new Chatlings from videos you like.',
+                    link: '/user/integrations.html'
+                })
+            });
+
+            if (response.ok) {
+                console.log('YouTube reminder notification sent');
+            }
+        } catch (error) {
+            console.error('Error sending YouTube reminder notification:', error);
+        }
+    }
+
+    // Check immediately on page load
+    setTimeout(checkYouTubeConnection, 3000); // Wait 3 seconds for page to load
+
+    // Then check periodically
+    setInterval(checkYouTubeConnection, CHECK_INTERVAL);
+})();
+
+// Register service worker for PWA support
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+            .then((registration) => {
+                console.log('ServiceWorker registration successful');
+            })
+            .catch((err) => {
+                console.log('ServiceWorker registration failed: ', err);
+            });
+    });
+}
+
+// Handle page restoration from bfcache (browser back/forward)
+window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+        console.log('Page restored from cache, reloading notifications');
+        // Page was restored from bfcache, refresh notification indicator
+        checkNotificationIndicator();
+    }
+});
+
+// Mark all notifications as read from dropdown
+async function markAllNotificationsAsRead(event) {
+    event.stopPropagation(); // Prevent dropdown from closing
+
+    const button = event.target;
+    const originalText = button.textContent;
+
+    try {
+        button.disabled = true;
+        button.textContent = 'Marking as read...';
+
+        const response = await fetch('/api/user/notifications/mark-read', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notificationIds: [] }) // Empty array marks all as read
+        });
+
+        if (response.ok) {
+            console.log('All notifications marked as read');
+            // Reload notifications to update the dropdown
+            await loadRecentNotifications();
+
+            // Close the dropdown after a brief moment
+            setTimeout(() => {
+                const dropdown = document.getElementById('notifications-dropdown');
+                if (dropdown) {
+                    dropdown.classList.remove('show');
+                }
+            }, 500);
+        } else {
+            throw new Error('Failed to mark notifications as read');
+        }
+    } catch (error) {
+        console.error('Error marking all notifications as read:', error);
+        button.disabled = false;
+        button.textContent = originalText;
+        alert('Failed to mark notifications as read. Please try again.');
     }
 }

@@ -2,8 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Chatroom - Chatlings</title>
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- Theme color for mobile browsers -->
+  <meta name="theme-color" content="#667eea">
+
+  <!-- Apple iOS -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Chatlings">
+  <link rel="apple-touch-icon" href="/assets/icon-192.png">
+
+  <script src="/user/config.js"></script>
+  <script src="/user/components/auth-check.js"></script>
   <link rel="stylesheet" href="components/shared-header-styles.css">
   <style>
     * {
@@ -552,6 +567,34 @@
     async function init() {
       await loadConversations();
       await loadRunaways();
+      await markChatroomNotificationsRead();
+    }
+
+    // Mark all new_conversation notifications as read when visiting chatroom
+    async function markChatroomNotificationsRead() {
+      try {
+        // Get all unread chatroom notifications
+        const response = await fetch('/api/user/notifications');
+        if (response.ok) {
+          const data = await response.json();
+          const notifications = data.notifications || [];
+          const chatroomNotificationIds = notifications
+            .filter(n => n.notification_type === 'new_conversation' || n.notification_type === 'chatling_runaway' || n.notification_type === 'chatling_recovered')
+            .map(n => n.id);
+
+          if (chatroomNotificationIds.length > 0) {
+            console.log('Marking chatroom notifications as read:', chatroomNotificationIds);
+            // Mark them as read
+            await fetch('/api/user/notifications/mark-read', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ notificationIds: chatroomNotificationIds })
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error marking chatroom notifications as read:', error);
+      }
     }
 
     // Switch tabs
@@ -689,7 +732,7 @@
         if (i > 0) {
           const typingHtml = `
             <div class="typing-indicator" id="typing-${i}">
-              <img src="/images/${message.creature_image}" alt="${message.creature_name}" class="message-avatar">
+              <img src="${getImageUrl(message.creature_image)}" alt="${message.creature_name}" class="message-avatar">
               <div class="typing-dots">
                 <span></span>
                 <span></span>
@@ -709,7 +752,7 @@
         // Show message
         const messageHtml = `
           <div class="chat-message">
-            <img src="/images/${message.creature_image}" alt="${message.creature_name}" class="message-avatar">
+            <img src="${getImageUrl(message.creature_image)}" alt="${message.creature_name}" class="message-avatar">
             <div class="message-content">
               <div class="message-author">${message.creature_name}</div>
               <div class="message-text ${message.sentiment || 'neutral'}">
@@ -783,7 +826,7 @@
 
         return `
           <div class="runaway-card">
-            <img src="/images/${runaway.selected_image}" alt="${runaway.creature_name}" class="runaway-image">
+            <img src="${getImageUrl(runaway.selected_image)}" alt="${runaway.creature_name}" class="runaway-image">
             <div class="runaway-name">${runaway.creature_name}</div>
             <div class="runaway-info">
               Ran away ${new Date(runaway.ran_away_at).toLocaleDateString()}<br>

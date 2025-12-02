@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Daily Mystery Box - Chatlings</title>
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Theme color for mobile browsers -->
+    <meta name="theme-color" content="#667eea">
+
+    <!-- Apple iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Chatlings">
+    <link rel="apple-touch-icon" href="/assets/icon-192.png">
+
+    <script src="/user/config.js"></script>
+  <script src="/user/components/auth-check.js"></script>
+    <link rel="stylesheet" href="/user/components/creature-card-styles.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        #animation-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 1000;
+        }
+
+        #animation-container video {
+            max-width: 1200px;
+            width: 90%;
+            height: auto;
+            object-fit: contain;
+        }
+
+        #animation-container.hidden {
+            display: none;
+        }
+
+        #creature-card-container {
+            display: none;
+            max-width: 1200px;
+            width: 90%;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        #creature-card-container.show {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .close-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 2000;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .close-button:hover {
+            transform: scale(1.1);
+            background: white;
+        }
+
+        .loading-message {
+            color: white;
+            font-size: 1.5em;
+            text-align: center;
+        }
+
+        .error-message {
+            color: white;
+            background: rgba(231, 76, 60, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 500px;
+        }
+
+        .error-message h2 {
+            margin-bottom: 15px;
+        }
+
+        .error-message button {
+            margin-top: 20px;
+            padding: 12px 30px;
+            background: white;
+            color: #e74c3c;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- Close button -->
+    <button class="close-button" onclick="window.location.href='index.html'" title="Close">×</button>
+
+    <!-- Animation Container -->
+    <div id="animation-container">
+        <div class="loading-message">Opening mystery box...</div>
+    </div>
+
+    <!-- Creature Card (shown after animation) -->
+    <div id="creature-card-container">
+        <div class="creature-display">
+            <div class="image-with-traits">
+                <div class="creature-frame-wrapper" id="creature-frame">
+                    <div class="creature-frame-overlay" id="frame-overlay" style="display: none;"></div>
+                    <div class="creature-frame-content">
+                        <div class="creature-image-container">
+                            <div class="rarity-badge" id="rarity-badge" style="display: none;"></div>
+                            <div class="overall-score-badge" id="overall-score-badge" style="display: none;"></div>
+                            <div class="bodytype-badge" id="bodytype-badge" style="display: none;"></div>
+                            <img id="creature-image" class="creature-image" src="" alt="Creature" style="display: none;">
+                        </div>
+
+                        <!-- Creature Lore -->
+                        <div class="creature-lore-section" id="creature-lore-section" style="display: none;">
+                            <h3 style="color: #9b59b6; margin-bottom: 10px; font-size: 1.1em;">📖 <span id="creature-lore-title">Tale</span></h3>
+                            <p id="creature-lore" style="color: #666; line-height: 1.6; margin: 0;"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/user/components/animation-player.js"></script>
+    <script src="/user/components/creature-card-script.js"></script>
+    <script>
+        let claimedCreature = null;
+
+        async function claimDailyBox() {
+            try {
+                // Clear the daily box notification flag
+                // This prevents it from showing in the notification dropdown
+                localStorage.setItem('daily-box-opened', Date.now().toString());
+
+                const response = await fetch('/api/daily-box/claim', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to claim box');
+                }
+
+                const result = await response.json();
+                claimedCreature = result;
+
+                // Start animation
+                playAnimation();
+
+            } catch (error) {
+                console.error('Error claiming box:', error);
+                showError(error.message);
+            }
+        }
+
+        function playAnimation() {
+            const animationContainer = document.getElementById('animation-container');
+
+            // Create animation player
+            const player = new AnimationPlayer('dailybox', onAnimationComplete);
+
+            // Play random animation
+            player.play(animationContainer);
+        }
+
+        function onAnimationComplete() {
+            // Hide animation
+            document.getElementById('animation-container').classList.add('hidden');
+
+            // Show creature card
+            displayCreatureCard();
+        }
+
+        async function displayCreatureCard() {
+            const container = document.getElementById('creature-card-container');
+            container.classList.add('show');
+
+            if (!claimedCreature) {
+                showError('No creature data available');
+                return;
+            }
+
+            const creature = claimedCreature.creature;
+
+            // Load full creature details
+            try {
+                const detailsResponse = await fetch(`/api/creature/${creature.id}/details`);
+                if (detailsResponse.ok) {
+                    const data = await detailsResponse.json();
+
+                    // Update rarity badge
+                    const rarityBadge = document.getElementById('rarity-badge');
+                    if (data.rarity_tier) {
+                        rarityBadge.textContent = data.rarity_tier;
+                        rarityBadge.className = 'rarity-badge rarity-' + data.rarity_tier.toLowerCase();
+                        rarityBadge.style.display = 'block';
+                    }
+
+                    // Update body type badge
+                    const bodytypeBadge = document.getElementById('bodytype-badge');
+                    if (data.body_type_name) {
+                        bodytypeBadge.textContent = data.body_type_name;
+                        bodytypeBadge.style.display = 'block';
+
+                        // Load frame
+                        await loadBodyTypeFrame(data.body_type_name);
+                    }
+
+                    // Update image
+                    const img = document.getElementById('creature-image');
+                    img.src = getImageUrl(data.selected_image);
+                    img.style.display = 'block';
+
+                    // Update overall score badge
+                    const scoreBadge = document.getElementById('overall-score-badge');
+                    if (data.overall_score !== undefined) {
+                        scoreBadge.className = 'overall-score-badge ' + getScoreClassForBadge(data.overall_score);
+                        scoreBadge.innerHTML = `<span>⭐</span><span>${data.overall_score}</span>`;
+                        scoreBadge.style.display = 'block';
+                    }
+
+                    // Update creature lore
+                    const wasNew = claimedCreature.wasNew;
+                    const foundCount = claimedCreature.foundCount;
+
+                    document.getElementById('creature-lore-title').textContent = `${data.creature_name}'s`;
+                    document.getElementById('creature-lore').textContent =
+                        wasNew
+                        ? `🎉 You discovered ${data.creature_name} for the first time! This ${data.rarity_tier} chatling has an overall power level of ${data.overall_score}.`
+                        : `📦 You found ${data.creature_name} again! You've now found this chatling ${foundCount} time${foundCount > 1 ? 's' : ''}. Overall power: ${data.overall_score}.`;
+
+                    document.getElementById('creature-lore-section').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading creature details:', error);
+            }
+        }
+
+        async function loadBodyTypeFrame(bodyTypeName) {
+            const frameWrapper = document.getElementById('creature-frame');
+            const frameOverlay = document.getElementById('frame-overlay');
+            const creatureImage = document.getElementById('creature-image');
+            const imageContainer = creatureImage.closest('.creature-image-container');
+
+            frameWrapper.classList.remove('has-frame');
+            frameOverlay.style.display = 'none';
+
+            if (!bodyTypeName) return;
+
+            try {
+                const configResponse = await fetch(`/api/body-type-frame-config/${bodyTypeName}`);
+                if (configResponse.ok) {
+                    const config = await configResponse.json();
+
+                    creatureImage.style.width = `${config.image_width_percent}%`;
+                    creatureImage.style.maxWidth = `${config.image_max_width_px}px`;
+                    creatureImage.style.maxHeight = `${config.image_max_height_vh}vh`;
+                    creatureImage.style.minWidth = `${config.image_min_width_px}px`;
+
+                    if (imageContainer) {
+                        imageContainer.style.marginTop = `${config.image_margin_top_px || 0}px`;
+                    }
+                }
+            } catch (err) {
+                console.log('Using default frame config');
+            }
+
+            const frameFileName = bodyTypeName.toLowerCase() + '.png';
+            const framePath = getArtworkUrl(`frame/${frameFileName}`);
+
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    frameWrapper.classList.add('has-frame');
+                    frameOverlay.style.backgroundImage = `url('${framePath}')`;
+                    frameOverlay.style.display = 'block';
+                    resolve();
+                };
+                img.onerror = () => resolve();
+                img.src = framePath;
+            });
+        }
+
+        function getScoreClassForBadge(score) {
+            if (score >= 95) return 'score-max';
+            if (score >= 81) return 'score-vhigh';
+            if (score >= 61) return 'score-high';
+            if (score >= 41) return 'score-medium';
+            if (score >= 21) return 'score-low';
+            return 'score-vlow';
+        }
+
+        function showError(message) {
+            const animationContainer = document.getElementById('animation-container');
+            animationContainer.innerHTML = `
+                <div class="error-message">
+                    <h2>Oops!</h2>
+                    <p>${message}</p>
+                    <button onclick="window.location.href='index.html'">Return to Hub</button>
+                </div>
+            `;
+        }
+
+        // Auto-start when page loads
+        window.addEventListener('load', () => {
+            claimDailyBox();
+        });
+    </script>
+</body>
+</html>
