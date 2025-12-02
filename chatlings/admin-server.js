@@ -3,6 +3,9 @@
  * Serves the admin interface and handles image selection API
  */
 
+// Load environment variables
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+
 const express = require('express');
 const session = require('express-session');
 const { Client } = require('pg');
@@ -18,6 +21,10 @@ const webpush = require('web-push');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Storage configuration
+const ARTWORK_STORAGE_MODE = process.env.ARTWORK_STORAGE_MODE || 'azure';
+const AZURE_ARTWORK_BASE_URL = process.env.AZURE_ARTWORK_BASE_URL || 'https://chatlingsdevlyg7hq.blob.core.windows.net/artwork';
 
 // Database config
 const config = { ...require('./scripts/db-config'), database: 'chatlings' };
@@ -489,6 +496,17 @@ app.post('/api/trash-image', async (req, res) => {
 /**
  * Get all dimension options for tabbed navigation
  */
+/**
+ * Get storage configuration
+ */
+app.get('/api/config/storage', (req, res) => {
+  res.json({
+    storageMode: ARTWORK_STORAGE_MODE,
+    azureBaseUrl: AZURE_ARTWORK_BASE_URL,
+    useAzure: ARTWORK_STORAGE_MODE === 'azure'
+  });
+});
+
 app.get('/api/dimensions', async (req, res) => {
   const client = new Client(config);
 

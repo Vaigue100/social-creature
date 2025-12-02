@@ -451,10 +451,27 @@
         let selectedCreature = null;
         let selectedFile = null;
         let currentBodyTypeFilter = '';
+        let storageConfig = { useAzure: true, azureBaseUrl: '' };
+
+        // Helper function to get image URL based on storage config
+        function getImageUrl(filename) {
+            if (!filename) return '/assets/placeholder.png';
+            if (storageConfig.useAzure) {
+                return `${storageConfig.azureBaseUrl}/linked/${filename}`;
+            }
+            return `/images/${filename}`;
+        }
+
+        async function loadStorageConfig() {
+            const response = await fetch('/api/config/storage');
+            storageConfig = await response.json();
+            console.log('Storage config loaded:', storageConfig);
+        }
 
         async function init() {
             try {
                 await Promise.all([
+                    loadStorageConfig(),
                     loadCreatures(),
                     loadAnimationTypes(),
                     loadBodyTypes()
@@ -525,7 +542,7 @@
                 const card = document.createElement('div');
                 card.className = 'creature-card';
 
-                const imagePath = creature.selected_image ? `/images/${creature.selected_image}` : '/assets/placeholder.png';
+                const imagePath = getImageUrl(creature.selected_image);
 
                 card.innerHTML = `
                     <div class="creature-image-wrapper">
