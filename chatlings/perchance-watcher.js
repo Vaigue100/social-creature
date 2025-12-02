@@ -363,15 +363,35 @@ async function processZipFile(zipFile) {
             // Generate a unique name for this creature
             const newName = await getRandomName(client);
 
-            // Create new creature record with body type ID but no prompt
+            // Find or create a placeholder prompt for this body type
+            let promptResult = await client.query(`
+              SELECT id FROM creature_prompts
+              WHERE body_type_id = $1 AND prompt = 'Placeholder'
+              LIMIT 1
+            `, [bodyType.id]);
+
+            let promptId;
+            if (promptResult.rows.length === 0) {
+              // Create a placeholder prompt for this body type
+              const newPrompt = await client.query(`
+                INSERT INTO creature_prompts (body_type_id, prompt)
+                VALUES ($1, 'Placeholder')
+                RETURNING id
+              `, [bodyType.id]);
+              promptId = newPrompt.rows[0].id;
+            } else {
+              promptId = promptResult.rows[0].id;
+            }
+
+            // Create new creature record with prompt_id
             const creatureResult = await client.query(`
               INSERT INTO creatures
-                (creature_name, body_type_id, selected_image, rarity_tier, perchance_image_id)
+                (creature_name, prompt_id, selected_image, rarity_tier, perchance_image_id)
               VALUES ($1, $2, $3, $4, $5)
               RETURNING id
             `, [
               newName,
-              bodyType.id,
+              promptId,
               null,
               'Common',
               unmatched.imageId
