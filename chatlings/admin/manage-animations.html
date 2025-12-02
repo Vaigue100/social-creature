@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Animations - Chatlings Admin</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+        }
+
+        .search-box {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .creatures-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .creature-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+
+        .creature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+
+        .creature-image-wrapper {
+            position: relative;
+            width: 100%;
+            padding-bottom: 100%;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .creature-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .creature-info {
+            padding: 15px;
+        }
+
+        .creature-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .creature-name:hover {
+            color: #667eea;
+        }
+
+        .creature-rarity {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            background: #f0f0f0;
+            color: #666;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .creature-rarity:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .animation-count {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .upload-btn {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            color: #667eea;
+            margin: 0;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group select,
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .file-upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .file-upload-area:hover {
+            background: #f8f9ff;
+        }
+
+        .file-upload-area.dragover {
+            background: #e8ebff;
+            border-color: #764ba2;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-info {
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .video-preview {
+            margin-top: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .video-preview video {
+            width: 100%;
+            max-height: 300px;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-message {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .status-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: white;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .existing-animations {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .existing-animations h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .animation-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .animation-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 6px;
+        }
+
+        .animation-item-info {
+            flex: 1;
+        }
+
+        .animation-item-type {
+            font-weight: 500;
+            color: #667eea;
+            margin-bottom: 2px;
+        }
+
+        .animation-item-name {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .empty-animations {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Manage Animations</h1>
+            <p>Upload and manage animation clips for your creatures</p>
+        </div>
+
+        <div class="search-box">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search creatures by name...">
+        </div>
+
+        <div class="filter-box" style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <label for="bodyTypeFilter" style="display: block; margin-bottom: 10px; font-weight: 500; color: #333;">Filter by Body Type:</label>
+            <select id="bodyTypeFilter" style="width: 100%; padding: 12px 20px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; transition: border-color 0.2s;">
+            </select>
+        </div>
+
+        <div id="creaturesContainer">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading creatures...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Upload Animation</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+
+            <div id="modalCreatureInfo"></div>
+
+            <form id="uploadForm" onsubmit="handleUpload(event)">
+                <div class="form-group">
+                    <label for="animationType">Animation Type</label>
+                    <select id="animationType" required>
+                        <option value="">Select type...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="displayName">Display Name (Optional)</label>
+                    <input type="text" id="displayName" placeholder="e.g., Happy Dance">
+                </div>
+
+                <div class="form-group">
+                    <label>Animation File (.mp4, .webm, .mov)</label>
+                    <div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('fileInput').click()">
+                        <div id="fileUploadText">
+                            <div style="font-size: 48px; margin-bottom: 10px;">🎥</div>
+                            <div style="font-weight: 500; margin-bottom: 5px;">Click to select or drag & drop</div>
+                            <div style="font-size: 14px; color: #999;">MP4, WebM, or MOV files</div>
+                        </div>
+                    </div>
+                    <input type="file" id="fileInput" class="file-input" accept="video/mp4,video/webm,video/quicktime" onchange="handleFileSelect(event)">
+                    <div id="fileInfo" class="file-info"></div>
+                    <div id="videoPreview" class="video-preview"></div>
+                </div>
+
+                <button type="submit" id="submitBtn" class="submit-btn" disabled>Upload Animation</button>
+
+                <div id="statusMessage"></div>
+            </form>
+
+            <div id="existingAnimations" class="existing-animations" style="display: none;">
+                <h3>Existing Animations</h3>
+                <div id="animationList" class="animation-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let creatures = [];
+        let animationTypes = [];
+        let bodyTypes = [];
+        let selectedCreature = null;
+        let selectedFile = null;
+        let currentBodyTypeFilter = '';
+
+        async function init() {
+            try {
+                await Promise.all([
+                    loadCreatures(),
+                    loadAnimationTypes(),
+                    loadBodyTypes()
+                ]);
+            } catch (error) {
+                console.error('Init error:', error);
+            }
+        }
+
+        async function loadBodyTypes() {
+            const response = await fetch('/api/dimensions');
+            const data = await response.json();
+            bodyTypes = data.bodyTypes;
+
+            const select = document.getElementById('bodyTypeFilter');
+            bodyTypes.forEach(bodyType => {
+                const option = document.createElement('option');
+                option.value = bodyType.id;
+                option.textContent = bodyType.body_type_name;
+                select.appendChild(option);
+            });
+
+            // Set first body type as default
+            if (bodyTypes.length > 0) {
+                currentBodyTypeFilter = bodyTypes[0].id.toString();
+                select.value = currentBodyTypeFilter;
+            }
+
+            // Add change event listener
+            select.addEventListener('change', (e) => {
+                currentBodyTypeFilter = e.target.value;
+                applyFilters();
+            });
+        }
+
+        async function loadCreatures() {
+            const response = await fetch('/api/creatures');
+            creatures = await response.json();
+            applyFilters();
+        }
+
+        async function loadAnimationTypes() {
+            const response = await fetch('/api/animation-types');
+            animationTypes = await response.json();
+
+            const select = document.getElementById('animationType');
+            select.innerHTML = '<option value="">Select type...</option>';
+            animationTypes.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type.type_key;
+                option.textContent = `${type.display_name} - ${type.description}`;
+                select.appendChild(option);
+            });
+        }
+
+        function renderCreatures(creaturesArray) {
+            const container = document.getElementById('creaturesContainer');
+
+            if (creaturesArray.length === 0) {
+                container.innerHTML = '<div class="loading"><p>No creatures found</p></div>';
+                return;
+            }
+
+            const grid = document.createElement('div');
+            grid.className = 'creatures-grid';
+
+            creaturesArray.forEach(creature => {
+                const card = document.createElement('div');
+                card.className = 'creature-card';
+
+                const imagePath = creature.selected_image ? `/images/${creature.selected_image}` : '/assets/placeholder.png';
+
+                card.innerHTML = `
+                    <div class="creature-image-wrapper">
+                        <img src="${imagePath}" alt="${creature.creature_name}" class="creature-image" onerror="this.src='/assets/placeholder.png'">
+                    </div>
+                    <div class="creature-info">
+                        <div class="creature-name" onclick="editCreatureName('${creature.id}')" title="Click to rename">${creature.creature_name}</div>
+                        <div class="creature-rarity" onclick="editCreatureRarity('${creature.id}')" title="Click to change rarity">${creature.rarity_tier}</div>
+                        <div class="animation-count" id="count-${creature.id}">Loading...</div>
+                        <button class="upload-btn" onclick="openUploadModal('${creature.id}')">
+                            🎬 Upload Animation
+                        </button>
+                    </div>
+                `;
+
+                grid.appendChild(card);
+
+                // Load animation count
+                loadAnimationCount(creature.id);
+            });
+
+            container.innerHTML = '';
+            container.appendChild(grid);
+        }
+
+        async function loadAnimationCount(creatureId) {
+            try {
+                const response = await fetch(`/api/creatures/${creatureId}/animations`);
+                const animations = await response.json();
+
+                const totalCount = Object.values(animations).reduce((sum, type) => sum + type.animations.length, 0);
+                const countEl = document.getElementById(`count-${creatureId}`);
+                if (countEl) {
+                    countEl.textContent = `${totalCount} animation${totalCount !== 1 ? 's' : ''}`;
+                }
+            } catch (error) {
+                console.error('Error loading animation count:', error);
+            }
+        }
+
+        async function openUploadModal(creatureId) {
+            selectedCreature = creatures.find(c => c.id === creatureId);
+            if (!selectedCreature) return;
+
+            const modal = document.getElementById('uploadModal');
+            const infoDiv = document.getElementById('modalCreatureInfo');
+
+            infoDiv.innerHTML = `
+                <div style="margin-bottom: 20px; padding: 15px; background: #f8f9ff; border-radius: 8px;">
+                    <div style="font-weight: bold; color: #667eea; margin-bottom: 5px;">${selectedCreature.creature_name}</div>
+                    <div style="font-size: 14px; color: #666;">${selectedCreature.rarity_tier}</div>
+                </div>
+            `;
+
+            // Reset form
+            document.getElementById('uploadForm').reset();
+            selectedFile = null;
+            document.getElementById('fileInfo').textContent = '';
+            document.getElementById('videoPreview').innerHTML = '';
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('statusMessage').innerHTML = '';
+
+            // Load existing animations
+            await loadExistingAnimations(creatureId);
+
+            modal.classList.add('active');
+        }
+
+        async function loadExistingAnimations(creatureId) {
+            try {
+                const response = await fetch(`/api/creatures/${creatureId}/animations`);
+                const animations = await response.json();
+
+                const container = document.getElementById('existingAnimations');
+                const listEl = document.getElementById('animationList');
+
+                const allAnimations = [];
+                Object.values(animations).forEach(typeGroup => {
+                    typeGroup.animations.forEach(anim => {
+                        allAnimations.push({
+                            type: typeGroup.type_name,
+                            ...anim
+                        });
+                    });
+                });
+
+                if (allAnimations.length === 0) {
+                    container.style.display = 'none';
+                    return;
+                }
+
+                container.style.display = 'block';
+                listEl.innerHTML = allAnimations.map(anim => `
+                    <div class="animation-item">
+                        <div class="animation-item-info">
+                            <div class="animation-item-type">${anim.type}</div>
+                            <div class="animation-item-name">${anim.display_name}</div>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error loading existing animations:', error);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('uploadModal').classList.remove('active');
+            selectedCreature = null;
+            selectedFile = null;
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            selectedFile = file;
+
+            const fileInfo = document.getElementById('fileInfo');
+            const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+            fileInfo.textContent = `Selected: ${file.name} (${sizeMB} MB)`;
+
+            // Show video preview
+            const preview = document.getElementById('videoPreview');
+            const video = document.createElement('video');
+            video.controls = true;
+            video.src = URL.createObjectURL(file);
+            preview.innerHTML = '';
+            preview.appendChild(video);
+
+            // Enable submit button if type is selected
+            updateSubmitButton();
+        }
+
+        function updateSubmitButton() {
+            const typeSelected = document.getElementById('animationType').value !== '';
+            const fileSelected = selectedFile !== null;
+            document.getElementById('submitBtn').disabled = !(typeSelected && fileSelected);
+        }
+
+        document.getElementById('animationType').addEventListener('change', updateSubmitButton);
+
+        async function handleUpload(event) {
+            event.preventDefault();
+
+            if (!selectedCreature || !selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('creatureId', selectedCreature.id);
+            formData.append('animationType', document.getElementById('animationType').value);
+            formData.append('displayName', document.getElementById('displayName').value || selectedFile.name);
+            formData.append('animation', selectedFile);
+
+            const submitBtn = document.getElementById('submitBtn');
+            const statusDiv = document.getElementById('statusMessage');
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Uploading...';
+            statusDiv.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/animations/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    statusDiv.innerHTML = '<div class="status-message status-success">✅ Animation uploaded successfully!</div>';
+
+                    // Reload animations list
+                    await loadExistingAnimations(selectedCreature.id);
+                    await loadAnimationCount(selectedCreature.id);
+
+                    // Reset form
+                    setTimeout(() => {
+                        document.getElementById('uploadForm').reset();
+                        selectedFile = null;
+                        document.getElementById('fileInfo').textContent = '';
+                        document.getElementById('videoPreview').innerHTML = '';
+                        statusDiv.innerHTML = '';
+                        submitBtn.textContent = 'Upload Animation';
+                    }, 2000);
+                } else {
+                    throw new Error(result.error || 'Upload failed');
+                }
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+                submitBtn.textContent = 'Upload Animation';
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            applyFilters();
+        });
+
+        // Drag and drop
+        const uploadArea = document.getElementById('fileUploadArea');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('video/')) {
+                document.getElementById('fileInput').files = e.dataTransfer.files;
+                handleFileSelect({ target: { files: [file] } });
+            }
+        });
+
+        // Close modal on outside click
+        document.getElementById('uploadModal').addEventListener('click', (e) => {
+            if (e.target.id === 'uploadModal') {
+                closeModal();
+            }
+        });
+
+        async function editCreatureName(creatureId) {
+            const creature = creatures.find(c => c.id === creatureId);
+            if (!creature) return;
+
+            const newName = prompt('Enter new name for this creature:', creature.creature_name);
+            if (!newName || newName.trim() === '' || newName === creature.creature_name) return;
+
+            try {
+                const response = await fetch(`/api/creatures/${creatureId}/name`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: newName.trim(),
+                        bodyTypeId: creature.body_type_id
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert('Name updated successfully!');
+                    await loadCreatures();
+                    applyFilters();
+                } else {
+                    alert(`Error: ${result.error}`);
+                }
+            } catch (error) {
+                console.error('Error updating name:', error);
+                alert('Failed to update name. Please try again.');
+            }
+        }
+
+        async function editCreatureRarity(creatureId) {
+            const creature = creatures.find(c => c.id === creatureId);
+            if (!creature) return;
+
+            const rarities = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic'];
+            const rarityList = rarities.map((r, i) => `${i + 1}. ${r}`).join('\n');
+
+            const choice = prompt(`Select new rarity for ${creature.creature_name}:\n\n${rarityList}\n\nEnter number (1-6):`,
+                                  rarities.indexOf(creature.rarity_tier) + 1);
+
+            if (!choice) return;
+
+            const rarityIndex = parseInt(choice) - 1;
+            if (rarityIndex < 0 || rarityIndex >= rarities.length) {
+                alert('Invalid selection');
+                return;
+            }
+
+            const newRarity = rarities[rarityIndex];
+            if (newRarity === creature.rarity_tier) return;
+
+            try {
+                const response = await fetch(`/api/creatures/${creatureId}/rarity`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rarity: newRarity })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(`Rarity updated to ${newRarity}!\nNew trait score: ${result.newTraitScore}`);
+                    await loadCreatures();
+                    applyFilters();
+                } else {
+                    alert(`Error: ${result.error}`);
+                }
+            } catch (error) {
+                console.error('Error updating rarity:', error);
+                alert('Failed to update rarity. Please try again.');
+            }
+        }
+
+        function applyFilters() {
+            const searchValue = document.getElementById('searchInput').value.toLowerCase();
+
+            let filtered = creatures;
+
+            // Filter by body type
+            if (currentBodyTypeFilter) {
+                filtered = filtered.filter(c => c.body_type_id === parseInt(currentBodyTypeFilter));
+            }
+
+            // Filter by search
+            if (searchValue) {
+                filtered = filtered.filter(c => c.creature_name.toLowerCase().includes(searchValue));
+            }
+
+            renderCreatures(filtered);
+        }
+
+        init();
+    </script>
+</body>
+</html>

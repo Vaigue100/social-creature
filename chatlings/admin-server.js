@@ -14,6 +14,7 @@ const SocialInteractionService = require('./services/social-interaction-service'
 const ChatroomService = require('./services/chatroom-service');
 const YouTubeMetadataService = require('./services/youtube-metadata-service');
 const passport = require('./config/passport');
+const webpush = require('web-push');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,6 +30,108 @@ const youtubeMetadataService = new YouTubeMetadataService(
   require('./scripts/db-config'),
   process.env.YOUTUBE_API_KEY
 );
+
+// Configure web-push with VAPID keys
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_SUBJECT) {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT,
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+  console.log('✅ Web Push VAPID keys configured');
+} else {
+  console.warn('⚠️  Web Push VAPID keys not configured. Push notifications will not work.');
+}
+
+/**
+ * Helper function to send push notifications to a user
+ * @param {string} userId - The user's UUID
+ * @param {string} notificationType - Type of notification from database (e.g., 'achievement_unlocked', 'reward_claimed', etc.)
+ * @param {object} payload - Notification payload { title, body, icon?, badge?, data? }
+ */
+const sendPushNotification = async (userId, notificationType, payload) => {
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Map database notification types to preference columns
+    const typeMapping = {
+      'reward_claimed': 'daily_box',  // Daily mystery box rewards
+      'new_chatling_found': 'new_chatling',  // Ambassador found new chatling (not repeat)
+      'achievement_unlocked': 'achievement',
+      'new_conversation': 'chatroom',
+      'chatling_runaway': 'chatroom',
+      'chatling_recovered': 'chatroom',
+      'youtube_reward': 'youtube_reminder'
+    };
+
+    const preferenceColumn = typeMapping[notificationType];
+
+    if (!preferenceColumn) {
+      console.log(`Unknown notification type: ${notificationType}`);
+      return;
+    }
+
+    // Check if user has push notifications enabled for this type
+    const prefsResult = await client.query(`
+      SELECT enabled, ${preferenceColumn}
+      FROM push_notification_preferences
+      WHERE user_id = $1
+    `, [userId]);
+
+    if (prefsResult.rows.length === 0 || !prefsResult.rows[0].enabled || !prefsResult.rows[0][preferenceColumn]) {
+      console.log(`Push notification skipped for user ${userId}: disabled or type ${preferenceColumn} disabled`);
+      return;
+    }
+
+    // Get all push subscriptions for this user
+    const subsResult = await client.query(`
+      SELECT endpoint, p256dh_key, auth_key
+      FROM push_subscriptions
+      WHERE user_id = $1
+    `, [userId]);
+
+    if (subsResult.rows.length === 0) {
+      console.log(`No push subscriptions found for user ${userId}`);
+      return;
+    }
+
+    // Send to all subscriptions
+    const promises = subsResult.rows.map(async (sub) => {
+      const pushSubscription = {
+        endpoint: sub.endpoint,
+        keys: {
+          p256dh: sub.p256dh_key,
+          auth: sub.auth_key
+        }
+      };
+
+      try {
+        await webpush.sendNotification(pushSubscription, JSON.stringify(payload));
+        console.log(`✅ Push sent to ${userId} (${notificationType})`);
+      } catch (error) {
+        // If subscription is invalid, remove it
+        if (error.statusCode === 410 || error.statusCode === 404) {
+          console.log(`Removing invalid subscription for user ${userId}`);
+          await client.query(`
+            DELETE FROM push_subscriptions
+            WHERE user_id = $1 AND endpoint = $2
+          `, [userId, sub.endpoint]);
+        } else {
+          console.error(`Error sending push to ${userId}:`, error);
+        }
+      }
+    });
+
+    await Promise.all(promises);
+
+  } catch (error) {
+    console.error('Error in sendPushNotification:', error);
+  } finally {
+    await client.end();
+  }
+};
 
 // Session middleware (privacy-first - no long-term storage)
 app.use(session({
@@ -46,16 +149,96 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Import admin authentication middleware
+const { requireAuth, requireAdmin, requireWhitelistedIP } = require('./middleware/admin-auth');
+
 // Middleware
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'admin')));
+
+// Public routes (no authentication required)
 app.use('/user', express.static(path.join(__dirname, 'user')));
-app.use('/artwork', express.static(path.join(__dirname, 'artwork')));
-app.use('/images', express.static(path.join(__dirname, 'artwork', 'linked')));
-app.use('/thumbs', express.static(path.join(__dirname, 'artwork', 'thumbs')));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
+
+// Protected routes (require authentication and admin privileges)
+// Apply IP whitelist if configured in .env
+app.use('/admin', requireWhitelistedIP);
+app.use('/admin', requireAuth);
+app.use('/admin', requireAdmin(config));
+app.use('/admin', express.static(path.join(__dirname, 'admin')));
+
+// Image and animation routes (require authentication for security)
+app.use('/artwork', requireAuth, express.static(path.join(__dirname, 'artwork')));
+app.use('/images', requireAuth, express.static(path.join(__dirname, 'artwork', 'linked')));
+app.use('/thumbs', requireAuth, express.static(path.join(__dirname, 'artwork', 'thumbs')));
+app.use('/animations', requireAuth, express.static(path.join(__dirname, 'animations')));
 
 // Handle favicon requests (just return 204 No Content to avoid 404 errors)
 app.get('/favicon.ico', (req, res) => res.status(204).end());
+
+// Debug endpoint - check your session and admin status
+app.get('/debug/session', async (req, res) => {
+  const session = {
+    hasSession: !!req.session,
+    userId: req.session?.userId || null,
+    user: req.session?.user || null
+  };
+
+  if (session.userId) {
+    const client = new Client(config);
+    try {
+      await client.connect();
+      const result = await client.query('SELECT id, email, is_admin FROM users WHERE id = $1', [session.userId]);
+      session.userFromDB = result.rows[0] || 'Not found';
+    } catch (error) {
+      session.dbError = error.message;
+    } finally {
+      await client.end();
+    }
+  }
+
+  res.json(session);
+});
+
+// Root path - redirect to user hub (not admin!)
+app.get('/', (req, res) => {
+  // If user is logged in, send to user hub, otherwise to login
+  if (req.session && req.session.userId) {
+    res.redirect('/user/index.html');
+  } else {
+    res.redirect('/user/login.html');
+  }
+});
+
+// ============================================================================
+// ADMIN API PROTECTION
+// All admin API endpoints require authentication + admin privileges
+// ============================================================================
+
+// Admin API protection middleware - applies to all /api/admin/* routes
+app.use('/api/admin/*', requireAuth);
+app.use('/api/admin/*', requireAdmin(config));
+
+// Admin-only operations (not under /api/admin path but still admin-only)
+const adminOnlyEndpoints = [
+  '/api/trash-image',
+  '/api/creatures',
+  '/api/creatures-by-dimensions',
+  '/api/animations/upload',
+  '/api/animation-types'
+];
+
+adminOnlyEndpoints.forEach(endpoint => {
+  app.use(endpoint, requireAuth);
+  app.use(endpoint, requireAdmin(config));
+});
+
+// Serve PWA files from root
+app.get('/service-worker.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'service-worker.js'));
+});
+app.get('/manifest.json', (req, res) => {
+  res.sendFile(path.join(__dirname, 'manifest.json'));
+});
 
 // Redirect /admin to admin index
 app.get('/admin', (req, res) => res.redirect('/index.html'));
@@ -340,6 +523,137 @@ app.get('/api/dimensions', async (req, res) => {
 /**
  * Get creatures by dimension filters
  */
+// Get all creatures (for admin dropdowns, etc.)
+app.get('/api/creatures', async (req, res) => {
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT
+        c.id,
+        c.creature_name,
+        c.rarity_tier,
+        c.selected_image,
+        c.is_active,
+        cp.body_type_id
+      FROM creatures c
+      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
+      WHERE c.is_active = true
+      ORDER BY c.creature_name ASC
+    `);
+
+    res.json(result.rows);
+
+  } catch (error) {
+    console.error('Error fetching creatures:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Update creature name (unique within body type)
+ */
+app.put('/api/creatures/:id/name', async (req, res) => {
+  const { id } = req.params;
+  const { name, bodyTypeId } = req.body;
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Name is required' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Check if name is unique within body type
+    const checkResult = await client.query(`
+      SELECT c.id
+      FROM creatures c
+      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
+      WHERE LOWER(c.creature_name) = LOWER($1)
+        AND cp.body_type_id = $2
+        AND c.id != $3
+      LIMIT 1
+    `, [name.trim(), bodyTypeId, id]);
+
+    if (checkResult.rows.length > 0) {
+      return res.status(400).json({ error: 'A creature with this name already exists in this body type' });
+    }
+
+    // Update the name
+    await client.query(`
+      UPDATE creatures
+      SET creature_name = $1
+      WHERE id = $2
+    `, [name.trim(), id]);
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Error updating creature name:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Update creature rarity and recalculate trait score
+ */
+app.put('/api/creatures/:id/rarity', async (req, res) => {
+  const { id } = req.params;
+  const { rarity } = req.body;
+
+  const validRarities = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic'];
+  if (!validRarities.includes(rarity)) {
+    return res.status(400).json({ error: 'Invalid rarity tier' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Rarity score multipliers
+    const rarityScores = {
+      'Common': 1.0,
+      'Uncommon': 1.2,
+      'Rare': 1.5,
+      'Epic': 2.0,
+      'Legendary': 3.0,
+      'Mythic': 5.0
+    };
+
+    const rarityMultiplier = rarityScores[rarity];
+
+    // Update rarity and recalculate trait score
+    // Trait score = base_trait_score * rarity_multiplier
+    const result = await client.query(`
+      UPDATE creatures
+      SET
+        rarity_tier = $1,
+        trait_score = COALESCE(base_trait_score, 50) * $2
+      WHERE id = $3
+      RETURNING trait_score
+    `, [rarity, rarityMultiplier, id]);
+
+    const newTraitScore = result.rows[0]?.trait_score || 0;
+
+    res.json({ success: true, newTraitScore: Math.round(newTraitScore) });
+
+  } catch (error) {
+    console.error('Error updating creature rarity:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
 app.get('/api/creatures-by-dimensions', async (req, res) => {
   const client = new Client(config);
   const { body_type_id, activity_id, mood_id, color_scheme_id, quirk_id, size_id, show_inactive } = req.query;
@@ -623,6 +937,7 @@ app.get('/api/user/collection', async (req, res) => {
         c.rarity_tier,
         c.vibe as species_name,
         bt.body_type_name,
+        cp.body_type_id,
         ur.claimed_at,
         ur.platform,
         ur.found_count
@@ -635,25 +950,46 @@ app.get('/api/user/collection', async (req, res) => {
       ORDER BY ur.claimed_at DESC
     `, [req.session.userId]);
 
-    // Calculate overall score for each creature
+    // Get trait scores for each creature
     const creaturesWithScores = await Promise.all(result.rows.map(async (creature) => {
       const traits = await client.query(`
-        SELECT score FROM creature_social_traits WHERE creature_id = $1
+        SELECT stc.category_name, st.score
+        FROM creature_social_traits st
+        JOIN dim_social_trait_category stc ON st.trait_category_id = stc.id
+        WHERE st.creature_id = $1
       `, [creature.id]);
 
-      let overallScore = 0;
-      if (traits.rows.length > 0) {
-        const totalScore = traits.rows.reduce((sum, trait) => sum + trait.score, 0);
-        overallScore = Math.round(totalScore / traits.rows.length);
-      }
+      // Map 8 social traits to 4 display traits:
+      // Ability = average of Curiosity + Creativity
+      // Strength = average of Confidence + Energy Level
+      // Affection = average of Friendliness + Empathy
+      // Uniqueness = average of Playfulness + Humor
+
+      const traitMap = {};
+      traits.rows.forEach(trait => {
+        traitMap[trait.category_name] = trait.score;
+      });
+
+      const ability_score = Math.round(((traitMap['Curiosity'] || 0) + (traitMap['Creativity'] || 0)) / 2);
+      const strength_score = Math.round(((traitMap['Confidence'] || 0) + (traitMap['Energy Level'] || 0)) / 2);
+      const affection_score = Math.round(((traitMap['Friendliness'] || 0) + (traitMap['Empathy'] || 0)) / 2);
+      const uniqueness_score = Math.round(((traitMap['Playfulness'] || 0) + (traitMap['Humor'] || 0)) / 2);
+
+      const overallScore = traits.rows.length > 0
+        ? Math.round(traits.rows.reduce((sum, trait) => sum + trait.score, 0) / traits.rows.length)
+        : 0;
 
       return {
         ...creature,
+        ability_score,
+        strength_score,
+        affection_score,
+        uniqueness_score,
         overall_score: overallScore
       };
     }));
 
-    res.json(creaturesWithScores);
+    res.json({ creatures: creaturesWithScores });
 
   } catch (error) {
     console.error('Error fetching collection:', error);
@@ -1142,6 +1478,39 @@ app.post('/admin/trigger-youtube-check', async (req, res) => {
 });
 
 /**
+ * Get user profile (for authentication check)
+ */
+app.get('/api/user/profile', async (req, res) => {
+  if (!req.session || !req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT id, username, email, created_at, last_login_at
+      FROM users
+      WHERE id = $1
+    `, [req.session.userId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(result.rows[0]);
+
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
  * Get unread notifications
  */
 app.get('/api/user/notifications', async (req, res) => {
@@ -1154,14 +1523,37 @@ app.get('/api/user/notifications', async (req, res) => {
   try {
     await client.connect();
 
-    const result = await client.query(`
-      SELECT * FROM notifications
-      WHERE user_id = $1
-      ORDER BY created_at DESC
-      LIMIT 20
-    `, [req.session.userId]);
+    // Support showing all notifications or just unread
+    const showAll = req.query.all === 'true';
+    const limit = parseInt(req.query.limit) || 20;
 
-    res.json(result.rows);
+    let query, params;
+    if (showAll) {
+      query = `
+        SELECT * FROM notifications
+        WHERE user_id = $1
+        ORDER BY created_at DESC
+        LIMIT $2
+      `;
+      params = [req.session.userId, limit];
+    } else {
+      query = `
+        SELECT * FROM notifications
+        WHERE user_id = $1 AND is_read = false
+        ORDER BY created_at DESC
+        LIMIT $2
+      `;
+      params = [req.session.userId, limit];
+    }
+
+    const result = await client.query(query, params);
+
+    console.log(`GET /api/user/notifications - showAll: ${showAll}, returned ${result.rows.length} notifications`);
+    if (result.rows.length > 0 && !showAll) {
+      console.log('First notification is_read values:', result.rows.map(n => ({ id: n.id.substring(0, 8), is_read: n.is_read })));
+    }
+
+    res.json({ notifications: result.rows });
 
   } catch (error) {
     console.error('Error fetching notifications:', error);
@@ -1179,21 +1571,231 @@ app.post('/api/user/notifications/mark-read', async (req, res) => {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
+  const { notificationIds } = req.body;
+
+  console.log('Mark as read request:', { userId: req.session.userId, notificationIds });
+
+  if (!Array.isArray(notificationIds)) {
+    return res.status(400).json({ error: 'notificationIds must be an array' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    let result;
+
+    // If empty array, mark ALL notifications as read for this user
+    if (notificationIds.length === 0) {
+      result = await client.query(`
+        UPDATE notifications
+        SET is_read = true
+        WHERE user_id = $1 AND is_read = false
+        RETURNING id, is_read
+      `, [req.session.userId]);
+      console.log('Marked ALL notifications as read, rows updated:', result.rowCount);
+    } else {
+      // Mark specific notifications as read
+      result = await client.query(`
+        UPDATE notifications
+        SET is_read = true
+        WHERE user_id = $1 AND id = ANY($2)
+        RETURNING id, is_read
+      `, [req.session.userId, notificationIds]);
+      console.log('Marked specific notifications as read, rows updated:', result.rowCount);
+      console.log('Updated notifications:', result.rows);
+
+      // Verify the update
+      const verify = await client.query(`
+        SELECT id, is_read FROM notifications
+        WHERE id = ANY($1)
+      `, [notificationIds]);
+      console.log('Verification query result:', verify.rows);
+    }
+
+    res.json({ success: true, rowsUpdated: result.rowCount });
+
+  } catch (error) {
+    console.error('Error marking notifications read:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Get VAPID public key for push subscription
+ */
+app.get('/api/push/vapid-public-key', (req, res) => {
+  if (!process.env.VAPID_PUBLIC_KEY) {
+    return res.status(500).json({ error: 'VAPID keys not configured' });
+  }
+  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
+});
+
+/**
+ * Subscribe to push notifications
+ */
+app.post('/api/user/push-subscribe', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { subscription, userAgent } = req.body;
+
+  if (!subscription || !subscription.endpoint || !subscription.keys) {
+    return res.status(400).json({ error: 'Invalid subscription data' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Insert or update subscription
+    await client.query(`
+      INSERT INTO push_subscriptions (user_id, endpoint, p256dh_key, auth_key, user_agent)
+      VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (user_id, endpoint)
+      DO UPDATE SET
+        p256dh_key = EXCLUDED.p256dh_key,
+        auth_key = EXCLUDED.auth_key,
+        user_agent = EXCLUDED.user_agent,
+        last_used_at = CURRENT_TIMESTAMP
+    `, [
+      req.session.userId,
+      subscription.endpoint,
+      subscription.keys.p256dh,
+      subscription.keys.auth,
+      userAgent || null
+    ]);
+
+    // Create default preferences if they don't exist
+    await client.query(`
+      INSERT INTO push_notification_preferences (user_id)
+      VALUES ($1)
+      ON CONFLICT (user_id) DO NOTHING
+    `, [req.session.userId]);
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Error saving push subscription:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Unsubscribe from push notifications
+ */
+app.post('/api/user/push-unsubscribe', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { endpoint } = req.body;
+
+  if (!endpoint) {
+    return res.status(400).json({ error: 'Endpoint is required' });
+  }
+
   const client = new Client(config);
 
   try {
     await client.connect();
 
     await client.query(`
-      UPDATE notifications
-      SET is_read = true
-      WHERE user_id = $1 AND is_read = false
-    `, [req.session.userId]);
+      DELETE FROM push_subscriptions
+      WHERE user_id = $1 AND endpoint = $2
+    `, [req.session.userId, endpoint]);
 
     res.json({ success: true });
 
   } catch (error) {
-    console.error('Error marking notifications read:', error);
+    console.error('Error removing push subscription:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Get push notification preferences
+ */
+app.get('/api/user/push-preferences', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT enabled, daily_box, new_chatling, achievement, chatroom, youtube_reminder
+      FROM push_notification_preferences
+      WHERE user_id = $1
+    `, [req.session.userId]);
+
+    if (result.rows.length === 0) {
+      // Return defaults if no preferences exist yet
+      res.json({
+        enabled: true,
+        daily_box: true,
+        new_chatling: true,
+        achievement: true,
+        chatroom: false,
+        youtube_reminder: false
+      });
+    } else {
+      res.json(result.rows[0]);
+    }
+
+  } catch (error) {
+    console.error('Error fetching push preferences:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Update push notification preferences
+ */
+app.post('/api/user/push-preferences', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { enabled, daily_box, new_chatling, achievement, chatroom, youtube_reminder } = req.body;
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    await client.query(`
+      INSERT INTO push_notification_preferences (user_id, enabled, daily_box, new_chatling, achievement, chatroom, youtube_reminder)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        enabled = EXCLUDED.enabled,
+        daily_box = EXCLUDED.daily_box,
+        new_chatling = EXCLUDED.new_chatling,
+        achievement = EXCLUDED.achievement,
+        chatroom = EXCLUDED.chatroom,
+        youtube_reminder = EXCLUDED.youtube_reminder,
+        updated_at = CURRENT_TIMESTAMP
+    `, [req.session.userId, enabled, daily_box, new_chatling, achievement, chatroom, youtube_reminder]);
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Error updating push preferences:', error);
     res.status(500).json({ error: error.message });
   } finally {
     await client.end();
@@ -1208,7 +1810,7 @@ app.post('/api/notifications', async (req, res) => {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  const { type, message, link } = req.body;
+  const { type, message, link, title } = req.body;
 
   if (!type || !message) {
     return res.status(400).json({ error: 'Type and message are required' });
@@ -1220,12 +1822,27 @@ app.post('/api/notifications', async (req, res) => {
     await client.connect();
 
     const result = await client.query(`
-      INSERT INTO notifications (user_id, type, message, link, is_read, created_at)
-      VALUES ($1, $2, $3, $4, false, NOW())
+      INSERT INTO notifications (user_id, notification_type, title, message, link, is_read, created_at)
+      VALUES ($1, $2, $3, $4, $5, false, NOW())
       RETURNING *
-    `, [req.session.userId, type, message, link || null]);
+    `, [req.session.userId, type, title || message, message, link || null]);
 
     res.json(result.rows[0]);
+
+    // Also send push notification (don't await - let it happen async)
+    const pushPayload = {
+      title: title || message,
+      body: message,
+      icon: '/assets/icon-192.png',
+      badge: '/assets/badge-72.png',
+      data: {
+        url: link || '/',
+        notificationId: result.rows[0].id
+      }
+    };
+    sendPushNotification(req.session.userId, type, pushPayload).catch(err => {
+      console.error('Failed to send push notification:', err);
+    });
 
   } catch (error) {
     console.error('Error creating notification:', error);
@@ -2833,6 +3450,208 @@ app.post('/api/admin/youtube-topics', async (req, res) => {
   } catch (error) {
     console.error('Error adding YouTube topic:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// Animation Management API
+// ============================================================================
+
+const AnimationService = require('./services/animation-service');
+const animationService = new AnimationService(config);
+
+// Set up Azure Blob Storage for animations
+let blobServiceClient = null;
+let animationsContainerClient = null;
+
+// Try to load Azure SDK (may fail if dependencies aren't installed)
+try {
+  const { BlobServiceClient } = require('@azure/storage-blob');
+
+  if (process.env.AZURE_STORAGE_CONNECTION_STRING) {
+    try {
+      blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
+      const containerName = process.env.AZURE_STORAGE_CONTAINER_ANIMATIONS || 'animations';
+      animationsContainerClient = blobServiceClient.getContainerClient(containerName);
+
+      // Ensure container exists
+      animationsContainerClient.createIfNotExists({ access: 'blob' })
+        .then(() => console.log(`✓ Azure Blob Storage configured for animations (container: ${containerName})`))
+        .catch(err => console.error('Error creating animations container:', err.message));
+    } catch (error) {
+      console.warn('⚠️  Azure Blob Storage not configured for animations:', error.message);
+    }
+  } else {
+    console.warn('⚠️  AZURE_STORAGE_CONNECTION_STRING not set - animations will only be saved locally');
+  }
+} catch (error) {
+  console.warn('⚠️  @azure/storage-blob module not available - animations will only be saved locally');
+  console.warn('   Run: npm install @azure/storage-blob');
+}
+
+// Set up multer for file uploads
+const multer = require('multer');
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, 'animations', 'processed');
+    // Ensure directory exists
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    // Generate filename: creatureId_animationType_timestamp.ext
+    const ext = path.extname(file.originalname);
+    const timestamp = Date.now();
+    const filename = `${req.body.creatureId}_${req.body.animationType}_${timestamp}${ext}`;
+    cb(null, filename);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    // Accept only video files
+    if (file.mimetype.startsWith('video/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only video files are allowed'));
+    }
+  },
+  limits: {
+    fileSize: 100 * 1024 * 1024 // 100MB max file size
+  }
+});
+
+// Get creature animations (for display on creature pages)
+app.get('/api/creatures/:creatureId/animations', async (req, res) => {
+  try {
+    const animations = await animationService.getCreatureAnimations(req.params.creatureId);
+    res.json(animations);
+  } catch (error) {
+    console.error('Error fetching creature animations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get a specific animation for display
+app.get('/api/creatures/:creatureId/animations/:animationType', async (req, res) => {
+  try {
+    const animation = await animationService.getAnimationForDisplay(
+      req.params.creatureId,
+      req.params.animationType
+    );
+
+    if (animation) {
+      res.json(animation);
+    } else {
+      res.status(404).json({ error: 'No animation found' });
+    }
+  } catch (error) {
+    console.error('Error fetching animation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Upload animation (direct upload via form)
+app.post('/api/animations/upload', upload.single('animation'), async (req, res) => {
+  const client = new Client(config);
+
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const { creatureId, animationType, displayName } = req.body;
+
+    if (!creatureId || !animationType) {
+      // Delete uploaded file if validation fails
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    await client.connect();
+
+    // Store relative path for database
+    const relativePath = `/animations/processed/${req.file.filename}`;
+
+    // Insert into database
+    const result = await client.query(`
+      INSERT INTO creature_animations
+      (creature_id, animation_type, file_path, file_name, display_name)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id
+    `, [creatureId, animationType, relativePath, req.file.filename, displayName || req.file.originalname]);
+
+    const animationId = result.rows[0].id;
+
+    console.log(`✅ Animation uploaded locally: ${animationType} for creature ${creatureId}`);
+    console.log(`   File: ${req.file.filename}`);
+    console.log(`   Size: ${(req.file.size / 1024 / 1024).toFixed(2)} MB`);
+
+    // Upload to Azure Blob Storage (if configured)
+    let blobUrl = null;
+    if (animationsContainerClient) {
+      try {
+        const blobName = `processed/${req.file.filename}`;
+        const blockBlobClient = animationsContainerClient.getBlockBlobClient(blobName);
+
+        // Upload file to blob storage
+        await blockBlobClient.uploadFile(req.file.path, {
+          blobHTTPHeaders: {
+            blobContentType: req.file.mimetype
+          }
+        });
+
+        blobUrl = blockBlobClient.url;
+        console.log(`✅ Animation uploaded to Azure Blob Storage: ${blobName}`);
+      } catch (blobError) {
+        console.error('⚠️  Failed to upload to Azure Blob Storage:', blobError.message);
+        // Continue anyway - file is saved locally
+      }
+    }
+
+    res.json({
+      success: true,
+      animationId: animationId,
+      filePath: relativePath,
+      fileName: req.file.filename,
+      blobUrl: blobUrl
+    });
+
+  } catch (error) {
+    console.error('Error uploading animation:', error);
+    // Clean up file if database insert failed
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+// Get animation types
+app.get('/api/animation-types', async (req, res) => {
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT type_key, display_name, description, is_random_selection, display_order
+      FROM animation_types
+      ORDER BY display_order
+    `);
+
+    res.json(result.rows);
+
+  } catch (error) {
+    console.error('Error fetching animation types:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
   }
 });
 
