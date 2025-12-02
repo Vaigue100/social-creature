@@ -374,8 +374,8 @@ async function processZipFile(zipFile) {
             if (promptResult.rows.length === 0) {
               // Create a placeholder prompt for this body type
               const newPrompt = await client.query(`
-                INSERT INTO creature_prompts (body_type_id, prompt)
-                VALUES ($1, 'Placeholder')
+                INSERT INTO creature_prompts (body_type_id, prompt, negative_prompt)
+                VALUES ($1, 'Placeholder', '')
                 RETURNING id
               `, [bodyType.id]);
               promptId = newPrompt.rows[0].id;
