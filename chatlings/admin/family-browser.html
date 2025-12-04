@@ -352,6 +352,7 @@
 
     <script>
         let dimensions = null;
+        let storageConfig = { useAzure: true, azureBaseUrl: '' };
         let selectedFilters = {
             body_type_id: null,
             activity_id: null,
@@ -360,6 +361,27 @@
             quirk_id: null,
             size_id: null
         };
+
+        // Helper function to get image URL based on storage config
+        function getImageUrl(filename) {
+            if (!filename) return '/assets/placeholder.png';
+            if (storageConfig.useAzure) {
+                return `${storageConfig.azureBaseUrl}/linked/${filename}`;
+            }
+            return `/images/${filename}`;
+        }
+
+        async function loadStorageConfig() {
+            try {
+                const response = await fetch('/api/config/storage');
+                storageConfig = await response.json();
+                console.log('Storage config loaded:', storageConfig);
+            } catch (error) {
+                console.error('Error loading storage config:', error);
+                // Default to Azure if config fails to load
+                storageConfig = { useAzure: true, azureBaseUrl: 'https://chatlingsdevlyg7hq.blob.core.windows.net/artwork' };
+            }
+        }
 
         function toggleFilters() {
             const container = document.getElementById('tabContainer');
@@ -371,6 +393,9 @@
 
         async function loadDimensions() {
             try {
+                // Load storage config first
+                await loadStorageConfig();
+
                 const response = await fetch('/api/dimensions');
                 dimensions = await response.json();
                 renderTabs();
@@ -485,7 +510,7 @@
 
                     let html = '<div class="creature-grid">';
                     displayCreatures.forEach(creature => {
-                        const imagePath = creature.selected_image ? `/images/${creature.selected_image}` : '/assets/placeholder.png';
+                        const imagePath = getImageUrl(creature.selected_image);
                         const hasImage = creature.selected_image !== null;
                         html += `
                             <div class="creature-card">

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatlings Idle - Social Creature</title>
+    <link rel="stylesheet" href="/user/styles/global.css">
+    <link rel="stylesheet" href="/user/components/creature-card-styles.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .game-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .game-header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .currency-display {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .currency-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .currency-label {
+            font-size: 0.9em;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .currency-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .currency-per-second {
+            font-size: 0.8em;
+            color: #999;
+        }
+
+        .creatures-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .creature-business {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .creature-business:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .creature-business.locked {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .business-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .creature-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            object-fit: cover;
+            border: 2px solid #667eea;
+        }
+
+        .business-info {
+            flex: 1;
+        }
+
+        .business-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin: 0 0 5px 0;
+        }
+
+        .business-level {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .business-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label {
+            font-size: 0.75em;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .business-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .action-button.primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .action-button.primary:hover:not(:disabled) {
+            background: #5568d3;
+            transform: scale(1.05);
+        }
+
+        .action-button.secondary {
+            background: #48bb78;
+            color: white;
+        }
+
+        .action-button.secondary:hover:not(:disabled) {
+            background: #38a169;
+            transform: scale(1.05);
+        }
+
+        .action-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .button-label {
+            font-size: 0.75em;
+            opacity: 0.9;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+            border-radius: 4px;
+        }
+
+        .manager-status {
+            padding: 8px;
+            background: #f0fff4;
+            border: 1px solid #48bb78;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            text-align: center;
+            color: #2f855a;
+            font-size: 0.9em;
+        }
+
+        .unlock-requirement {
+            padding: 8px;
+            background: #fff5f5;
+            border: 1px solid #fc8181;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            text-align: center;
+            color: #c53030;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .creatures-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .currency-display {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <script src="/user/components/shared-header.js"></script>
+
+    <div class="game-container">
+        <div class="game-header">
+            <div class="currency-display">
+                <div class="currency-item">
+                    <span class="currency-label">💰 Affection Points</span>
+                    <span class="currency-value" id="affectionPoints">0</span>
+                    <span class="currency-per-second" id="affectionPerSecond">0/sec</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="creatures-grid" id="creaturesGrid">
+            <!-- Creature businesses will be populated here -->
+        </div>
+    </div>
+
+    <script src="/user/idle-game/idle-game.js"></script>
+</body>
+</html>

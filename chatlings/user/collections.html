@@ -18,10 +18,9 @@
     <link rel="apple-touch-icon" href="/assets/icon-192.png">
 
     <link rel="stylesheet" href="/user/components/shared-header-styles.css">
-    <link rel="stylesheet" href="/user/styles/modal.css">
+    <link rel="stylesheet" href="/user/components/creature-card-styles.css">
     <script src="/user/config.js"></script>
     <script src="/user/components/auth-check.js"></script>
-    <script src="/user/components/modal-manager.js"></script>
     <style>
         * {
             margin: 0;
@@ -111,6 +110,9 @@
         /* Main Content Area */
         .main-content {
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         /* Rarity Sections */
@@ -322,6 +324,213 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* View Toggle Button */
+        .view-toggle {
+            display: flex;
+            background: white;
+            border-radius: 8px;
+            padding: 4px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            width: fit-content;
+        }
+
+        .view-toggle-btn {
+            padding: 8px 20px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .view-toggle-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .view-toggle-btn:hover:not(.active) {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        /* Carousel View */
+        .carousel-view {
+            display: none;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .carousel-view.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .grid-view.active {
+            display: block;
+            flex: 1;
+            overflow: auto;
+        }
+
+        .grid-view {
+            display: none;
+        }
+
+        .carousel-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: visible;
+            min-height: 600px;
+        }
+
+        .body-type-indicator {
+            text-align: center;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+        }
+
+        .body-type-indicator h2 {
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 1.5em;
+        }
+
+        .body-type-indicator .count {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .swipe-hint {
+            font-size: 0.8em;
+            color: #999;
+            margin-top: 6px;
+        }
+
+        .carousel-main {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: visible;
+            touch-action: pan-y pinch-zoom;
+            padding: 40px 0;
+            min-height: 600px;
+        }
+
+        .carousel-track {
+            display: flex;
+            align-items: stretch;
+            gap: 40px;
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            height: 100%;
+        }
+
+        .carousel-card {
+            flex-shrink: 0;
+            transition: all 0.3s;
+            opacity: 0.3;
+            transform: scale(0.7);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+        }
+
+        .carousel-card.center {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+            display: flex;
+            align-items: stretch;
+        }
+
+        /* Override creature-card styles for side cards */
+        .carousel-card:not(.center) .creature-frame-wrapper {
+            padding: 15px;
+        }
+
+        .carousel-card:not(.center) .creature-image-container img {
+            max-height: 250px;
+        }
+
+        /* Scale down center card to fit container */
+        .carousel-card.center .creature-frame-wrapper {
+            padding: 30px;
+        }
+
+        .carousel-card.center .creature-image-container img {
+            max-height: 400px;
+        }
+
+        .carousel-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .carousel-card-name {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #333;
+            flex: 1;
+        }
+
+        .carousel-card-rarity {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.95em;
+            color: white;
+            white-space: nowrap;
+        }
+
+        .carousel-card-traits {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .carousel-trait {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 1.1em;
+            cursor: help;
+        }
+
+        .carousel-trait-icon {
+            font-size: 1.3em;
+        }
+
+        .carousel-trait-value {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 1em;
+        }
+
+        @media (max-width: 768px) {
+            .carousel-card {
+                width: 320px;
+            }
+
+            .carousel-card-info {
+                padding: 20px;
+            }
+
+            .carousel-card-name {
+                font-size: 1.3em;
+            }
+        }
     </style>
 </head>
 <body>
@@ -329,8 +538,8 @@
     <div class="container">
         <script>initSharedHeader('collections');</script>
         <div class="content">
-            <!-- Left Sidebar - Body Type Filter -->
-            <div class="sidebar">
+            <!-- Left Sidebar - Body Type Filter (Grid View Only) -->
+            <div class="sidebar" id="sidebar">
                 <div class="body-type-filters">
                     <h3>Body Types</h3>
                     <div id="bodyTypeFilters">
@@ -339,12 +548,42 @@
                 </div>
             </div>
 
-            <!-- Main Content - Rarity Sections -->
+            <!-- Main Content -->
             <div class="main-content">
-                <div id="collectionsContainer">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        <p>Loading your collection...</p>
+                <!-- View Toggle -->
+                <div class="view-toggle">
+                    <button class="view-toggle-btn active" onclick="switchView('grid')">
+                        Grid View
+                    </button>
+                    <button class="view-toggle-btn" onclick="switchView('carousel')">
+                        Carousel View
+                    </button>
+                </div>
+
+                <!-- Grid View -->
+                <div id="gridView" class="grid-view active">
+                    <div id="collectionsContainer">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Loading your collection...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Carousel View -->
+                <div id="carouselView" class="carousel-view">
+                    <div class="carousel-container">
+                        <div class="body-type-indicator">
+                            <h2 id="carouselBodyTypeName">Loading...</h2>
+                            <div class="count" id="carouselBodyTypeCount">0 chatlings</div>
+                            <div class="swipe-hint">← Swipe left/right for creatures • ↕ Swipe up/down for body types →</div>
+                        </div>
+
+                        <div class="carousel-main" id="carouselMain">
+                            <div class="carousel-track" id="carouselTrack">
+                                <!-- Carousel cards will be populated here -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -673,6 +912,292 @@
         function viewCreature(creatureId) {
             window.location.href = `/user/view-creature.html?id=${creatureId}`;
         }
+
+        // ========== CAROUSEL FUNCTIONALITY ==========
+
+        let currentView = 'grid';
+        let carouselBodyTypes = []; // Body types that have creatures
+        let currentBodyTypeIndex = 0;
+        let currentCreatureIndex = 0;
+        let currentBodyTypeCreatures = [];
+
+        // Swipe gesture detection
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+
+        function switchView(view) {
+            currentView = view;
+
+            // Update toggle buttons
+            document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Toggle views
+            const gridView = document.getElementById('gridView');
+            const carouselView = document.getElementById('carouselView');
+            const sidebar = document.getElementById('sidebar');
+
+            if (view === 'grid') {
+                gridView.classList.add('active');
+                carouselView.classList.remove('active');
+                sidebar.style.display = 'block';
+            } else {
+                gridView.classList.remove('active');
+                carouselView.classList.add('active');
+                sidebar.style.display = 'none';
+                initCarousel();
+                // Fix positioning after a short delay to ensure layout is complete
+                setTimeout(() => {
+                    updateCarouselPosition();
+                }, 100);
+            }
+        }
+
+        function initCarousel() {
+            // Build list of body types that have creatures
+            carouselBodyTypes = [];
+            bodyTypes.forEach(bodyType => {
+                const creatures = allCreatures.filter(c => c.body_type_id === bodyType.id);
+                if (creatures.length > 0) {
+                    carouselBodyTypes.push({
+                        ...bodyType,
+                        creatures: creatures
+                    });
+                }
+            });
+
+            if (carouselBodyTypes.length === 0) {
+                document.getElementById('carouselTrack').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📦</div>
+                        <h3>No Chatlings Found</h3>
+                        <p>You don't have any chatlings yet.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            currentBodyTypeIndex = 0;
+            currentCreatureIndex = 0;
+            renderCarousel();
+            setupSwipeGestures();
+        }
+
+        function renderCarousel() {
+            if (carouselBodyTypes.length === 0) return;
+
+            const bodyType = carouselBodyTypes[currentBodyTypeIndex];
+            currentBodyTypeCreatures = bodyType.creatures;
+
+            // Update header
+            document.getElementById('carouselBodyTypeName').textContent = bodyType.body_type_name;
+            document.getElementById('carouselBodyTypeCount').textContent = `${currentBodyTypeCreatures.length} chatling${currentBodyTypeCreatures.length !== 1 ? 's' : ''}`;
+
+            // Render all creatures in track
+            const track = document.getElementById('carouselTrack');
+            track.innerHTML = currentBodyTypeCreatures.map((creature, index) =>
+                renderCarouselCard(creature, index)
+            ).join('');
+
+            updateCarouselPosition();
+        }
+
+        function renderCarouselCard(creature, index) {
+            const imagePath = creature.selected_image ? getImageUrl(creature.selected_image) : '/assets/placeholder.png';
+            const rarityClass = `rarity-${(creature.rarity_tier || 'Common').toLowerCase().replace(' ', '-')}`;
+            const isCurrent = index === currentCreatureIndex;
+
+            // Get frame artwork for body type
+            const bodyType = bodyTypes.find(bt => bt.id === creature.body_type_id);
+            const frameUrl = bodyType && bodyType.frame_filename
+                ? getImageUrl(bodyType.frame_filename)
+                : '';
+
+            return `
+                <div class="carousel-card ${isCurrent ? 'center' : ''}" data-index="${index}">
+                    <div class="creature-frame-wrapper ${frameUrl ? 'has-frame' : ''}">
+                        ${frameUrl ? `<div class="creature-frame-overlay" style="background-image: url('${frameUrl}');"></div>` : ''}
+                        <div class="creature-frame-content">
+                            <div class="creature-image-container">
+                                <img src="${imagePath}"
+                                     alt="${creature.creature_name}"
+                                     style="max-height: 500px; width: auto; display: block;"
+                                     onerror="this.src='/assets/placeholder.png'">
+                            </div>
+                            <div class="creature-lore-section">
+                                <div class="carousel-card-header">
+                                    <div class="carousel-card-name">${creature.creature_name}</div>
+                                    <div class="carousel-card-rarity ${rarityClass}">${creature.rarity_tier || 'Common'}</div>
+                                </div>
+                                <div class="carousel-card-traits">
+                                    <div class="carousel-trait" title="Ability: ${creature.ability_score || 0}">
+                                        <span class="carousel-trait-icon">🎯</span>
+                                        <span class="carousel-trait-value">${creature.ability_score || 0}</span>
+                                    </div>
+                                    <div class="carousel-trait" title="Strength: ${creature.strength_score || 0}">
+                                        <span class="carousel-trait-icon">💪</span>
+                                        <span class="carousel-trait-value">${creature.strength_score || 0}</span>
+                                    </div>
+                                    <div class="carousel-trait" title="Affection: ${creature.affection_score || 0}">
+                                        <span class="carousel-trait-icon">❤️</span>
+                                        <span class="carousel-trait-value">${creature.affection_score || 0}</span>
+                                    </div>
+                                    <div class="carousel-trait" title="Uniqueness: ${creature.uniqueness_score || 0}">
+                                        <span class="carousel-trait-icon">🎨</span>
+                                        <span class="carousel-trait-value">${creature.uniqueness_score || 0}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateCarouselPosition() {
+            const track = document.getElementById('carouselTrack');
+            const cards = track.querySelectorAll('.carousel-card');
+            const carouselMain = document.getElementById('carouselMain');
+
+            // Update center class
+            cards.forEach((card, index) => {
+                if (index === currentCreatureIndex) {
+                    card.classList.add('center');
+                } else {
+                    card.classList.remove('center');
+                }
+            });
+
+            // Calculate transform to center the current card
+            if (cards.length > 0 && cards[currentCreatureIndex]) {
+                const cardWidth = cards[currentCreatureIndex].offsetWidth;
+                const gap = 40;
+                const containerWidth = carouselMain.offsetWidth;
+
+                // Center the current card in the viewport
+                const offsetToCenter = (containerWidth / 2) - (cardWidth / 2);
+                const currentCardOffset = currentCreatureIndex * (cardWidth + gap);
+                const translateX = offsetToCenter - currentCardOffset;
+
+                track.style.transform = `translateX(${translateX}px)`;
+            }
+        }
+
+        function carouselNext() {
+            if (currentCreatureIndex < currentBodyTypeCreatures.length - 1) {
+                currentCreatureIndex++;
+                updateCarouselPosition();
+            }
+        }
+
+        function carouselPrev() {
+            if (currentCreatureIndex > 0) {
+                currentCreatureIndex--;
+                updateCarouselPosition();
+            }
+        }
+
+        function carouselNextBodyType() {
+            if (currentBodyTypeIndex < carouselBodyTypes.length - 1) {
+                currentBodyTypeIndex++;
+                currentCreatureIndex = 0;
+                renderCarousel();
+            }
+        }
+
+        function carouselPrevBodyType() {
+            if (currentBodyTypeIndex > 0) {
+                currentBodyTypeIndex--;
+                currentCreatureIndex = 0;
+                renderCarousel();
+            }
+        }
+
+        function setupSwipeGestures() {
+            const carouselMain = document.getElementById('carouselMain');
+
+            carouselMain.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+            }, { passive: true });
+
+            carouselMain.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].screenX;
+                touchEndY = e.changedTouches[0].screenY;
+                handleSwipe();
+            }, { passive: true });
+        }
+
+        function handleSwipe() {
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+            const minSwipeDistance = 50;
+
+            // Determine if swipe was more horizontal or vertical
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                // Horizontal swipe (creature navigation)
+                if (Math.abs(deltaX) > minSwipeDistance) {
+                    if (deltaX > 0) {
+                        // Swipe right = previous creature
+                        carouselPrev();
+                    } else {
+                        // Swipe left = next creature
+                        carouselNext();
+                    }
+                }
+            } else {
+                // Vertical swipe (body type navigation)
+                if (Math.abs(deltaY) > minSwipeDistance) {
+                    if (deltaY > 0) {
+                        // Swipe down = previous body type
+                        carouselPrevBodyType();
+                    } else {
+                        // Swipe up = next body type
+                        carouselNextBodyType();
+                    }
+                }
+            }
+        }
+
+        // Keyboard navigation for carousel
+        document.addEventListener('keydown', (e) => {
+            if (currentView !== 'carousel') return;
+
+            switch(e.key) {
+                case 'ArrowLeft':
+                    carouselPrev();
+                    break;
+                case 'ArrowRight':
+                    carouselNext();
+                    break;
+                case 'ArrowUp':
+                    carouselPrevBodyType();
+                    break;
+                case 'ArrowDown':
+                    carouselNextBodyType();
+                    break;
+            }
+        });
+
+        // Fix carousel positioning on window resize
+        window.addEventListener('resize', () => {
+            if (currentView === 'carousel') {
+                updateCarouselPosition();
+            }
+        });
+
+        // Fix carousel positioning when returning from viewing a creature
+        window.addEventListener('focus', () => {
+            if (currentView === 'carousel') {
+                setTimeout(() => {
+                    updateCarouselPosition();
+                }, 100);
+            }
+        });
 
         init();
     </script>

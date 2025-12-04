@@ -1042,6 +1042,76 @@ app.get('/api/body-types', async (req, res) => {
   }
 });
 
+/**
+ * Idle Game - Get user's game state
+ */
+app.get('/api/idle-game/state', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT affection_points, businesses_state, last_update
+      FROM idle_game_state
+      WHERE user_id = $1
+    `, [req.session.userId]);
+
+    if (result.rows.length > 0) {
+      res.json({ state: result.rows[0] });
+    } else {
+      // No saved state yet
+      res.json({ state: null });
+    }
+
+  } catch (error) {
+    console.error('Error fetching idle game state:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Idle Game - Save user's game state
+ */
+app.post('/api/idle-game/state', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { affection_points, businesses_state, last_update } = req.body;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Upsert the game state
+    await client.query(`
+      INSERT INTO idle_game_state (user_id, affection_points, businesses_state, last_update)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        affection_points = $2,
+        businesses_state = $3,
+        last_update = $4,
+        updated_at = CURRENT_TIMESTAMP
+    `, [req.session.userId, affection_points, businesses_state, last_update]);
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Error saving idle game state:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
 // Get frame configuration for a specific body type
 app.get('/api/body-type-frame-config/:bodyTypeName', async (req, res) => {
   const client = new Client(config);

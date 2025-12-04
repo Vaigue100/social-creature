@@ -114,7 +114,8 @@
       "Bash(az storage blob upload:*)",
       "Bash(npx web-push:*)",
       "Bash(powershell -ExecutionPolicy Bypass -File create-placeholder.ps1)",
-      "Bash(copy:*)"
+      "Bash(copy:*)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "deny": [],
     "ask": []
