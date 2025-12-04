@@ -1112,6 +1112,57 @@ app.post('/api/idle-game/state', async (req, res) => {
   }
 });
 
+/**
+ * Get list of welcome animations
+ */
+app.get('/api/animations/welcome', (req, res) => {
+  try {
+    const welcomeDir = path.join(__dirname, 'animations', 'welcome');
+
+    // Check if directory exists
+    if (!fs.existsSync(welcomeDir)) {
+      console.error('Welcome animations directory not found:', welcomeDir);
+      return res.status(404).json({ error: 'Welcome animations directory not found' });
+    }
+
+    const files = fs.readdirSync(welcomeDir);
+    const videos = files.filter(file => file.endsWith('.mp4'));
+
+    console.log(`Found ${videos.length} welcome animations:`, videos);
+
+    res.json({ videos: videos.map(v => `/animations/welcome/${v}`) });
+  } catch (error) {
+    console.error('Error reading welcome animations:', error);
+    res.status(500).json({ error: 'Failed to load animations' });
+  }
+});
+
+/**
+ * Get list of processed animations for a specific creature
+ */
+app.get('/api/animations/creature/:creatureId', (req, res) => {
+  try {
+    const { creatureId } = req.params;
+    const processedDir = path.join(__dirname, 'animations', 'processed', creatureId);
+
+    // Check if directory exists
+    if (!fs.existsSync(processedDir)) {
+      // No animations for this creature yet - return empty array
+      return res.json({ animations: [] });
+    }
+
+    const files = fs.readdirSync(processedDir);
+    const videos = files.filter(file => file.endsWith('.mp4'));
+
+    console.log(`Found ${videos.length} animations for creature ${creatureId}`);
+
+    res.json({ animations: videos.map(v => `/animations/processed/${creatureId}/${v}`) });
+  } catch (error) {
+    console.error('Error reading creature animations:', error);
+    res.status(500).json({ error: 'Failed to load animations' });
+  }
+});
+
 // Get frame configuration for a specific body type
 app.get('/api/body-type-frame-config/:bodyTypeName', async (req, res) => {
   const client = new Client(config);

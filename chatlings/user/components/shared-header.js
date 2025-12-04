@@ -538,21 +538,34 @@ function displayNotifications(notifications) {
         // Build link from notification data
         let link = notif.link;
 
-        // If no link but has metadata, try to build link from metadata
-        if (!link || link === '#' || link === null || link === 'null') {
-            try {
-                const metadata = typeof notif.metadata === 'string' ? JSON.parse(notif.metadata) : notif.metadata;
+        // Parse metadata for potential use
+        let metadata = null;
+        try {
+            metadata = typeof notif.metadata === 'string' ? JSON.parse(notif.metadata) : notif.metadata;
+        } catch (e) {
+            console.error('Error parsing notification metadata:', e);
+        }
 
-                // For reward_claimed notifications, link to creature
-                if (notifType === 'reward_claimed' && metadata?.creature_id) {
-                    link = `/user/view-creature.html?id=${metadata.creature_id}`;
+        // For reward_claimed notifications, always ensure showWelcome parameter is added
+        if (notifType === 'reward_claimed' && metadata?.creature_id) {
+            // If there's already a link to view-creature, add showWelcome parameter
+            if (link && link.includes('/user/view-creature.html')) {
+                // Check if showWelcome is already in the URL
+                if (!link.includes('showWelcome=')) {
+                    link += (link.includes('?') ? '&' : '?') + 'showWelcome=true';
                 }
+            } else {
+                // Build new link with showWelcome
+                link = `/user/view-creature.html?id=${metadata.creature_id}&showWelcome=true`;
+            }
+        }
+        // If no link but has metadata, try to build link from metadata
+        else if (!link || link === '#' || link === null || link === 'null') {
+            if (metadata) {
                 // For achievement notifications, link to achievements page
-                else if ((notifType === 'achievement_unlocked' || notifType === 'achievement') && metadata?.achievement_id) {
+                if ((notifType === 'achievement_unlocked' || notifType === 'achievement') && metadata?.achievement_id) {
                     link = '/user/achievements.html';
                 }
-            } catch (e) {
-                console.error('Error parsing notification metadata:', e);
             }
         }
 

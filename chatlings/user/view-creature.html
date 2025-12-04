@@ -77,6 +77,71 @@
             transform: scale(1.1);
         }
 
+        /* Welcome Animation Styles */
+        #welcome-animation-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 3000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 1000px;
+        }
+
+        #welcome-video {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.5);
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Flip animation for transition */
+        #creature-modal-overlay.flip-in {
+            animation: flipIn 0.8s ease-out;
+        }
+
+        @keyframes flipIn {
+            0% {
+                opacity: 0;
+                transform: perspective(1000px) rotateY(-90deg);
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 1;
+                transform: perspective(1000px) rotateY(0deg);
+            }
+        }
+
+        #welcome-animation-overlay.flip-out {
+            animation: flipOut 0.8s ease-in forwards;
+        }
+
+        @keyframes flipOut {
+            0% {
+                opacity: 1;
+                transform: perspective(1000px) rotateY(0deg);
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 0;
+                transform: perspective(1000px) rotateY(90deg);
+            }
+        }
+
         .creature-view-container {
             background: white;
             border-radius: 20px;
@@ -270,7 +335,12 @@
     </style>
 </head>
 <body>
-    <div class="modal-overlay">
+    <!-- Welcome Animation Overlay -->
+    <div id="welcome-animation-overlay" style="display: none;">
+        <video id="welcome-video" autoplay muted playsinline></video>
+    </div>
+
+    <div class="modal-overlay" id="creature-modal-overlay">
         <div class="modal-container">
             <!-- Close Button -->
             <span class="close-button" onclick="goBack()">&times;</span>
@@ -364,7 +434,8 @@
             const params = new URLSearchParams(window.location.search);
             return {
                 creatureId: params.get('id'),
-                from: params.get('from') || 'collections'
+                from: params.get('from') || 'collections',
+                showWelcome: params.get('showWelcome') === 'true'
             };
         }
 
@@ -379,9 +450,79 @@
             window.location.href = returnPages[params.from] || 'collections.html';
         }
 
+        // Welcome animation function - takes body type name as parameter
+        async function showWelcomeAnimation(bodyTypeName) {
+            console.log('🎬 Checking for welcome animation for body type:', bodyTypeName);
+            return new Promise((resolve) => {
+                const animationFileName = bodyTypeName.toLowerCase() + '.mp4';
+                const animationPath = `/animations/welcome/${animationFileName}`;
+
+                console.log(`Checking for animation: ${animationPath}`);
+
+                const overlay = document.getElementById('welcome-animation-overlay');
+                const video = document.getElementById('welcome-video');
+                const creatureModal = document.getElementById('creature-modal-overlay');
+
+                // Test if animation exists by trying to load it
+                const testVideo = document.createElement('video');
+
+                testVideo.onloadeddata = () => {
+                    // Animation exists, play it
+                    console.log(`✓ Animation found! Playing welcome animation...`);
+
+                    // Hide creature modal
+                    creatureModal.style.display = 'none';
+
+                    // Set video source and show overlay
+                    video.src = animationPath;
+                    overlay.style.display = 'flex';
+
+                    // When video ends, wait 2 seconds then flip to creature card
+                    video.addEventListener('ended', () => {
+                        console.log('Video ended, waiting 2 seconds...');
+                        setTimeout(() => {
+                            console.log('Starting flip out animation');
+                            overlay.classList.add('flip-out');
+
+                            setTimeout(() => {
+                                console.log('Flip out complete, showing creature card');
+                                overlay.style.display = 'none';
+                                overlay.classList.remove('flip-out');
+
+                                creatureModal.style.display = 'flex';
+                                creatureModal.classList.add('flip-in');
+
+                                setTimeout(() => {
+                                    creatureModal.classList.remove('flip-in');
+                                    console.log('Welcome animation sequence complete');
+                                    resolve();
+                                }, 800);
+                            }, 800);
+                        }, 2000);
+                    }, { once: true });
+
+                    video.addEventListener('error', (e) => {
+                        console.error('Error playing animation:', e);
+                        overlay.style.display = 'none';
+                        creatureModal.style.display = 'flex';
+                        resolve();
+                    }, { once: true });
+                };
+
+                testVideo.onerror = () => {
+                    // No animation found, skip straight to creature
+                    console.log(`✗ No animation found for "${bodyTypeName}", showing creature directly`);
+                    resolve();
+                };
+
+                testVideo.src = animationPath;
+            });
+        }
+
         // Load creature on page load
         window.addEventListener('load', async () => {
             const params = getQueryParams();
+            console.log('📋 Page params:', params);
 
             if (!params.creatureId) {
                 document.getElementById('image-loading').textContent = 'No creature specified';
@@ -390,6 +531,32 @@
             }
 
             currentCreatureId = params.creatureId;
+
+            // Show welcome animation if requested (before loading creature details)
+            console.log('🔍 Checking showWelcome:', params.showWelcome);
+            if (params.showWelcome) {
+                console.log('✅ showWelcome is true, fetching body type...');
+
+                // Fetch creature to get body type for animation
+                try {
+                    const response = await fetch(`/api/creature/${params.creatureId}/details`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.body_type_name) {
+                            console.log('Body type found:', data.body_type_name);
+                            await showWelcomeAnimation(data.body_type_name);
+                        } else {
+                            console.log('No body type found, skipping animation');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch creature for animation:', error);
+                }
+            } else {
+                console.log('❌ showWelcome is false or not set');
+            }
+
+            // Load full creature details
             await loadCreature(params.creatureId);
         });
 
