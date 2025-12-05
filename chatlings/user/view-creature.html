@@ -62,19 +62,28 @@
 
         .close-button {
             position: absolute;
-            top: 15px;
-            right: 30px;
+            top: 0;
+            right: -70px;
             color: white;
-            font-size: 40px;
+            font-size: 50px;
             font-weight: bold;
             cursor: pointer;
             z-index: 2001;
             text-shadow: 0 2px 4px rgba(0,0,0,0.5);
             transition: transform 0.2s;
+            background: rgba(0, 0, 0, 0.3);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
         }
 
         .close-button:hover {
-            transform: scale(1.1);
+            transform: scale(1.15);
+            background: rgba(0, 0, 0, 0.5);
         }
 
         /* Welcome Animation Styles */
@@ -143,9 +152,10 @@
         }
 
         .creature-view-container {
+            position: relative;
             background: white;
             border-radius: 20px;
-            padding: 30px;
+            padding: 15px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
             width: fit-content;
             margin: 0 auto;
@@ -604,11 +614,10 @@
 
     <div class="modal-overlay" id="creature-modal-overlay">
         <div class="modal-container">
-            <!-- Close Button -->
-            <span class="close-button" onclick="goBack()">&times;</span>
-
             <!-- Creature View Container -->
             <div class="creature-view-container">
+                <!-- Close Button -->
+                <span class="close-button" onclick="goBack()">&times;</span>
                 <!-- Wrapper to constrain width of both flip card and info panel -->
                 <div class="creature-display-wrapper">
                     <!-- Flip Card Container -->
