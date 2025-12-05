@@ -897,40 +897,36 @@
 
             currentCreatureId = params.creatureId;
 
-            // Show welcome animation if requested (before loading creature details)
+            // Load full creature details first (so image is ready)
+            await loadCreature(params.creatureId);
+
+            // Show welcome animation if requested (after creature details loaded)
             console.log('🔍 Checking showWelcome:', params.showWelcome);
             if (params.showWelcome) {
-                console.log('✅ showWelcome is true, fetching body type...');
+                console.log('✅ showWelcome is true, will play animation...');
 
-                // Hide loading element immediately when animation will play
-                const imageLoading = document.getElementById('image-loading');
-                if (imageLoading) imageLoading.style.display = 'none';
+                // Get body type from already-loaded creature data
+                const bodyTypeName = window.currentBodyTypeName;
 
-                // Hide info panel until animation completes
-                const infoPanel = document.querySelector('.creature-info-panel');
-                if (infoPanel) infoPanel.style.visibility = 'hidden';
+                if (bodyTypeName) {
+                    console.log('Body type found:', bodyTypeName);
 
-                // Fetch creature to get body type for animation
-                try {
-                    const response = await fetch(`/api/creature/${params.creatureId}/details`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.body_type_name) {
-                            console.log('Body type found:', data.body_type_name);
-                            await showWelcomeAnimation(data.body_type_name);
-                        } else {
-                            console.log('No body type found, skipping animation');
-                        }
-                    }
-                } catch (error) {
-                    console.error('Failed to fetch creature for animation:', error);
+                    // Hide the creature image and info panel, show animation
+                    const imageLoading = document.getElementById('image-loading');
+                    const creatureImage = document.getElementById('creature-image');
+                    const infoPanel = document.querySelector('.creature-info-panel');
+
+                    if (imageLoading) imageLoading.style.display = 'none';
+                    if (creatureImage) creatureImage.style.display = 'none';
+                    if (infoPanel) infoPanel.style.visibility = 'hidden';
+
+                    await showWelcomeAnimation(bodyTypeName);
+                } else {
+                    console.log('No body type found, skipping animation');
                 }
             } else {
                 console.log('❌ showWelcome is false or not set');
             }
-
-            // Load full creature details
-            await loadCreature(params.creatureId);
         });
 
         async function loadCreature(creatureId) {
@@ -942,6 +938,11 @@
                 }
 
                 const data = await response.json();
+
+                // Store body type name globally for animation
+                if (data.body_type_name) {
+                    window.currentBodyTypeName = data.body_type_name;
+                }
 
                 // Update creature details on the back of the flip card
                 if (data.creature_name) {
@@ -1004,15 +1005,17 @@
 
                 img.src = getImageUrl(data.selected_image);
 
-                // Check if welcome animation is currently playing
-                const isWelcomeAnimationPlaying = video.src && video.src.indexOf('/animations/welcome/') !== -1;
+                // Check if welcome animation will be shown
+                const params = getQueryParams();
+                const willShowWelcomeAnimation = params.showWelcome === 'true';
 
-                if (!isWelcomeAnimationPlaying) {
-                    // No animation playing, show image immediately
+                if (!willShowWelcomeAnimation) {
+                    // No animation, show image immediately
                     img.style.display = 'block';
                     imgLoading.style.display = 'none';
                 } else {
-                    // Animation is playing, hide loading but don't show image yet
+                    // Animation will play, keep image and loading hidden
+                    img.style.display = 'none';
                     imgLoading.style.display = 'none';
                 }
 
