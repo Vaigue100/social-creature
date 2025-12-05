@@ -804,48 +804,52 @@
                 const testVideo = document.createElement('video');
 
                 testVideo.onloadeddata = () => {
-                    // Animation exists, play it
+                    // Animation exists, play it in the flip card position
                     console.log(`✓ Animation found! Playing welcome animation...`);
 
-                    // Hide creature modal
-                    creatureModal.style.display = 'none';
+                    // Get elements
+                    const creatureVideo = document.getElementById('creature-video');
+                    const creatureImage = document.getElementById('creature-image');
+                    const imageLoading = document.getElementById('image-loading');
+                    const infoPanel = document.querySelector('.creature-info-panel');
 
-                    // Set video source and show overlay
-                    video.src = animationPath;
-                    overlay.style.display = 'flex';
+                    // Hide info panel and loading indicator
+                    if (infoPanel) infoPanel.style.display = 'none';
+                    if (imageLoading) imageLoading.style.display = 'none';
 
-                    // When video ends, wait 2 seconds then flip to creature card
-                    video.addEventListener('ended', () => {
-                        console.log('Video ended, waiting 2 seconds...');
-                        setTimeout(() => {
-                            console.log('Starting flip out animation');
-                            overlay.classList.add('flip-out');
+                    // Show video in the creature image position
+                    creatureVideo.src = animationPath;
+                    creatureVideo.style.display = 'block';
+                    creatureVideo.muted = true;
+                    creatureVideo.play();
 
-                            setTimeout(() => {
-                                console.log('Flip out complete, showing creature card');
-                                overlay.style.display = 'none';
-                                overlay.classList.remove('flip-out');
+                    // When video ends, reveal info panel and switch to creature image
+                    creatureVideo.addEventListener('ended', () => {
+                        console.log('Animation ended, revealing creature info...');
 
-                                creatureModal.style.display = 'flex';
-                                creatureModal.classList.add('flip-in');
+                        // Hide video, show creature image
+                        creatureVideo.style.display = 'none';
+                        if (creatureImage) creatureImage.style.display = 'block';
+                        if (imageLoading) imageLoading.style.display = 'none';
 
-                                setTimeout(() => {
-                                    creatureModal.classList.remove('flip-in');
-                                    console.log('Welcome animation sequence complete');
+                        // Show the info panel
+                        if (infoPanel) {
+                            infoPanel.style.display = 'block';
+                        }
 
-                                    // Re-enable flip after animation
-                                    if (window.enableFlip) window.enableFlip();
+                        // Re-enable flip after animation
+                        if (window.enableFlip) window.enableFlip();
 
-                                    resolve();
-                                }, 800);
-                            }, 800);
-                        }, 2000);
+                        console.log('Welcome animation sequence complete');
+                        resolve();
                     }, { once: true });
 
-                    video.addEventListener('error', (e) => {
+                    creatureVideo.addEventListener('error', (e) => {
                         console.error('Error playing animation:', e);
-                        overlay.style.display = 'none';
-                        creatureModal.style.display = 'flex';
+
+                        // Show info panel on error
+                        if (infoPanel) infoPanel.style.display = 'block';
+                        if (imageLoading) imageLoading.style.display = 'block';
 
                         // Re-enable flip on error
                         if (window.enableFlip) window.enableFlip();
@@ -982,8 +986,12 @@
                 const imgLoading = document.getElementById('image-loading');
 
                 img.src = getImageUrl(data.selected_image);
-                img.style.display = 'block';
-                imgLoading.style.display = 'none';
+
+                // Only show image if video is not currently playing an animation
+                if (!video.src || video.src.indexOf('/animations/welcome/') === -1) {
+                    img.style.display = 'block';
+                    imgLoading.style.display = 'none';
+                }
 
                 // Load animations for this creature
                 try {
