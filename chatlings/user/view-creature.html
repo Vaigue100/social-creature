@@ -147,6 +147,8 @@
             border-radius: 20px;
             padding: 30px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            width: fit-content;
+            margin: 0 auto;
         }
 
         .loading {
@@ -414,6 +416,7 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             width: 100%;
             box-sizing: border-box;
+            border: 5px solid #FFFFFF; /* Default white border, will be overridden by body type color */
         }
 
         .info-line {
@@ -1064,12 +1067,12 @@
                     imageContainer.style.marginTop = `${config.image_margin_top_px || 0}px`;
                 }
 
-                // Apply info panel background color if specified
+                // Apply info panel border color if specified
                 const infoPanel = document.querySelector('.creature-info-panel');
                 if (infoPanel) {
-                    const bgColor = config.info_panel_bg_color || '#FFFFFF';
-                    infoPanel.style.backgroundColor = bgColor;
-                    console.log(`✓ Applied info panel color: ${bgColor} for ${bodyTypeName}`);
+                    const borderColor = config.info_panel_bg_color || '#FFFFFF';
+                    infoPanel.style.borderColor = borderColor;
+                    console.log(`✓ Applied info panel border color: ${borderColor} for ${bodyTypeName}`);
                 } else {
                     console.log('⚠️ Info panel element not found');
                 }
