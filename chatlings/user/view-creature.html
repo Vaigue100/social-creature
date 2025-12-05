@@ -332,6 +332,265 @@
             font-weight: bold !important;
             font-size: 16px !important;
         }
+
+        /* Wrapper to constrain both flip card and info panel to same width */
+        .creature-display-wrapper {
+            width: fit-content;
+            margin: 0 auto;
+        }
+
+        /* Flip Card Styles */
+        .flip-card-container {
+            perspective: 1000px;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .flip-card-container.no-flip {
+            cursor: default;
+        }
+
+        .flip-card {
+            position: relative;
+            width: 100%;
+            transition: transform 0.8s;
+            transform-style: preserve-3d;
+        }
+
+        .flip-card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card-front,
+        .flip-card-back {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+
+        .flip-card-front {
+            position: relative;
+        }
+
+        .flip-card-back {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: rotateY(180deg);
+            background: white;
+            border-radius: 15px;
+            overflow-y: auto;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .creature-details-container {
+            padding: 45px;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        .detail-section {
+            margin-bottom: 25px;
+        }
+
+        .detail-section h3 {
+            color: #9b59b6;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .detail-section p {
+            color: #666;
+            line-height: 1.6;
+            font-size: 0.95em;
+        }
+
+        /* Info Panel Styles - matching grid view */
+        .creature-info-panel {
+            background: #f5f5f5;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .info-line {
+            margin-bottom: 10px;
+        }
+
+        .info-line:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-name {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .info-name .creature-name {
+            font-weight: bold;
+            color: #333;
+            font-size: 1.2em;
+        }
+
+        /* Rarity badge styling - override creature-card-styles.css */
+        .creature-info-panel .rarity-badge {
+            position: static !important;
+            display: inline-block !important;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            bottom: auto !important;
+            left: auto !important;
+            transform: none !important;
+        }
+
+        .rarity-common {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            color: white;
+        }
+
+        .rarity-uncommon {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            color: white;
+        }
+
+        .rarity-rare {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+        }
+
+        .rarity-epic {
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            color: white;
+        }
+
+        .rarity-legendary {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+        }
+
+        .rarity-mythic {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+        }
+
+        /* Creature traits - matching grid view exactly */
+        .creature-traits {
+            display: flex;
+            gap: 8px;
+            font-size: 0.85em;
+            color: #666;
+            flex-wrap: wrap;
+        }
+
+        .trait {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            background: rgba(102, 126, 234, 0.05);
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(102, 126, 234, 0.15);
+            transition: all 0.2s;
+        }
+
+        .trait:hover {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+
+        .trait-icon {
+            font-size: 0.9em;
+        }
+
+        .trait-value {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        /* Overall score styling */
+        .overall-score {
+            margin-left: auto;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        /* Team info button */
+        .team-info-button {
+            width: 100%;
+            padding: 10px 16px;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            background: rgba(102, 126, 234, 0.05);
+            color: #667eea;
+            font-weight: 600;
+            font-size: 0.95em;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .team-info-button:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .team-info-button.assigned {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            border-color: #27ae60;
+            color: white;
+        }
+
+        .team-info-button.assigned:hover {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        }
+
+        /* Animation buttons - styled like traits */
+        .animation-button {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 2px 6px rgba(155, 89, 182, 0.3);
+        }
+
+        .animation-button:hover:not(:disabled) {
+            background: linear-gradient(135deg, #8e44ad 0%, #7d3c98 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(155, 89, 182, 0.5);
+        }
+
+        .animation-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .animation-button .animation-icon {
+            font-size: 1.1em;
+        }
     </style>
 </head>
 <body>
@@ -347,38 +606,76 @@
 
             <!-- Creature View Container -->
             <div class="creature-view-container">
-            <div class="creature-display">
-                <div class="image-with-traits">
-                    <div class="creature-frame-wrapper" id="creature-frame">
-                        <div class="creature-frame-overlay" id="frame-overlay" style="display: none;"></div>
-                        <div class="creature-frame-content">
-                            <!-- Image with badges positioned on corners -->
-                            <div class="creature-image-container">
-                                <div class="rarity-badge" id="rarity-badge" style="display: none;"></div>
-                                <div class="animation-badge" id="animation-badge" style="display: none;" title="Play animation">
-                                    🎬
+                <!-- Wrapper to constrain width of both flip card and info panel -->
+                <div class="creature-display-wrapper">
+                    <!-- Flip Card Container -->
+                    <div class="flip-card-container" id="flip-card-container">
+                        <div class="flip-card" id="flip-card">
+                            <!-- Front: Creature Image -->
+                            <div class="flip-card-front">
+                                <div class="creature-frame-wrapper" id="creature-frame">
+                                    <div class="creature-frame-overlay" id="frame-overlay" style="display: none;"></div>
+                                    <div class="creature-frame-content">
+                                        <div class="creature-image-container">
+                                            <video id="creature-video" class="creature-image" muted playsinline style="display: none;"></video>
+                                            <img id="creature-image" class="creature-image" src="" alt="Creature" style="display: none;">
+                                            <div class="loading" id="image-loading">Loading chatling...</div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="overall-score-badge" id="overall-score-badge" style="display: none; cursor: pointer;" title="Click to view traits"></div>
-                                <div class="bodytype-badge" id="bodytype-badge" style="display: none; cursor: pointer;" title="Click to view body type lore"></div>
-                                <div class="team-badge" id="team-badge" style="display: none; cursor: pointer;" title="Click to manage team assignment">
-                                    <span id="team-badge-icon">👥</span>
-                                </div>
-                                <video id="creature-video" class="creature-image" muted playsinline style="display: none;"></video>
-                                <img id="creature-image" class="creature-image" src="" alt="Creature" style="display: none;">
-                                <div class="loading" id="image-loading">Loading chatling...</div>
                             </div>
 
-                            <!-- Creature Lore attached to bottom -->
-                            <div class="creature-lore-section" id="creature-lore-section" style="display: none;">
-                                <h3 style="color: #9b59b6; margin-bottom: 10px; font-size: 1.1em;">📖 <span id="creature-lore-title">Tale</span></h3>
-                                <p id="creature-lore" style="color: #666; line-height: 1.6; margin: 0;">
-                                    Loading creature lore...
-                                </p>
+                            <!-- Back: Details/Lore/Story -->
+                            <div class="flip-card-back">
+                                <div class="creature-details-container">
+                                    <h2 id="details-creature-name" style="color: #667eea; margin-bottom: 20px;">Creature Details</h2>
+
+                                    <div class="detail-section">
+                                        <h3 style="color: #9b59b6; margin-bottom: 10px;">📖 Tale</h3>
+                                        <p id="creature-lore" style="color: #666; line-height: 1.6;">
+                                            Loading creature lore...
+                                        </p>
+                                    </div>
+
+                                    <div class="detail-section" id="body-type-section" style="display: none;">
+                                        <h3 style="color: #2ecc71; margin-bottom: 10px;">🎨 <span id="bodytype-title">Body Type</span> Lineage</h3>
+                                        <p id="bodytype-lore" style="color: #666; line-height: 1.6;">
+                                            Loading body type lore...
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Info Panel Below -->
+                    <div class="creature-info-panel">
+                    <!-- Line 1: Creature Name + Rarity -->
+                    <div class="info-line info-name">
+                        <span id="info-creature-name" class="creature-name">Loading...</span>
+                        <div class="rarity-badge" id="info-rarity-badge" style="display: none;"></div>
+                    </div>
+
+                    <!-- Line 2: Traits + Overall Score -->
+                    <div class="info-line creature-traits" id="info-traits">
+                        <!-- Traits will be populated here -->
+                    </div>
+
+                    <!-- Line 3: Team Info -->
+                    <div class="info-line" id="info-team-line" style="display: none;">
+                        <button class="team-info-button" id="team-info-button">
+                            <span id="team-icon">👥</span>
+                            <span id="team-text">Not Assigned</span>
+                        </button>
+                    </div>
+
+                    <!-- Line 4: Animation Buttons -->
+                    <div class="info-line creature-traits" id="info-animations">
+                        <!-- Animation buttons will be populated here -->
+                    </div>
                 </div>
-            </div>
+                </div><!-- Close creature-display-wrapper -->
+            </div><!-- Close creature-view-container -->
 
             <!-- Body Type Lore Modal -->
             <div id="bodytype-modal" class="lore-modal" style="display: none;">
@@ -453,6 +750,10 @@
         // Welcome animation function - takes body type name as parameter
         async function showWelcomeAnimation(bodyTypeName) {
             console.log('🎬 Checking for welcome animation for body type:', bodyTypeName);
+
+            // Disable flip during animation
+            if (window.disableFlip) window.disableFlip();
+
             return new Promise((resolve) => {
                 const animationFileName = bodyTypeName.toLowerCase() + '.mp4';
                 const animationPath = `/animations/welcome/${animationFileName}`;
@@ -495,6 +796,10 @@
                                 setTimeout(() => {
                                     creatureModal.classList.remove('flip-in');
                                     console.log('Welcome animation sequence complete');
+
+                                    // Re-enable flip after animation
+                                    if (window.enableFlip) window.enableFlip();
+
                                     resolve();
                                 }, 800);
                             }, 800);
@@ -505,6 +810,10 @@
                         console.error('Error playing animation:', e);
                         overlay.style.display = 'none';
                         creatureModal.style.display = 'flex';
+
+                        // Re-enable flip on error
+                        if (window.enableFlip) window.enableFlip();
+
                         resolve();
                     }, { once: true });
                 };
@@ -512,6 +821,10 @@
                 testVideo.onerror = () => {
                     // No animation found, skip straight to creature
                     console.log(`✗ No animation found for "${bodyTypeName}", showing creature directly`);
+
+                    // Re-enable flip
+                    if (window.enableFlip) window.enableFlip();
+
                     resolve();
                 };
 
@@ -521,6 +834,9 @@
 
         // Load creature on page load
         window.addEventListener('load', async () => {
+            // Setup flip card functionality
+            setupFlipCard();
+
             const params = getQueryParams();
             console.log('📋 Page params:', params);
 
@@ -570,33 +886,56 @@
 
                 const data = await response.json();
 
-                // Update rarity badge
-                const rarityBadge = document.getElementById('rarity-badge');
-                if (data.rarity_tier) {
-                    rarityBadge.textContent = data.rarity_tier;
-                    rarityBadge.className = 'rarity-badge rarity-' + data.rarity_tier.toLowerCase();
-                    rarityBadge.style.display = 'block';
+                // Update creature details on the back of the flip card
+                if (data.creature_name) {
+                    document.getElementById('details-creature-name').textContent = data.creature_name;
+                    document.getElementById('creature-lore').textContent = `${data.creature_name} is a unique Chatling with an overall power level of ${data.overall_score || 'unknown'}. This remarkable being possesses a distinctive combination of social traits that define its personality and behavior in the realm of Social Streams. Born from the energy of its source content, ${data.creature_name} carries the essence of that moment forever.`;
                 }
 
-                // Update body type badge
-                const bodytypeBadge = document.getElementById('bodytype-badge');
+                // Update body type lore section
                 if (data.body_type_name) {
-                    bodytypeBadge.textContent = data.body_type_name;
-                    bodytypeBadge.style.display = 'block';
-
-                    document.getElementById('bodytype-modal-title').textContent = data.body_type_name;
-                    document.getElementById('bodytype-modal-lore').textContent = `The ${data.body_type_name} are a fascinating lineage of Chatlings known for their unique characteristics. These creatures embody specific traits that make them stand out in the world of Social Streams. Their distinctive form reflects the type of content and community energy from which they emerged.`;
+                    document.getElementById('bodytype-title').textContent = data.body_type_name;
+                    document.getElementById('bodytype-lore').textContent = `The ${data.body_type_name} are a fascinating lineage of Chatlings known for their unique characteristics. These creatures embody specific traits that make them stand out in the world of Social Streams. Their distinctive form reflects the type of content and community energy from which they emerged.`;
+                    document.getElementById('body-type-section').style.display = 'block';
 
                     // Load frame
                     await loadBodyTypeFrame(data.body_type_name);
                 }
 
-                // Update creature lore
-                if (data.creature_name) {
-                    document.getElementById('creature-lore-title').textContent = `${data.creature_name}'s`;
-                    document.getElementById('creature-lore').textContent = `${data.creature_name} is a unique Chatling with an overall power level of ${data.overall_score || 'unknown'}. This remarkable being possesses a distinctive combination of social traits that define its personality and behavior in the realm of Social Streams. Born from the energy of its source content, ${data.creature_name} carries the essence of that moment forever.`;
-                    document.getElementById('creature-lore-section').style.display = 'block';
+                // Populate info panel - Line 1: Creature Name
+                document.getElementById('info-creature-name').textContent = data.creature_name || 'Unknown Creature';
+
+                // Populate info panel - Line 2: Rarity
+                const rarityBadge = document.getElementById('info-rarity-badge');
+                if (data.rarity_tier) {
+                    rarityBadge.textContent = data.rarity_tier;
+                    rarityBadge.className = 'rarity-badge rarity-' + data.rarity_tier.toLowerCase();
+                    rarityBadge.style.display = 'inline-block';
                 }
+
+                // Populate info panel - Line 3: Traits + Overall Score
+                const traitsContainer = document.getElementById('info-traits');
+                traitsContainer.innerHTML = `
+                    <div class="trait">
+                        <span class="trait-icon">🎯</span>
+                        <span class="trait-value">${data.ability_score || 0}</span>
+                    </div>
+                    <div class="trait">
+                        <span class="trait-icon">💪</span>
+                        <span class="trait-value">${data.strength_score || 0}</span>
+                    </div>
+                    <div class="trait">
+                        <span class="trait-icon">❤️</span>
+                        <span class="trait-value">${data.affection_score || 0}</span>
+                    </div>
+                    <div class="trait">
+                        <span class="trait-icon">🎨</span>
+                        <span class="trait-value">${data.uniqueness_score || 0}</span>
+                    </div>
+                    <div class="overall-score">
+                        ⭐ ${data.overall_score || 0}
+                    </div>
+                `;
 
                 // Update image (use blob storage)
                 const img = document.getElementById('creature-image');
@@ -655,26 +994,18 @@
                     console.log('No animations available for this creature');
                 }
 
-                // Update overall score badge
-                const scoreBadge = document.getElementById('overall-score-badge');
-                if (data.overall_score !== undefined) {
-                    scoreBadge.className = 'overall-score-badge ' + getScoreClass(data.overall_score);
-                    scoreBadge.innerHTML = `<span>⭐</span><span>${data.overall_score}</span>`;
-                    scoreBadge.style.display = 'block';
-                }
-
-                // Store traits data for modal
+                // Store traits data for modal (if still needed)
                 window.currentCreatureData = {
                     name: data.creature_name,
                     traits: data.traits,
                     primaryColor: data.primary_color
                 };
 
-                // Show and update team badge
-                await updateTeamBadge(creatureId);
+                // Populate info panel - Line 4: Team Info
+                await populateTeamInfo(creatureId);
 
-                // Check for animations and update animation badge
-                await updateAnimationBadge(data.creature_name);
+                // Populate info panel - Line 5: Animation Buttons
+                await populateAnimationButtons(creatureId);
 
             } catch (error) {
                 console.error('Error loading creature:', error);
@@ -732,6 +1063,16 @@
                 if (imageContainer) {
                     imageContainer.style.marginTop = `${config.image_margin_top_px || 0}px`;
                 }
+
+                // Apply info panel background color if specified
+                const infoPanel = document.querySelector('.creature-info-panel');
+                if (infoPanel) {
+                    const bgColor = config.info_panel_bg_color || '#FFFFFF';
+                    infoPanel.style.backgroundColor = bgColor;
+                    console.log(`✓ Applied info panel color: ${bgColor} for ${bodyTypeName}`);
+                } else {
+                    console.log('⚠️ Info panel element not found');
+                }
             }
 
             // Try to load frame image (case insensitive)
@@ -768,6 +1109,164 @@
             if (score >= 41) return 'score-medium';
             if (score >= 21) return 'score-low';
             return 'score-vlow';
+        }
+
+        // Populate team info in info panel
+        async function populateTeamInfo(creatureId) {
+            const teamLine = document.getElementById('info-team-line');
+            const teamButton = document.getElementById('team-info-button');
+            const teamIcon = document.getElementById('team-icon');
+            const teamText = document.getElementById('team-text');
+
+            try {
+                const teamResponse = await fetch('/api/user/team');
+                if (!teamResponse.ok) {
+                    teamLine.style.display = 'none';
+                    return;
+                }
+
+                const teamData = await teamResponse.json();
+
+                // Check if this creature is assigned to any role
+                const assignedRole = teamData.team.find(member =>
+                    member.creature && member.creature.id === creatureId
+                );
+
+                teamLine.style.display = 'block';
+
+                if (assignedRole) {
+                    // Creature is assigned
+                    teamButton.classList.add('assigned');
+                    const roleIcons = {
+                        1: '⭐', // Architect
+                        2: '🚀', // Navigator
+                        3: '🤝', // Collaborator
+                        4: '💬', // Communicator
+                        5: '🤖'  // Automator
+                    };
+                    const roleNames = {
+                        1: 'Architect',
+                        2: 'Navigator',
+                        3: 'Collaborator',
+                        4: 'Communicator',
+                        5: 'Automator'
+                    };
+                    teamIcon.textContent = roleIcons[assignedRole.slot] || '👥';
+                    teamText.textContent = roleNames[assignedRole.slot] || 'Team Member';
+                } else {
+                    // Not assigned
+                    teamButton.classList.remove('assigned');
+                    teamIcon.textContent = '👥';
+                    teamText.textContent = 'Not Assigned';
+                }
+
+                // Make button open team modal
+                teamButton.onclick = () => openTeamModal();
+
+            } catch (error) {
+                console.error('Error loading team info:', error);
+                teamLine.style.display = 'none';
+            }
+        }
+
+        // Populate animation buttons in info panel
+        async function populateAnimationButtons(creatureId) {
+            const animationsContainer = document.getElementById('info-animations');
+
+            try {
+                const response = await fetch(`/api/animations/creature/${creatureId}`);
+                if (!response.ok) {
+                    console.log('No animations API available');
+                    return;
+                }
+
+                const data = await response.json();
+                const animations = data.animations || [];
+
+                if (animations.length === 0) {
+                    console.log('No animations found for creature');
+                    return;
+                }
+
+                // Create buttons for each animation
+                const buttons = animations.map((animPath, index) => {
+                    const fileName = animPath.split('/').pop().replace('.mp4', '');
+                    const displayName = fileName.charAt(0).toUpperCase() + fileName.slice(1);
+
+                    return `
+                        <button class="animation-button" onclick="playCreatureAnimation('${animPath}', ${index})">
+                            <span class="animation-icon">🎬</span>
+                            <span>${displayName}</span>
+                        </button>
+                    `;
+                }).join('');
+
+                animationsContainer.innerHTML = buttons;
+
+            } catch (error) {
+                console.error('Error loading animations:', error);
+            }
+        }
+
+        // Play creature animation
+        function playCreatureAnimation(animationPath, index) {
+            console.log('Playing animation:', animationPath);
+
+            const video = document.getElementById('creature-video');
+            const img = document.getElementById('creature-image');
+
+            if (!video || !img) {
+                console.error('Video or image element not found');
+                return;
+            }
+
+            // Hide image, show video
+            img.style.display = 'none';
+            video.style.display = 'block';
+            video.src = animationPath;
+            video.currentTime = 0;
+            video.play();
+
+            // When video ends, return to image
+            video.onended = () => {
+                video.style.display = 'none';
+                img.style.display = 'block';
+            };
+        }
+
+        // Setup flip card click handler
+        function setupFlipCard() {
+            const flipCardContainer = document.getElementById('flip-card-container');
+            const flipCard = document.getElementById('flip-card');
+            let isFlipping = false;
+            let isAnimationPlaying = false;
+
+            flipCardContainer.addEventListener('click', () => {
+                // Don't flip if animation is playing or already flipping
+                if (isAnimationPlaying || isFlipping) {
+                    console.log('Flip disabled:', { isAnimationPlaying, isFlipping });
+                    return;
+                }
+
+                isFlipping = true;
+                flipCard.classList.toggle('flipped');
+
+                // Re-enable flipping after transition completes
+                setTimeout(() => {
+                    isFlipping = false;
+                }, 800);
+            });
+
+            // Disable flipping during welcome animation
+            window.disableFlip = () => {
+                isAnimationPlaying = true;
+                flipCardContainer.classList.add('no-flip');
+            };
+
+            window.enableFlip = () => {
+                isAnimationPlaying = false;
+                flipCardContainer.classList.remove('no-flip');
+            };
         }
 
         // Update team badge based on whether creature is assigned
@@ -976,12 +1475,12 @@
             const teamModal = document.getElementById('team-modal');
 
             // Body type badge click
-            if (e.target === bodytypeBadge) {
+            if (bodytypeBadge && e.target === bodytypeBadge) {
                 bodytypeModal.style.display = 'flex';
             }
 
-            // Team badge click - navigate to team page
-            if (e.target === teamBadge || teamBadge.contains(e.target)) {
+            // Team badge click - navigate to team page (old badge - may not exist)
+            if (teamBadge && (e.target === teamBadge || teamBadge.contains(e.target))) {
                 if (currentCreatureId && window.currentCreatureData) {
                     const creatureName = encodeURIComponent(window.currentCreatureData.name);
                     window.location.href = `team.html?creatureId=${currentCreatureId}&creatureName=${creatureName}`;
@@ -989,7 +1488,7 @@
             }
 
             // Score badge click
-            if (e.target === scoreBadge || scoreBadge.contains(e.target)) {
+            if (scoreBadge && (e.target === scoreBadge || scoreBadge.contains(e.target))) {
                 // Show traits modal
                 const traitsContainer = document.getElementById('traits-modal-container');
                 traitsContainer.innerHTML = '';

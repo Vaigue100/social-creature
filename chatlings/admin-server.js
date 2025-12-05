@@ -1177,7 +1177,8 @@ app.get('/api/body-type-frame-config/:bodyTypeName', async (req, res) => {
         image_max_width_px,
         image_max_height_vh,
         image_min_width_px,
-        image_margin_top_px
+        image_margin_top_px,
+        info_panel_bg_color
       FROM body_type_frame_config
       WHERE body_type_name = $1
     `, [bodyTypeName]);
@@ -1191,7 +1192,8 @@ app.get('/api/body-type-frame-config/:bodyTypeName', async (req, res) => {
         image_max_width_px: 600,
         image_max_height_vh: 70,
         image_min_width_px: 250,
-        image_margin_top_px: 0
+        image_margin_top_px: 0,
+        info_panel_bg_color: '#FFFFFF'
       });
     }
 
