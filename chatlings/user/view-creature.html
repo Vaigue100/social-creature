@@ -813,8 +813,10 @@
                     const imageLoading = document.getElementById('image-loading');
                     const infoPanel = document.querySelector('.creature-info-panel');
 
-                    // Hide info panel and loading indicator
-                    if (infoPanel) infoPanel.style.display = 'none';
+                    // Keep info panel visible but make it blank (clear content)
+                    if (infoPanel) {
+                        infoPanel.style.visibility = 'hidden';
+                    }
                     if (imageLoading) imageLoading.style.display = 'none';
 
                     // Show video in the creature image position
@@ -832,9 +834,9 @@
                         if (creatureImage) creatureImage.style.display = 'block';
                         if (imageLoading) imageLoading.style.display = 'none';
 
-                        // Show the info panel
+                        // Show the info panel content
                         if (infoPanel) {
-                            infoPanel.style.display = 'block';
+                            infoPanel.style.visibility = 'visible';
                         }
 
                         // Re-enable flip after animation
@@ -848,7 +850,7 @@
                         console.error('Error playing animation:', e);
 
                         // Show info panel on error
-                        if (infoPanel) infoPanel.style.display = 'block';
+                        if (infoPanel) infoPanel.style.visibility = 'visible';
                         if (imageLoading) imageLoading.style.display = 'block';
 
                         // Re-enable flip on error
@@ -987,9 +989,15 @@
 
                 img.src = getImageUrl(data.selected_image);
 
-                // Only show image if video is not currently playing an animation
-                if (!video.src || video.src.indexOf('/animations/welcome/') === -1) {
+                // Check if welcome animation is currently playing
+                const isWelcomeAnimationPlaying = video.src && video.src.indexOf('/animations/welcome/') !== -1;
+
+                if (!isWelcomeAnimationPlaying) {
+                    // No animation playing, show image immediately
                     img.style.display = 'block';
+                    imgLoading.style.display = 'none';
+                } else {
+                    // Animation is playing, hide loading but don't show image yet
                     imgLoading.style.display = 'none';
                 }
 
