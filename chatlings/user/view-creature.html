@@ -895,6 +895,14 @@
             if (params.showWelcome) {
                 console.log('✅ showWelcome is true, fetching body type...');
 
+                // Hide loading element immediately when animation will play
+                const imageLoading = document.getElementById('image-loading');
+                if (imageLoading) imageLoading.style.display = 'none';
+
+                // Hide info panel until animation completes
+                const infoPanel = document.querySelector('.creature-info-panel');
+                if (infoPanel) infoPanel.style.visibility = 'hidden';
+
                 // Fetch creature to get body type for animation
                 try {
                     const response = await fetch(`/api/creature/${params.creatureId}/details`);
