@@ -155,7 +155,7 @@
             position: relative;
             background: white;
             border-radius: 20px;
-            padding: 15px;
+            padding: 7.5px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
             width: fit-content;
             margin: 0 auto;
@@ -422,11 +422,12 @@
         .creature-info-panel {
             background: #f5f5f5;
             border-radius: 12px;
-            padding: 16px;
+            padding: 19.2px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             width: 100%;
             box-sizing: border-box;
-            border: 5px solid #FFFFFF; /* Default white border, will be overridden by body type color */
+            border: 6px solid #FFFFFF; /* Default white border, will be overridden by body type color */
+            font-size: 1.2em;
         }
 
         .info-line {
@@ -446,19 +447,21 @@
         .info-name .creature-name {
             font-weight: bold;
             color: #333;
-            font-size: 1.2em;
+            font-size: 1.44em;
+            font-family: 'Georgia', 'Palatino', 'Times New Roman', serif;
+            letter-spacing: 0.5px;
         }
 
         /* Rarity badge styling - override creature-card-styles.css */
         .creature-info-panel .rarity-badge {
             position: static !important;
             display: inline-block !important;
-            padding: 6px 16px;
-            border-radius: 20px;
+            padding: 7.2px 19.2px;
+            border-radius: 24px;
             font-weight: bold;
-            font-size: 0.85em;
+            font-size: 1.02em;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.6px;
             bottom: auto !important;
             left: auto !important;
             transform: none !important;
@@ -497,8 +500,8 @@
         /* Creature traits - matching grid view exactly */
         .creature-traits {
             display: flex;
-            gap: 8px;
-            font-size: 0.85em;
+            gap: 9.6px;
+            font-size: 1.02em;
             color: #666;
             flex-wrap: wrap;
         }
@@ -506,11 +509,11 @@
         .trait {
             display: flex;
             align-items: center;
-            gap: 3px;
+            gap: 3.6px;
             background: rgba(102, 126, 234, 0.05);
-            padding: 6px 10px;
-            border-radius: 8px;
-            border: 1px solid rgba(102, 126, 234, 0.15);
+            padding: 7.2px 12px;
+            border-radius: 9.6px;
+            border: 1.2px solid rgba(102, 126, 234, 0.15);
             transition: all 0.2s;
         }
 
@@ -533,34 +536,34 @@
             margin-left: auto;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 6px 12px;
-            border-radius: 8px;
+            padding: 7.2px 14.4px;
+            border-radius: 9.6px;
             font-weight: bold;
         }
 
-        /* Team info button */
+        /* Team info button - smaller, compact style */
         .team-info-button {
-            width: 100%;
-            padding: 10px 16px;
-            border: 2px solid #667eea;
-            border-radius: 10px;
+            padding: 6px 12px;
+            border: 1.5px solid #667eea;
+            border-radius: 8px;
             background: rgba(102, 126, 234, 0.05);
             color: #667eea;
             font-weight: 600;
-            font-size: 0.95em;
+            font-size: 0.75em;
             cursor: pointer;
             transition: all 0.3s;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 4px;
+            white-space: nowrap;
         }
 
         .team-info-button:hover {
             background: #667eea;
             color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
         }
 
         .team-info-button.assigned {
@@ -573,27 +576,46 @@
             background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
         }
 
+        /* Line 3: Animations and Team container */
+        .info-line-3 {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .animations-left {
+            display: flex;
+            gap: 9.6px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .team-right {
+            flex-shrink: 0;
+        }
+
         /* Animation buttons - styled like traits */
         .animation-button {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 7.2px;
             background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
             color: white;
-            padding: 8px 14px;
-            border-radius: 8px;
+            padding: 9.6px 16.8px;
+            border-radius: 9.6px;
             border: none;
             cursor: pointer;
-            font-size: 0.85em;
+            font-size: 1.02em;
             font-weight: 600;
             transition: all 0.3s;
-            box-shadow: 0 2px 6px rgba(155, 89, 182, 0.3);
+            box-shadow: 0 2.4px 7.2px rgba(155, 89, 182, 0.3);
         }
 
         .animation-button:hover:not(:disabled) {
             background: linear-gradient(135deg, #8e44ad 0%, #7d3c98 100%);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(155, 89, 182, 0.5);
+            box-shadow: 0 4.8px 14.4px rgba(155, 89, 182, 0.5);
         }
 
         .animation-button:disabled {
@@ -602,7 +624,7 @@
         }
 
         .animation-button .animation-icon {
-            font-size: 1.1em;
+            font-size: 1.32em;
         }
     </style>
 </head>
@@ -673,17 +695,16 @@
                         <!-- Traits will be populated here -->
                     </div>
 
-                    <!-- Line 3: Team Info -->
-                    <div class="info-line" id="info-team-line" style="display: none;">
-                        <button class="team-info-button" id="team-info-button">
-                            <span id="team-icon">👥</span>
-                            <span id="team-text">Not Assigned</span>
-                        </button>
-                    </div>
-
-                    <!-- Line 4: Animation Buttons -->
-                    <div class="info-line creature-traits" id="info-animations">
-                        <!-- Animation buttons will be populated here -->
+                    <!-- Line 3: Animation Buttons (left) + Team Button (right) -->
+                    <div class="info-line info-line-3">
+                        <div class="animations-left" id="info-animations">
+                            <!-- Animation buttons will be populated here -->
+                        </div>
+                        <div class="team-right">
+                            <button class="team-info-button" id="team-info-button" style="display: none;">
+                                <span id="team-text">Assign</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 </div><!-- Close creature-display-wrapper -->
@@ -1125,15 +1146,13 @@
 
         // Populate team info in info panel
         async function populateTeamInfo(creatureId) {
-            const teamLine = document.getElementById('info-team-line');
             const teamButton = document.getElementById('team-info-button');
-            const teamIcon = document.getElementById('team-icon');
             const teamText = document.getElementById('team-text');
 
             try {
                 const teamResponse = await fetch('/api/user/team');
                 if (!teamResponse.ok) {
-                    teamLine.style.display = 'none';
+                    teamButton.style.display = 'none';
                     return;
                 }
 
@@ -1144,32 +1163,16 @@
                     member.creature && member.creature.id === creatureId
                 );
 
-                teamLine.style.display = 'block';
+                teamButton.style.display = 'inline-flex';
 
                 if (assignedRole) {
-                    // Creature is assigned
+                    // Creature is assigned - show "Re-Assign"
                     teamButton.classList.add('assigned');
-                    const roleIcons = {
-                        1: '⭐', // Architect
-                        2: '🚀', // Navigator
-                        3: '🤝', // Collaborator
-                        4: '💬', // Communicator
-                        5: '🤖'  // Automator
-                    };
-                    const roleNames = {
-                        1: 'Architect',
-                        2: 'Navigator',
-                        3: 'Collaborator',
-                        4: 'Communicator',
-                        5: 'Automator'
-                    };
-                    teamIcon.textContent = roleIcons[assignedRole.slot] || '👥';
-                    teamText.textContent = roleNames[assignedRole.slot] || 'Team Member';
+                    teamText.textContent = 'Re-Assign';
                 } else {
-                    // Not assigned
+                    // Not assigned - show "Assign"
                     teamButton.classList.remove('assigned');
-                    teamIcon.textContent = '👥';
-                    teamText.textContent = 'Not Assigned';
+                    teamText.textContent = 'Assign';
                 }
 
                 // Make button open team modal
@@ -1177,7 +1180,7 @@
 
             } catch (error) {
                 console.error('Error loading team info:', error);
-                teamLine.style.display = 'none';
+                teamButton.style.display = 'none';
             }
         }
 
