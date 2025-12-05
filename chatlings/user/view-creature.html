@@ -394,6 +394,8 @@
             border-radius: 15px;
             overflow-y: auto;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            border: 6px solid #FFFFFF; /* Will be set dynamically to match info panel */
+            box-sizing: border-box;
         }
 
         .creature-details-container {
@@ -410,12 +412,14 @@
             color: #9b59b6;
             margin-bottom: 10px;
             font-size: 1.1em;
+            font-family: 'Georgia', 'Palatino', 'Times New Roman', serif;
         }
 
         .detail-section p {
             color: #666;
-            line-height: 1.6;
-            font-size: 0.95em;
+            line-height: 1.8;
+            font-size: 1.15em;
+            font-family: 'Georgia', 'Palatino', 'Times New Roman', serif;
         }
 
         /* Info Panel Styles - matching grid view */
@@ -541,15 +545,14 @@
             font-weight: bold;
         }
 
-        /* Team info button - smaller, compact style */
+        /* Team info button - badge style matching rarity badge */
         .team-info-button {
-            padding: 6px 12px;
-            border: 1.5px solid #667eea;
-            border-radius: 8px;
-            background: rgba(102, 126, 234, 0.05);
-            color: #667eea;
-            font-weight: 600;
-            font-size: 0.75em;
+            padding: 7.2px 19.2px;
+            border-radius: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: bold;
+            font-size: 1.02em;
             cursor: pointer;
             transition: all 0.3s;
             display: inline-flex;
@@ -557,19 +560,19 @@
             justify-content: center;
             gap: 4px;
             white-space: nowrap;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            border: none;
         }
 
         .team-info-button:hover {
-            background: #667eea;
-            color: white;
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
         }
 
         .team-info-button.assigned {
             background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
-            border-color: #27ae60;
-            color: white;
         }
 
         .team-info-button.assigned:hover {
@@ -936,7 +939,9 @@
                 }
 
                 // Populate info panel - Line 1: Creature Name
-                document.getElementById('info-creature-name').textContent = data.creature_name || 'Unknown Creature';
+                const creatureNameEl = document.getElementById('info-creature-name');
+                creatureNameEl.textContent = data.creature_name || 'Unknown Creature';
+                creatureNameEl.title = 'Creature Name';
 
                 // Populate info panel - Line 2: Rarity
                 const rarityBadge = document.getElementById('info-rarity-badge');
@@ -944,28 +949,29 @@
                     rarityBadge.textContent = data.rarity_tier;
                     rarityBadge.className = 'rarity-badge rarity-' + data.rarity_tier.toLowerCase();
                     rarityBadge.style.display = 'inline-block';
+                    rarityBadge.title = `Rarity: ${data.rarity_tier}`;
                 }
 
                 // Populate info panel - Line 3: Traits + Overall Score
                 const traitsContainer = document.getElementById('info-traits');
                 traitsContainer.innerHTML = `
-                    <div class="trait">
+                    <div class="trait" title="Ability Score: Measures mental prowess and problem-solving capability">
                         <span class="trait-icon">🎯</span>
                         <span class="trait-value">${data.ability_score || 0}</span>
                     </div>
-                    <div class="trait">
+                    <div class="trait" title="Strength Score: Physical power and endurance level">
                         <span class="trait-icon">💪</span>
                         <span class="trait-value">${data.strength_score || 0}</span>
                     </div>
-                    <div class="trait">
+                    <div class="trait" title="Affection Score: Social bonds and emotional connections">
                         <span class="trait-icon">❤️</span>
                         <span class="trait-value">${data.affection_score || 0}</span>
                     </div>
-                    <div class="trait">
+                    <div class="trait" title="Uniqueness Score: Rare characteristics and special qualities">
                         <span class="trait-icon">🎨</span>
                         <span class="trait-value">${data.uniqueness_score || 0}</span>
                     </div>
-                    <div class="overall-score">
+                    <div class="overall-score" title="Overall Power Level: Combined score of all traits">
                         ⭐ ${data.overall_score || 0}
                     </div>
                 `;
@@ -1097,14 +1103,23 @@
                     imageContainer.style.marginTop = `${config.image_margin_top_px || 0}px`;
                 }
 
-                // Apply info panel border color if specified
+                // Apply border color to info panel and flip card back
+                const borderColor = config.info_panel_bg_color || '#FFFFFF';
+
                 const infoPanel = document.querySelector('.creature-info-panel');
                 if (infoPanel) {
-                    const borderColor = config.info_panel_bg_color || '#FFFFFF';
                     infoPanel.style.borderColor = borderColor;
                     console.log(`✓ Applied info panel border color: ${borderColor} for ${bodyTypeName}`);
                 } else {
                     console.log('⚠️ Info panel element not found');
+                }
+
+                const flipCardBack = document.querySelector('.flip-card-back');
+                if (flipCardBack) {
+                    flipCardBack.style.borderColor = borderColor;
+                    console.log(`✓ Applied flip card back border color: ${borderColor} for ${bodyTypeName}`);
+                } else {
+                    console.log('⚠️ Flip card back element not found');
                 }
             }
 
@@ -1169,10 +1184,12 @@
                     // Creature is assigned - show "Re-Assign"
                     teamButton.classList.add('assigned');
                     teamText.textContent = 'Re-Assign';
+                    teamButton.title = 'Click to change team assignment';
                 } else {
                     // Not assigned - show "Assign"
                     teamButton.classList.remove('assigned');
                     teamText.textContent = 'Assign';
+                    teamButton.title = 'Click to assign to your team';
                 }
 
                 // Make button open team modal
@@ -1209,7 +1226,7 @@
                     const displayName = fileName.charAt(0).toUpperCase() + fileName.slice(1);
 
                     return `
-                        <button class="animation-button" onclick="playCreatureAnimation('${animPath}', ${index})">
+                        <button class="animation-button" onclick="playCreatureAnimation('${animPath}', ${index})" title="Play ${displayName} animation">
                             <span class="animation-icon">🎬</span>
                             <span>${displayName}</span>
                         </button>
