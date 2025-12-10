@@ -217,11 +217,13 @@
         }
 
         function onAnimationComplete() {
-            // Hide animation
-            document.getElementById('animation-container').classList.add('hidden');
-
-            // Show creature card
-            displayCreatureCard();
+            // Navigate to view-creature page with welcome animation
+            if (claimedCreature && claimedCreature.creature) {
+                const creatureId = claimedCreature.creature.id;
+                window.location.href = `/user/view-creature.html?id=${creatureId}&showWelcome=true&from=daily-box`;
+            } else {
+                showError('No creature data available');
+            }
         }
 
         async function displayCreatureCard() {
