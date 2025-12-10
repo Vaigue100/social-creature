@@ -1086,6 +1086,16 @@
                 const currentCardOffset = currentCreatureIndex * (cardWidth + gap);
                 const translateX = offsetToCenter - currentCardOffset;
 
+                console.log('Carousel positioning:', {
+                    cardWidth,
+                    gap,
+                    containerWidth,
+                    currentCreatureIndex,
+                    offsetToCenter,
+                    currentCardOffset,
+                    translateX
+                });
+
                 track.style.transform = `translateX(${translateX}px)`;
             }
         }
