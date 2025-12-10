@@ -273,7 +273,7 @@ async function checkNotificationIndicator() {
 
         // Check regular notifications if no daily box
         if (!hasNotifications) {
-            const notifResponse = await fetch('/api/user/notifications?limit=1');
+            const notifResponse = await fetch('/api/user/notifications?limit=1&_=' + Date.now());
             if (notifResponse.ok) {
                 const data = await notifResponse.json();
                 hasNotifications = (data.notifications || []).length > 0;
@@ -465,8 +465,8 @@ async function loadRecentNotifications() {
             console.log('Could not check daily box:', err);
         }
 
-        // Load regular notifications
-        const response = await fetch('/api/user/notifications?limit=10');
+        // Load regular notifications (add timestamp to prevent caching)
+        const response = await fetch('/api/user/notifications?limit=10&_=' + Date.now());
         if (response.ok) {
             const data = await response.json();
             let notifications = data.notifications || [];
