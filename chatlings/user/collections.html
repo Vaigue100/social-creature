@@ -398,21 +398,52 @@
             border-radius: 10px;
         }
 
+        .navigation-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
         .body-type-indicator h2 {
             color: #667eea;
-            margin-bottom: 8px;
+            margin: 0;
             font-size: 1.5em;
+            min-width: 250px;
         }
 
-        .body-type-indicator .count {
-            color: #666;
-            font-size: 0.9em;
+        .nav-arrow {
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-weight: bold;
+            padding: 0;
         }
 
-        .swipe-hint {
-            font-size: 0.8em;
-            color: #999;
-            margin-top: 6px;
+        .nav-arrow:hover:not(:disabled) {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .nav-arrow:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            border-color: #ccc;
+            color: #ccc;
+        }
+
+        .nav-arrow:active:not(:disabled) {
+            transform: scale(0.95);
         }
 
         .carousel-main {
@@ -454,18 +485,58 @@
             align-items: stretch;
         }
 
+        /* Frame wrapper styling for carousel */
+        .carousel-card .creature-frame-wrapper {
+            position: relative;
+            width: fit-content;
+            margin: 0 auto;
+            background: transparent;
+            padding: 45px;
+        }
+
+        /* When frame artwork exists, reduce padding significantly */
+        .carousel-card .creature-frame-wrapper.has-frame {
+            background: transparent;
+            box-shadow: none;
+            padding: 0;
+        }
+
+        /* Frame overlay - exactly match combined image and info size */
+        .carousel-card .creature-frame-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            background-position: center;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        /* Frame content sits below the frame overlay */
+        .carousel-card .creature-frame-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: fit-content;
+        }
+
         /* Override creature-card styles for side cards */
-        .carousel-card:not(.center) .creature-frame-wrapper {
-            padding: 15px;
+        .carousel-card:not(.center) .creature-frame-wrapper.has-frame {
+            padding: 0;
         }
 
         .carousel-card:not(.center) .creature-image-container img {
             max-height: 250px;
         }
 
-        /* Scale down center card to fit container */
-        .carousel-card.center .creature-frame-wrapper {
-            padding: 30px;
+        /* Center card sizing */
+        .carousel-card.center .creature-frame-wrapper.has-frame {
+            padding: 0;
         }
 
         .carousel-card.center .creature-image-container img {
@@ -474,16 +545,18 @@
 
         .carousel-card-header {
             display: flex;
-            justify-content: space-between;
+            flex-direction: row;
             align-items: center;
-            margin-bottom: 15px;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 5px;
         }
 
         .carousel-card-name {
             font-size: 1.8em;
             font-weight: bold;
             color: #333;
-            flex: 1;
+            text-align: center;
         }
 
         .carousel-card-rarity {
@@ -498,7 +571,7 @@
 
         .carousel-card-traits {
             display: flex;
-            gap: 15px;
+            gap: 20px;
             justify-content: center;
             flex-wrap: wrap;
         }
@@ -506,8 +579,8 @@
         .carousel-trait {
             display: flex;
             align-items: center;
-            gap: 5px;
-            font-size: 1.1em;
+            gap: 7px;
+            font-size: 1.65em;
             cursor: help;
         }
 
@@ -519,6 +592,268 @@
             font-weight: 700;
             color: #667eea;
             font-size: 1em;
+        }
+
+        /* 3-way flip card system - creature ↔ traits (horizontal) or creature ↔ lore (vertical) */
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            min-height: 500px;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+
+        .flip-card-inner.flip-to-traits {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card-inner.flip-to-lore {
+            transform: rotateX(180deg);
+        }
+
+        /* Front face - normal flow, not absolute */
+        .flip-card-front {
+            position: relative;
+            width: 100%;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+
+        /* Traits face - absolutely positioned overlay, flips horizontally */
+        .flip-card-traits {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            max-height: 500px;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            overflow: hidden;
+            transform: rotateY(180deg);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0s 0.3s, visibility 0s 0.3s;
+        }
+
+        /* Show traits when flipping to traits */
+        .flip-card-inner.flip-to-traits .flip-card-traits {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0s 0.3s, visibility 0s 0.3s;
+        }
+
+        /* Lore face - absolutely positioned overlay, flips vertically */
+        .flip-card-lore {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            overflow-y: auto;
+            transform: rotateX(180deg);
+            padding: 30px;
+            box-sizing: border-box;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0s 0.3s, visibility 0s 0.3s;
+        }
+
+        /* Show lore when flipping to lore */
+        .flip-card-inner.flip-to-lore .flip-card-lore {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0s 0.3s, visibility 0s 0.3s;
+        }
+
+        .lore-display {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 25px;
+            border-radius: 10px;
+            font-family: Georgia, 'Times New Roman', serif;
+        }
+
+        .lore-display h3 {
+            color: #f4e4c1;
+            margin-bottom: 15px;
+            font-size: 1.6em;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.8);
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        .lore-display h4 {
+            color: #d4c4a1;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.8);
+            font-weight: bold;
+            font-style: italic;
+        }
+
+        .lore-display p {
+            color: #ffffff;
+            line-height: 1.8;
+            font-size: 1.05em;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+        }
+
+        /* Lore button - scroll icon only */
+        .lore-button {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: transparent;
+            color: white;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
+            font-size: 2em;
+            z-index: 150;
+            transition: all 0.2s;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+
+        .lore-button:hover {
+            transform: translateX(-50%) scale(1.1);
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+        }
+
+        /* Lore modal */
+        .lore-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lore-modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .lore-modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #999;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .lore-modal-close:hover {
+            color: #333;
+        }
+
+        .lore-modal h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .lore-modal p {
+            color: #333;
+            line-height: 1.8;
+            font-size: 1.1em;
+        }
+
+        /* Carousel lore section */
+        .carousel-card .creature-lore-section {
+            width: 100%;
+            padding: 10px 30px 20px 30px;
+            background: rgba(155, 89, 182, 0.1);
+            border-radius: 0 0 15px 15px;
+            margin-top: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .carousel-card .creature-image-container {
+            position: relative;
+            width: fit-content;
+            max-height: 500px;
+            display: flex;
+            flex-direction: column;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .carousel-card .creature-image-container img {
+            max-height: 500px;
+        }
+
+        /* Trait grid for flip side */
+        .trait-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            padding: 20px;
+            background: rgba(155, 89, 182, 0.05);
+            border-radius: 15px;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        .trait-grid-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            padding: 10px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .trait-grid-icon {
+            font-size: 1.5em;
+        }
+
+        .trait-grid-label {
+            font-size: 0.75em;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .trait-grid-value {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        /* Trait total badge */
+        .carousel-card-trait-total {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.95em;
+            color: white;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            white-space: nowrap;
         }
 
         @media (max-width: 768px) {
@@ -577,9 +912,13 @@
                 <div id="carouselView" class="carousel-view">
                     <div class="carousel-container">
                         <div class="body-type-indicator">
-                            <h2 id="carouselBodyTypeName">Loading...</h2>
-                            <div class="count" id="carouselBodyTypeCount">0 chatlings</div>
-                            <div class="swipe-hint">← Swipe left/right for creatures • ↕ Swipe up/down for body types →</div>
+                            <div class="navigation-controls">
+                                <button class="nav-arrow" id="navUpArrow" onclick="carouselPrevBodyType()" title="Previous body type">▲</button>
+                                <button class="nav-arrow" id="navLeftArrow" onclick="carouselPrev()" title="Previous creature">◀</button>
+                                <h2 id="carouselBodyTypeName">Loading...</h2>
+                                <button class="nav-arrow" id="navRightArrow" onclick="carouselNext()" title="Next creature">▶</button>
+                                <button class="nav-arrow" id="navDownArrow" onclick="carouselNextBodyType()" title="Next body type">▼</button>
+                            </div>
                         </div>
 
                         <div class="carousel-main" id="carouselMain">
@@ -590,6 +929,15 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Lore Modal -->
+    <div id="loreModal" class="lore-modal">
+        <div class="lore-modal-content">
+            <span class="lore-modal-close" onclick="closeLoreModal()">&times;</span>
+            <h3 id="loreModalName">Creature Story</h3>
+            <p id="loreModalText">Loading...</p>
         </div>
     </div>
 
@@ -996,9 +1344,9 @@
             const bodyType = carouselBodyTypes[currentBodyTypeIndex];
             currentBodyTypeCreatures = bodyType.creatures;
 
-            // Update header
-            document.getElementById('carouselBodyTypeName').textContent = bodyType.body_type_name;
-            document.getElementById('carouselBodyTypeCount').textContent = `${currentBodyTypeCreatures.length} chatling${currentBodyTypeCreatures.length !== 1 ? 's' : ''}`;
+            // Update header with name and count in brackets
+            const count = currentBodyTypeCreatures.length;
+            document.getElementById('carouselBodyTypeName').textContent = `${bodyType.body_type_name} (${count})`;
 
             // Render all creatures in track
             const track = document.getElementById('carouselTrack');
@@ -1007,6 +1355,7 @@
             ).join('');
 
             updateCarouselPosition();
+            updateNavigationButtons();
         }
 
         function renderCarouselCard(creature, index) {
@@ -1017,49 +1366,135 @@
             // Get frame artwork for body type
             const bodyType = bodyTypes.find(bt => bt.id === creature.body_type_id);
             const frameUrl = bodyType && bodyType.frame_filename
-                ? getImageUrl(bodyType.frame_filename)
+                ? getArtworkUrl(bodyType.frame_filename)
                 : '';
+            const frameWidth = bodyType?.frame_width_percent || 100;
+            const frameHeight = bodyType?.frame_height_percent || 100;
+
+            // Calculate total traits (existing 4 + placeholders for 6 more)
+            const abilityScore = creature.ability_score || 0;
+            const strengthScore = creature.strength_score || 0;
+            const affectionScore = creature.affection_score || 0;
+            const uniquenessScore = creature.uniqueness_score || 0;
+            const traitTotal = abilityScore + strengthScore + affectionScore + uniquenessScore;
+
+            // Placeholder traits (will be replaced with real data later)
+            const speed = Math.floor(Math.random() * 100);
+            const intelligence = Math.floor(Math.random() * 100);
+            const charisma = Math.floor(Math.random() * 100);
+            const creativity = Math.floor(Math.random() * 100);
+            const luck = Math.floor(Math.random() * 100);
+            const energy = Math.floor(Math.random() * 100);
 
             return `
                 <div class="carousel-card ${isCurrent ? 'center' : ''}" data-index="${index}">
                     <div class="creature-frame-wrapper ${frameUrl ? 'has-frame' : ''}">
-                        ${frameUrl ? `<div class="creature-frame-overlay" style="background-image: url('${frameUrl}');"></div>` : ''}
+                        ${frameUrl ? `<div class="creature-frame-overlay" style="background-image: url('${frameUrl}'); width: ${frameWidth}%; height: ${frameHeight}%; left: ${(100 - frameWidth) / 2}%; top: ${(100 - frameHeight) / 2}%;"></div>` : ''}
                         <div class="creature-frame-content">
-                            <div class="creature-image-container">
-                                <img src="${imagePath}"
-                                     alt="${creature.creature_name}"
-                                     style="max-height: 500px; width: auto; display: block;"
-                                     onerror="this.src='/assets/placeholder.png'">
+
+                            <!-- Flip card inner - only wraps the image area -->
+                            <div class="flip-card-inner" id="flip-inner-${creature.id}" onclick="flipCard('${creature.id}')">
+
+                                <!-- Front Face: Creature Image -->
+                                <div class="flip-card-face flip-card-front">
+                                    <div class="creature-image-container" id="carousel-creature-${creature.id}">
+                                        <button class="lore-button" onclick="event.stopPropagation(); showLore('${creature.id}')">
+                                            📜
+                                        </button>
+                                        <video class="creature-carousel-video" style="display: none; max-height: 500px; width: auto;" muted playsinline></video>
+                                        <img src="${imagePath}"
+                                             alt="${creature.creature_name}"
+                                             style="max-height: 500px; width: auto; display: block;"
+                                             onerror="this.src='/assets/placeholder.png'">
+                                    </div>
+                                </div>
+
+                                <!-- Traits Face: 2x5 Grid -->
+                                <div class="flip-card-face flip-card-traits">
+                                    <div class="trait-grid">
+                                        <div class="trait-grid-item">
+                                            <div class="trait-grid-icon">🎯</div>
+                                            <div class="trait-grid-label">Ability</div>
+                                            <div class="trait-grid-value">${abilityScore}</div>
+                                        </div>
+                                        <div class="trait-grid-item">
+                                            <div class="trait-grid-icon">💪</div>
+                                            <div class="trait-grid-label">Strength</div>
+                                            <div class="trait-grid-value">${strengthScore}</div>
+                                        </div>
+                                        <div class="trait-grid-item">
+                                            <div class="trait-grid-icon">❤️</div>
+                                            <div class="trait-grid-label">Affection</div>
+                                            <div class="trait-grid-value">${affectionScore}</div>
+                                        </div>
+                                        <div class="trait-grid-item">
+                                            <div class="trait-grid-icon">🎨</div>
+                                            <div class="trait-grid-label">Uniqueness</div>
+                                            <div class="trait-grid-value">${uniquenessScore}</div>
+                                        </div>
+                                        <div class="trait-grid-item">
+                                            <div class="trait-grid-icon">⚡</div>
+                                            <div class="trait-grid-label">Speed</div>
+                                            <div class="trait-grid-value">${speed}</div>
+                                        </div>
+                                        <div class="trait-grid-item">
+                                            <div class="trait-grid-icon">🧠</div>
+                                            <div class="trait-grid-label">Intelligence</div>
+                                            <div class="trait-grid-value">${intelligence}</div>
+                                        </div>
+                                        <div class="trait-grid-item">
+                                            <div class="trait-grid-icon">😊</div>
+                                            <div class="trait-grid-label">Charisma</div>
+                                            <div class="trait-grid-value">${charisma}</div>
+                                        </div>
+                                        <div class="trait-grid-item">
+                                            <div class="trait-grid-icon">✨</div>
+                                            <div class="trait-grid-label">Creativity</div>
+                                            <div class="trait-grid-value">${creativity}</div>
+                                        </div>
+                                        <div class="trait-grid-item">
+                                            <div class="trait-grid-icon">🍀</div>
+                                            <div class="trait-grid-label">Luck</div>
+                                            <div class="trait-grid-value">${luck}</div>
+                                        </div>
+                                        <div class="trait-grid-item">
+                                            <div class="trait-grid-icon">🔋</div>
+                                            <div class="trait-grid-label">Energy</div>
+                                            <div class="trait-grid-value">${energy}</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Lore Face: Creature Lore -->
+                                <div class="flip-card-face flip-card-lore">
+                                    <div class="lore-display">
+                                        <h3>${creature.creature_name}'s Story</h3>
+                                        <p>${creature.vibe || 'A mysterious creature with an untold story...'}</p>
+
+                                        <h4>Species: ${bodyType.body_type_name}</h4>
+                                        <p>${bodyType.species_lore || `${bodyType.body_type_name} creatures are known for their unique characteristics and adaptations. Each one has evolved distinct traits that help them thrive in their environment.`}</p>
+                                    </div>
+                                </div>
+
                             </div>
+
+                            <!-- Creature Info - Always visible, outside flip area -->
                             <div class="creature-lore-section">
                                 <div class="carousel-card-header">
                                     <div class="carousel-card-name">${creature.creature_name}</div>
                                     <div class="carousel-card-rarity ${rarityClass}">${creature.rarity_tier || 'Common'}</div>
-                                </div>
-                                <div class="carousel-card-traits">
-                                    <div class="carousel-trait" title="Ability: ${creature.ability_score || 0}">
-                                        <span class="carousel-trait-icon">🎯</span>
-                                        <span class="carousel-trait-value">${creature.ability_score || 0}</span>
-                                    </div>
-                                    <div class="carousel-trait" title="Strength: ${creature.strength_score || 0}">
-                                        <span class="carousel-trait-icon">💪</span>
-                                        <span class="carousel-trait-value">${creature.strength_score || 0}</span>
-                                    </div>
-                                    <div class="carousel-trait" title="Affection: ${creature.affection_score || 0}">
-                                        <span class="carousel-trait-icon">❤️</span>
-                                        <span class="carousel-trait-value">${creature.affection_score || 0}</span>
-                                    </div>
-                                    <div class="carousel-trait" title="Uniqueness: ${creature.uniqueness_score || 0}">
-                                        <span class="carousel-trait-icon">🎨</span>
-                                        <span class="carousel-trait-value">${creature.uniqueness_score || 0}</span>
-                                    </div>
+                                    <div class="carousel-card-trait-total">⭐ ${traitTotal}</div>
                                 </div>
                             </div>
+
                         </div>
                     </div>
                 </div>
             `;
         }
+
+        // Animation timer for carousel
+        let carouselAnimationTimer = null;
 
         function updateCarouselPosition() {
             const track = document.getElementById('carouselTrack');
@@ -1097,7 +1532,106 @@
                 });
 
                 track.style.transform = `translateX(${translateX}px)`;
+
+                // Start animation timer for the centered card
+                startCarouselAnimationTimer();
             }
+
+            // Update navigation button states
+            updateNavigationButtons();
+        }
+
+        function startCarouselAnimationTimer() {
+            // Clear any existing timer
+            if (carouselAnimationTimer) {
+                clearTimeout(carouselAnimationTimer);
+            }
+
+            // Get the current creature
+            const creature = currentBodyTypeCreatures[currentCreatureIndex];
+            if (!creature) return;
+
+            // Start 3-second timer
+            carouselAnimationTimer = setTimeout(() => {
+                playCarouselAnimation(creature.id);
+            }, 3000);
+        }
+
+        async function playCarouselAnimation(creatureId) {
+            const container = document.getElementById(`carousel-creature-${creatureId}`);
+            if (!container) return;
+
+            const video = container.querySelector('video');
+            const img = container.querySelector('img');
+
+            if (!video || !img) return;
+
+            // Check if video already has a source loaded
+            if (!video.src || video.src === window.location.href) {
+                try {
+                    // Fetch available animations for this creature
+                    const response = await fetch(`/api/creatures/${creatureId}/animations`);
+
+                    if (response.ok) {
+                        const animationsGrouped = await response.json();
+
+                        // Look for pose animations specifically
+                        let animationData = null;
+
+                        if (animationsGrouped.pose && animationsGrouped.pose.animations && animationsGrouped.pose.animations.length > 0) {
+                            // Get random pose animation
+                            const poseAnimations = animationsGrouped.pose.animations;
+                            animationData = poseAnimations[Math.floor(Math.random() * poseAnimations.length)];
+                        }
+
+                        if (animationData && animationData.file_name) {
+                            const animationUrl = getAnimationUrl(animationData.file_name);
+                            video.src = animationUrl;
+                        } else {
+                            return;
+                        }
+                    } else {
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error fetching carousel animations:', error);
+                    return;
+                }
+            }
+
+            // Play the animation
+            img.style.display = 'none';
+            video.style.display = 'block';
+            video.currentTime = 0;
+
+            try {
+                await video.play();
+            } catch (error) {
+                // Revert to image if play fails
+                video.style.display = 'none';
+                img.style.display = 'block';
+            }
+
+            // Return to static image when video ends
+            video.onended = () => {
+                video.style.display = 'none';
+                img.style.display = 'block';
+            };
+        }
+
+        function updateNavigationButtons() {
+            const navLeftArrow = document.getElementById('navLeftArrow');
+            const navRightArrow = document.getElementById('navRightArrow');
+            const navUpArrow = document.getElementById('navUpArrow');
+            const navDownArrow = document.getElementById('navDownArrow');
+
+            // Update creature navigation arrows
+            if (navLeftArrow) navLeftArrow.disabled = currentCreatureIndex === 0;
+            if (navRightArrow) navRightArrow.disabled = currentCreatureIndex >= currentBodyTypeCreatures.length - 1;
+
+            // Update body type navigation arrows
+            if (navUpArrow) navUpArrow.disabled = currentBodyTypeIndex === 0;
+            if (navDownArrow) navDownArrow.disabled = currentBodyTypeIndex >= carouselBodyTypes.length - 1;
         }
 
         function carouselNext() {
@@ -1127,6 +1661,56 @@
                 currentBodyTypeIndex--;
                 currentCreatureIndex = 0;
                 renderCarousel();
+            }
+        }
+
+        // Track flip state for each card (0=creature, 1=traits)
+        const cardFlipStates = {};
+
+        function flipCard(creatureId) {
+            const flipInner = document.getElementById(`flip-inner-${creatureId}`);
+            if (!flipInner) return;
+
+            // Initialize state if needed (0=creature, 1=traits, 2=lore)
+            if (!cardFlipStates[creatureId]) {
+                cardFlipStates[creatureId] = 0;
+            }
+
+            // Toggle between creature and traits
+            if (cardFlipStates[creatureId] === 0) {
+                // Go to traits
+                cardFlipStates[creatureId] = 1;
+                flipInner.classList.remove('flip-to-lore');
+                flipInner.classList.add('flip-to-traits');
+            } else {
+                // Go back to creature
+                cardFlipStates[creatureId] = 0;
+                flipInner.classList.remove('flip-to-traits');
+                flipInner.classList.remove('flip-to-lore');
+            }
+        }
+
+        // Flip to lore
+        function showLore(creatureId) {
+            const flipInner = document.getElementById(`flip-inner-${creatureId}`);
+            if (!flipInner) return;
+
+            // Initialize state if needed
+            if (!cardFlipStates[creatureId]) {
+                cardFlipStates[creatureId] = 0;
+            }
+
+            // Toggle between creature and lore
+            if (cardFlipStates[creatureId] === 0) {
+                // Go to lore
+                cardFlipStates[creatureId] = 2;
+                flipInner.classList.remove('flip-to-traits');
+                flipInner.classList.add('flip-to-lore');
+            } else {
+                // Go back to creature
+                cardFlipStates[creatureId] = 0;
+                flipInner.classList.remove('flip-to-traits');
+                flipInner.classList.remove('flip-to-lore');
             }
         }
 
@@ -1216,4 +1800,4 @@
     </script>
 </body>
 </html>
-<!-- Updated: 10 Dec 2025 03:45:13 -->
+<!-- Updated: 14 Dec 2025 - Fixed trait overflow, hide front on lore view, max height 500px -->
