@@ -513,8 +513,18 @@ app.get('/api/dimensions', async (req, res) => {
   try {
     await client.connect();
 
-    // Get all dimension tables
-    const bodyTypes = await client.query('SELECT id, body_type_name FROM dim_body_type ORDER BY id');
+    // Get all dimension tables with frame config
+    const bodyTypes = await client.query(`
+      SELECT
+        bt.id,
+        bt.body_type_name,
+        bt.frame_filename,
+        fc.frame_width_percent,
+        fc.frame_height_percent
+      FROM dim_body_type bt
+      LEFT JOIN body_type_frame_config fc ON bt.body_type_name = fc.body_type_name
+      ORDER BY bt.id
+    `);
     const activities = await client.query('SELECT id, activity_name FROM dim_social_activity ORDER BY id');
     const moods = await client.query('SELECT id, mood_name FROM dim_social_mood ORDER BY id');
     const colorSchemes = await client.query('SELECT id, scheme_name FROM dim_color_scheme ORDER BY id');

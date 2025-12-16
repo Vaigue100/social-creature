@@ -16,12 +16,16 @@ ADD COLUMN IF NOT EXISTS last_daily_visit TIMESTAMP DEFAULT NULL;
 -- 'new_discovery' - New chatling discovered from liked video
 -- 'achievement_unlocked' - Achievement earned
 -- 'chatling_evolved' - Chatling evolved or changed
+-- 'new_conversation' - New conversation started
+-- 'reward_claimed' - Reward claimed
+-- 'youtube_reminder' - YouTube reminder
+-- 'daily_chatling' - Daily chatling notification (legacy, same as daily_visit)
 ALTER TABLE notifications
 DROP CONSTRAINT IF EXISTS check_notification_type;
 
 ALTER TABLE notifications
 ADD CONSTRAINT check_notification_type
-CHECK (notification_type IN ('daily_visit', 'new_discovery', 'achievement_unlocked', 'chatling_evolved'));
+CHECK (notification_type IN ('daily_visit', 'new_discovery', 'achievement_unlocked', 'chatling_evolved', 'new_conversation', 'reward_claimed', 'youtube_reminder', 'daily_chatling'));
 
 -- Create table to track which chatling represents each YouTube channel
 -- When a user likes a video, they might encounter the creator's chatling

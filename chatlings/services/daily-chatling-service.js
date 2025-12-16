@@ -56,7 +56,7 @@ class DailyChatlingService {
           : `${visit.chatling_name} came to visit you again!`;
 
         await client.query(`
-          INSERT INTO notifications (user_id, type, message, related_creature_id, is_read, created_at)
+          INSERT INTO notifications (user_id, notification_type, message, related_creature_id, is_read, created_at)
           VALUES ($1, 'daily_chatling', $2, $3, false, NOW())
         `, [userId, notificationMessage, visit.chatling_id]);
 
