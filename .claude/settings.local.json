@@ -115,7 +115,16 @@
       "Bash(npx web-push:*)",
       "Bash(powershell -ExecutionPolicy Bypass -File create-placeholder.ps1)",
       "Bash(copy:*)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(grep:*)",
+      "Bash(del \"C:\\Users\\Barney\\Social Creature\\chatlings\\admin\\family-browser.html\")",
+      "Bash(cmd /c move:*)",
+      "Bash(cmd /c del \"C:\\Users\\Barney\\Social Creature\\chatlings\\admin\\family-browser.html\")",
+      "Bash(ren:*)",
+      "Bash(ping:*)",
+      "Bash(ls:*)",
+      "Bash(timeout 5 node:*)",
+      "Bash(cmd /c taskkill /F /PID 9664)"
     ],
     "deny": [],
     "ask": []
