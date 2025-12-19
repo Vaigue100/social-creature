@@ -520,7 +520,8 @@ app.get('/api/dimensions', async (req, res) => {
         bt.body_type_name,
         bt.frame_filename,
         fc.frame_width_percent,
-        fc.frame_height_percent
+        fc.frame_height_percent,
+        fc.lore_font
       FROM dim_body_type bt
       LEFT JOIN body_type_frame_config fc ON bt.body_type_name = fc.body_type_name
       ORDER BY bt.id
@@ -554,9 +555,20 @@ app.get('/api/dimensions', async (req, res) => {
 // Get all creatures (for admin dropdowns, etc.)
 app.get('/api/creatures', async (req, res) => {
   const client = new Client(config);
+  const { include_deleted } = req.query;
 
   try {
     await client.connect();
+
+    // Build WHERE clause based on query params
+    const conditions = ['c.is_active = true'];
+
+    // By default, exclude deleted creatures unless explicitly requested
+    if (include_deleted !== 'true') {
+      conditions.push('c.is_deleted = false');
+    }
+
+    const whereClause = conditions.join(' AND ');
 
     const result = await client.query(`
       SELECT
@@ -565,11 +577,13 @@ app.get('/api/creatures', async (req, res) => {
         c.rarity_tier,
         c.selected_image,
         c.is_active,
+        c.is_deleted,
+        c.deleted_at,
         cp.body_type_id
       FROM creatures c
       LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
-      WHERE c.is_active = true
-      ORDER BY c.creature_name ASC
+      WHERE ${whereClause}
+      ORDER BY c.is_deleted ASC, c.creature_name ASC
     `);
 
     res.json(result.rows);
@@ -682,6 +696,380 @@ app.put('/api/creatures/:id/rarity', async (req, res) => {
   }
 });
 
+/**
+ * Get count of users affected by creature deletion
+ */
+app.get('/api/creatures/:id/affected-users', async (req, res) => {
+  const { id } = req.params;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Count users with creature in collection
+    const collectionResult = await client.query(`
+      SELECT COUNT(DISTINCT user_id) as count
+      FROM user_rewards
+      WHERE creature_id = $1
+    `, [id]);
+
+    // Count users with creature in team (stored in users table columns)
+    const teamResult = await client.query(`
+      SELECT COUNT(*) as count
+      FROM users
+      WHERE current_creature_id = $1
+         OR team_member_2_id = $1
+         OR team_member_3_id = $1
+         OR team_member_4_id = $1
+         OR team_member_5_id = $1
+    `, [id]);
+
+    // Get creature info
+    const creatureResult = await client.query(`
+      SELECT creature_name
+      FROM creatures
+      WHERE id = $1
+    `, [id]);
+
+    res.json({
+      creatureName: creatureResult.rows[0]?.creature_name || 'Unknown',
+      inCollections: parseInt(collectionResult.rows[0].count),
+      inTeams: parseInt(teamResult.rows[0].count),
+      totalAffected: parseInt(collectionResult.rows[0].count) + parseInt(teamResult.rows[0].count)
+    });
+
+  } catch (error) {
+    console.error('Error getting affected users:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Soft delete creature and notify affected users
+ */
+app.delete('/api/creatures/:id', async (req, res) => {
+  const { id } = req.params;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+    await client.query('BEGIN');
+
+    // Get creature info before deletion
+    const creatureResult = await client.query(`
+      SELECT creature_name, rarity_tier
+      FROM creatures
+      WHERE id = $1 AND is_deleted = false
+    `, [id]);
+
+    if (creatureResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Creature not found or already deleted' });
+    }
+
+    const creature = creatureResult.rows[0];
+
+    // Get all affected users (from collections and teams)
+    const affectedUsersResult = await client.query(`
+      SELECT DISTINCT user_id
+      FROM (
+        SELECT user_id FROM user_rewards WHERE creature_id = $1
+        UNION
+        SELECT id as user_id FROM users
+        WHERE current_creature_id = $1
+           OR team_member_2_id = $1
+           OR team_member_3_id = $1
+           OR team_member_4_id = $1
+           OR team_member_5_id = $1
+      ) AS affected
+    `, [id]);
+
+    const affectedUsers = affectedUsersResult.rows.map(row => row.user_id);
+
+    // Soft delete the creature
+    await client.query(`
+      UPDATE creatures
+      SET is_deleted = true, deleted_at = NOW()
+      WHERE id = $1
+    `, [id]);
+
+    // Remove from all user teams (nullify in users table)
+    await client.query(`
+      UPDATE users
+      SET
+        current_creature_id = CASE WHEN current_creature_id = $1 THEN NULL ELSE current_creature_id END,
+        team_member_2_id = CASE WHEN team_member_2_id = $1 THEN NULL ELSE team_member_2_id END,
+        team_member_3_id = CASE WHEN team_member_3_id = $1 THEN NULL ELSE team_member_3_id END,
+        team_member_4_id = CASE WHEN team_member_4_id = $1 THEN NULL ELSE team_member_4_id END,
+        team_member_5_id = CASE WHEN team_member_5_id = $1 THEN NULL ELSE team_member_5_id END
+      WHERE current_creature_id = $1
+         OR team_member_2_id = $1
+         OR team_member_3_id = $1
+         OR team_member_4_id = $1
+         OR team_member_5_id = $1
+    `, [id]);
+
+    // Remove from all user collections (delete from user_rewards)
+    await client.query(`
+      DELETE FROM user_rewards
+      WHERE creature_id = $1
+    `, [id]);
+
+    // Create notifications for all affected users
+    const notificationMessage = `${creature.creature_name} has left the game to spend more time with their family. They'll be missed! 💚`;
+
+    for (const userId of affectedUsers) {
+      // Insert notification
+      await client.query(`
+        INSERT INTO notifications (user_id, notification_type, title, message, is_read, created_at)
+        VALUES ($1, 'chatling_departed', $2, $3, false, NOW())
+      `, [userId, 'Chatling Departure', notificationMessage]);
+
+      // Try to send push notification (non-blocking)
+      try {
+        await sendPushNotification(userId, 'chatling_runaway', {
+          title: 'Chatling Departure',
+          body: notificationMessage,
+          icon: '/assets/logo.png',
+          badge: '/assets/logo.png'
+        });
+      } catch (pushError) {
+        console.error(`Failed to send push notification to user ${userId}:`, pushError);
+        // Continue even if push fails
+      }
+    }
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      creatureName: creature.creature_name,
+      affectedUsers: affectedUsers.length
+    });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error soft deleting creature:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      detail: error.detail
+    });
+    res.status(500).json({
+      error: error.message,
+      detail: error.detail || 'Check server logs for details'
+    });
+  } finally {
+    await client.end();
+  }
+});
+
+// Get traits for a creature
+app.get('/api/creature/:id/traits', async (req, res) => {
+  const { id } = req.params;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT cst.score, stc.category_name as trait_name, stc.icon, stc.description
+      FROM creature_social_traits cst
+      JOIN dim_social_trait_category stc ON cst.trait_category_id = stc.id
+      WHERE cst.creature_id = $1
+      ORDER BY stc.id
+    `, [id]);
+
+    // Return traits in expected format (even if empty array)
+    res.json({ traits: result.rows });
+
+  } catch (error) {
+    console.error('Error getting traits:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+// Get user count for a creature (collections + teams)
+app.get('/api/creatures/:id/user-count', async (req, res) => {
+  const { id } = req.params;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Count users with creature in collection
+    const collectionResult = await client.query(`
+      SELECT COUNT(DISTINCT user_id) as count
+      FROM user_rewards
+      WHERE creature_id = $1
+    `, [id]);
+
+    // Count users with creature in team
+    const teamResult = await client.query(`
+      SELECT COUNT(*) as count
+      FROM users
+      WHERE current_creature_id = $1
+         OR team_member_2_id = $1
+         OR team_member_3_id = $1
+         OR team_member_4_id = $1
+         OR team_member_5_id = $1
+    `, [id]);
+
+    const totalUsers = parseInt(collectionResult.rows[0].count) + parseInt(teamResult.rows[0].count);
+
+    res.json({
+      totalUsers,
+      inCollections: parseInt(collectionResult.rows[0].count),
+      inTeams: parseInt(teamResult.rows[0].count)
+    });
+
+  } catch (error) {
+    console.error('Error getting user count:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+// Re-roll traits for a creature based on body type and rarity
+app.post('/api/creatures/:id/reroll-traits', async (req, res) => {
+  const { id } = req.params;
+  const client = new Client(config);
+  const traitGenerator = require('./scripts/trait-generator');
+
+  try {
+    await client.connect();
+
+    // Get creature info
+    const creatureResult = await client.query(`
+      SELECT c.id, c.creature_name, c.rarity_tier, cp.body_type_id, bt.body_type_name
+      FROM creatures c
+      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
+      LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+      WHERE c.id = $1
+    `, [id]);
+
+    if (creatureResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Creature not found' });
+    }
+
+    const creature = creatureResult.rows[0];
+    const bodyTypeName = creature.body_type_name || 'Cute';
+    const rarityTier = creature.rarity_tier || 'Common';
+
+    // Generate new traits
+    const traits = traitGenerator.generateTraits(bodyTypeName, rarityTier);
+
+    // Save to database
+    await traitGenerator.saveTraits(client, id, traits);
+
+    // Get the updated traits with category info
+    const updatedTraits = await client.query(`
+      SELECT cst.score, stc.category_name, stc.icon, stc.description
+      FROM creature_social_traits cst
+      JOIN dim_social_trait_category stc ON cst.trait_category_id = stc.id
+      WHERE cst.creature_id = $1
+      ORDER BY stc.id
+    `, [id]);
+
+    res.json({
+      success: true,
+      creatureName: creature.creature_name,
+      bodyType: bodyTypeName,
+      rarity: rarityTier,
+      traits: updatedTraits.rows
+    });
+
+  } catch (error) {
+    console.error('Error re-rolling traits:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+// Change creature rarity and re-roll traits
+app.patch('/api/creatures/:id/rarity', async (req, res) => {
+  const { id } = req.params;
+  const { rarity } = req.body;
+  const client = new Client(config);
+  const traitGenerator = require('./scripts/trait-generator');
+
+  const validRarities = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic'];
+  if (!validRarities.includes(rarity)) {
+    return res.status(400).json({
+      error: 'Invalid rarity',
+      validRarities
+    });
+  }
+
+  try {
+    await client.connect();
+    await client.query('BEGIN');
+
+    // Update rarity
+    const updateResult = await client.query(`
+      UPDATE creatures
+      SET rarity_tier = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING id, creature_name, rarity_tier
+    `, [rarity, id]);
+
+    if (updateResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Creature not found' });
+    }
+
+    // Get body type for trait generation
+    const creatureResult = await client.query(`
+      SELECT c.id, c.creature_name, c.rarity_tier, cp.body_type_id, bt.body_type_name
+      FROM creatures c
+      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
+      LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+      WHERE c.id = $1
+    `, [id]);
+
+    const creature = creatureResult.rows[0];
+    const bodyTypeName = creature.body_type_name || 'Cute';
+
+    // Generate and save new traits
+    const traits = traitGenerator.generateTraits(bodyTypeName, rarity);
+    await traitGenerator.saveTraits(client, id, traits);
+
+    // Get the updated traits with category info
+    const updatedTraits = await client.query(`
+      SELECT cst.score, stc.category_name, stc.icon, stc.description
+      FROM creature_social_traits cst
+      JOIN dim_social_trait_category stc ON cst.trait_category_id = stc.id
+      WHERE cst.creature_id = $1
+      ORDER BY stc.id
+    `, [id]);
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      creatureName: creature.creature_name,
+      previousRarity: creature.rarity_tier,
+      newRarity: rarity,
+      bodyType: bodyTypeName,
+      traits: updatedTraits.rows
+    });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error changing rarity:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
 app.get('/api/creatures-by-dimensions', async (req, res) => {
   const client = new Client(config);
   const { body_type_id, activity_id, mood_id, color_scheme_id, quirk_id, size_id, show_inactive } = req.query;
@@ -698,6 +1086,9 @@ app.get('/api/creatures-by-dimensions', async (req, res) => {
     if (show_inactive !== 'true') {
       filters.push('c.is_active = true');
     }
+
+    // Always exclude soft-deleted creatures for user-facing queries
+    filters.push('c.is_deleted = false');
 
     if (body_type_id) {
       filters.push(`cp.body_type_id = $${paramIndex++}`);
@@ -886,7 +1277,7 @@ app.get('/api/user/stats', async (req, res) => {
         COUNT(*) as count
       FROM user_rewards ur
       JOIN creatures c ON ur.creature_id = c.id
-      WHERE ur.user_id = $1
+      WHERE ur.user_id = $1 AND c.is_deleted = false
       GROUP BY c.rarity_tier
       ORDER BY
         CASE c.rarity_tier
@@ -904,7 +1295,7 @@ app.get('/api/user/stats', async (req, res) => {
         c.rarity_tier,
         COUNT(*) as total
       FROM creatures c
-      WHERE c.selected_image IS NOT NULL
+      WHERE c.selected_image IS NOT NULL AND c.is_deleted = false
       GROUP BY c.rarity_tier
       ORDER BY
         CASE c.rarity_tier
@@ -945,6 +1336,118 @@ app.get('/api/user/stats', async (req, res) => {
 });
 
 /**
+ * Get Rizz & Glow stats for a specific user's creature
+ */
+app.get('/api/user/:userId/creature/:creatureId/stats', async (req, res) => {
+  const { userId, creatureId } = req.params;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT rizz, glow, found_count
+      FROM user_rewards
+      WHERE user_id = $1 AND creature_id = $2
+    `, [userId, creatureId]);
+
+    if (result.rows.length === 0) {
+      return res.json({ rizz: 0, glow: 0, found_count: 0 });
+    }
+
+    res.json(result.rows[0]);
+
+  } catch (error) {
+    console.error('Error fetching creature stats:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Manually adjust Glow for a user's creature (Admin only)
+ */
+app.patch('/api/user/:userId/creature/:creatureId/glow', requireAdmin(config), async (req, res) => {
+  const { userId, creatureId } = req.params;
+  const { glow } = req.body;
+  const client = new Client(config);
+
+  // Validate range
+  if (typeof glow !== 'number' || glow < -10 || glow > 10) {
+    return res.status(400).json({ error: 'Glow must be a number between -10 and +10' });
+  }
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      UPDATE user_rewards
+      SET glow = $1
+      WHERE user_id = $2 AND creature_id = $3
+      RETURNING rizz, glow, found_count
+    `, [glow, userId, creatureId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User does not own this creature' });
+    }
+
+    res.json(result.rows[0]);
+
+  } catch (error) {
+    console.error('Error updating glow:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Get aggregate Rizz & Glow stats for a user's collection
+ */
+app.get('/api/user/:userId/stats/aggregate', async (req, res) => {
+  const { userId } = req.params;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT
+        COUNT(*) as total_creatures,
+        SUM(found_count) as total_finds,
+        AVG(rizz) as avg_rizz,
+        MAX(rizz) as max_rizz,
+        MIN(rizz) as min_rizz,
+        AVG(glow) as avg_glow,
+        MAX(glow) as max_glow,
+        MIN(glow) as min_glow
+      FROM user_rewards
+      WHERE user_id = $1
+    `, [userId]);
+
+    // Convert to numbers and handle nulls
+    const stats = result.rows[0];
+    res.json({
+      total_creatures: parseInt(stats.total_creatures) || 0,
+      total_finds: parseInt(stats.total_finds) || 0,
+      avg_rizz: parseFloat(stats.avg_rizz) || 0,
+      max_rizz: parseInt(stats.max_rizz) || 0,
+      min_rizz: parseInt(stats.min_rizz) || 0,
+      avg_glow: parseFloat(stats.avg_glow) || 0,
+      max_glow: parseInt(stats.max_glow) || 0,
+      min_glow: parseInt(stats.min_glow) || 0
+    });
+
+  } catch (error) {
+    console.error('Error fetching aggregate stats:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
  * Get user's chatling collection (rewards claimed)
  */
 app.get('/api/user/collection', async (req, res) => {
@@ -975,6 +1478,7 @@ app.get('/api/user/collection', async (req, res) => {
       LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
       WHERE ur.user_id = $1
         AND c.is_active = true
+        AND c.is_deleted = false
       ORDER BY ur.claimed_at DESC
     `, [req.session.userId]);
 
@@ -1017,7 +1521,10 @@ app.get('/api/user/collection', async (req, res) => {
       };
     }));
 
-    res.json({ creatures: creaturesWithScores });
+    res.json({
+      creatures: creaturesWithScores,
+      userId: req.session.userId
+    });
 
   } catch (error) {
     console.error('Error fetching collection:', error);
@@ -2317,7 +2824,7 @@ app.get('/api/user/team', async (req, res) => {
           FROM creatures c
           LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
           LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
-          WHERE c.id = $1
+          WHERE c.id = $1 AND c.is_deleted = false
         `, [creatureId]);
 
         if (creatureResult.rows.length > 0) {
@@ -2619,6 +3126,8 @@ app.get('/api/user/friendships', async (req, res) => {
       JOIN creatures c1 ON cf.chatling_1_id = c1.id
       JOIN creatures c2 ON cf.chatling_2_id = c2.id
       WHERE cf.user_id = $1
+        AND c1.is_deleted = false
+        AND c2.is_deleted = false
       ORDER BY cf.interaction_date DESC
       LIMIT 50
     `, [req.session.userId]);
@@ -2627,40 +3136,6 @@ app.get('/api/user/friendships', async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching friendships:', error);
-    res.status(500).json({ error: error.message });
-  } finally {
-    await client.end();
-  }
-});
-
-/**
- * Get creature's social trait scores
- */
-app.get('/api/creature/:creatureId/traits', async (req, res) => {
-  const { creatureId } = req.params;
-
-  const client = new Client(config);
-
-  try {
-    await client.connect();
-
-    const result = await client.query(`
-      SELECT
-        cst.score,
-        dstc.id as category_id,
-        dstc.category_name,
-        dstc.description,
-        dstc.icon
-      FROM creature_social_traits cst
-      JOIN dim_social_trait_category dstc ON cst.trait_category_id = dstc.id
-      WHERE cst.creature_id = $1
-      ORDER BY dstc.id
-    `, [creatureId]);
-
-    res.json(result.rows);
-
-  } catch (error) {
-    console.error('Error fetching creature traits:', error);
     res.status(500).json({ error: error.message });
   } finally {
     await client.end();
@@ -2689,7 +3164,7 @@ app.get('/api/random-creature-with-traits', async (req, res) => {
       FROM creatures c
       LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
       LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
-      WHERE c.selected_image IS NOT NULL
+      WHERE c.selected_image IS NOT NULL AND c.is_deleted = false
       ORDER BY RANDOM()
       LIMIT 1
     `);
@@ -2776,7 +3251,7 @@ app.get('/api/creature/:creatureId/details', async (req, res) => {
       FROM creatures c
       LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
       LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
-      WHERE c.id = $1
+      WHERE c.id = $1 AND c.is_deleted = false
     `, [creatureId]);
 
     if (creature.rows.length === 0) {
@@ -3420,7 +3895,7 @@ app.get('/api/chat/moods', async (req, res) => {
         ur.unhappy_count
       FROM user_rewards ur
       JOIN creatures c ON ur.creature_id = c.id
-      WHERE ur.user_id = $1
+      WHERE ur.user_id = $1 AND c.is_deleted = false
       ORDER BY c.creature_name
     `, [userId]);
 
@@ -3601,6 +4076,267 @@ app.post('/api/admin/youtube-topics', async (req, res) => {
   } catch (error) {
     console.error('Error adding YouTube topic:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// Trait Analytics API
+// ============================================================================
+
+/**
+ * GET trait analytics overview
+ * Returns average trait scores grouped by body type and rarity
+ */
+app.get('/api/admin/analytics/traits/overview', async (req, res) => {
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Get average trait scores by body type and rarity
+    const byBodyTypeAndRarity = await client.query(`
+      WITH creature_scores AS (
+        SELECT
+          c.id,
+          cp.body_type_id,
+          c.rarity_tier,
+          bt.body_type_name,
+          COALESCE(SUM(cst.score), 0) as total_score,
+          COUNT(cst.creature_id) as trait_count
+        FROM creatures c
+        LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
+        LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+        LEFT JOIN creature_social_traits cst ON c.id = cst.creature_id
+        WHERE c.deleted_at IS NULL
+        GROUP BY c.id, cp.body_type_id, c.rarity_tier, bt.body_type_name
+      )
+      SELECT
+        body_type_id,
+        body_type_name,
+        rarity_tier,
+        COUNT(*) as creature_count,
+        ROUND(AVG(total_score)::numeric, 2) as avg_total_score,
+        ROUND(MIN(total_score)::numeric, 2) as min_total_score,
+        ROUND(MAX(total_score)::numeric, 2) as max_total_score
+      FROM creature_scores
+      WHERE body_type_name IS NOT NULL
+      GROUP BY body_type_id, body_type_name, rarity_tier
+      ORDER BY body_type_name,
+        CASE rarity_tier
+          WHEN 'Legendary' THEN 1
+          WHEN 'Ultra Rare' THEN 2
+          WHEN 'Rare' THEN 3
+          WHEN 'Uncommon' THEN 4
+          WHEN 'Common' THEN 5
+          ELSE 6
+        END
+    `);
+
+    // Get average trait scores by rarity (across all body types)
+    const byRarity = await client.query(`
+      WITH creature_scores AS (
+        SELECT
+          c.id,
+          c.rarity_tier,
+          COALESCE(SUM(cst.score), 0) as total_score
+        FROM creatures c
+        LEFT JOIN creature_social_traits cst ON c.id = cst.creature_id
+        WHERE c.deleted_at IS NULL
+        GROUP BY c.id, c.rarity_tier
+      )
+      SELECT
+        rarity_tier,
+        COUNT(*) as creature_count,
+        ROUND(AVG(total_score)::numeric, 2) as avg_total_score,
+        ROUND(MIN(total_score)::numeric, 2) as min_total_score,
+        ROUND(MAX(total_score)::numeric, 2) as max_total_score
+      FROM creature_scores
+      GROUP BY rarity_tier
+      ORDER BY
+        CASE rarity_tier
+          WHEN 'Legendary' THEN 1
+          WHEN 'Ultra Rare' THEN 2
+          WHEN 'Rare' THEN 3
+          WHEN 'Uncommon' THEN 4
+          WHEN 'Common' THEN 5
+          ELSE 6
+        END
+    `);
+
+    // Get average by body type (across all rarities)
+    const byBodyType = await client.query(`
+      WITH creature_scores AS (
+        SELECT
+          c.id,
+          cp.body_type_id,
+          bt.body_type_name,
+          COALESCE(SUM(cst.score), 0) as total_score
+        FROM creatures c
+        LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
+        LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+        LEFT JOIN creature_social_traits cst ON c.id = cst.creature_id
+        WHERE c.deleted_at IS NULL
+        GROUP BY c.id, cp.body_type_id, bt.body_type_name
+      )
+      SELECT
+        body_type_id,
+        body_type_name,
+        COUNT(*) as creature_count,
+        ROUND(AVG(total_score)::numeric, 2) as avg_total_score,
+        ROUND(MIN(total_score)::numeric, 2) as min_total_score,
+        ROUND(MAX(total_score)::numeric, 2) as max_total_score
+      FROM creature_scores
+      WHERE body_type_name IS NOT NULL
+      GROUP BY body_type_id, body_type_name
+      ORDER BY body_type_name
+    `);
+
+    // Get average scores for each individual trait by body type and rarity
+    const byTraitBodyTypeAndRarity = await client.query(`
+      SELECT
+        stc.id as trait_id,
+        stc.category_name as trait_name,
+        stc.icon as trait_icon,
+        cp.body_type_id,
+        bt.body_type_name,
+        c.rarity_tier,
+        COUNT(DISTINCT c.id) as creature_count,
+        ROUND(AVG(cst.score)::numeric, 2) as avg_score,
+        ROUND(MIN(cst.score)::numeric, 2) as min_score,
+        ROUND(MAX(cst.score)::numeric, 2) as max_score
+      FROM dim_social_trait_category stc
+      CROSS JOIN LATERAL (
+        SELECT DISTINCT cp.body_type_id, bt.body_type_name, c.rarity_tier
+        FROM creatures c
+        LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
+        LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+        WHERE c.deleted_at IS NULL AND bt.body_type_name IS NOT NULL
+      ) AS body_rarity_combos
+      LEFT JOIN dim_body_type bt ON body_rarity_combos.body_type_id = bt.id
+      LEFT JOIN creature_prompts cp ON cp.body_type_id = body_rarity_combos.body_type_id
+      LEFT JOIN creatures c ON c.prompt_id = cp.id
+        AND c.rarity_tier = body_rarity_combos.rarity_tier
+        AND c.deleted_at IS NULL
+      LEFT JOIN creature_social_traits cst ON c.id = cst.creature_id
+        AND cst.trait_category_id = stc.id
+      GROUP BY stc.id, stc.category_name, stc.icon, cp.body_type_id, bt.body_type_name, c.rarity_tier
+      HAVING COUNT(DISTINCT c.id) > 0
+      ORDER BY stc.id, bt.body_type_name,
+        CASE c.rarity_tier
+          WHEN 'Legendary' THEN 1
+          WHEN 'Ultra Rare' THEN 2
+          WHEN 'Rare' THEN 3
+          WHEN 'Uncommon' THEN 4
+          WHEN 'Common' THEN 5
+          ELSE 6
+        END
+    `);
+
+    res.json({
+      byBodyTypeAndRarity: byBodyTypeAndRarity.rows,
+      byRarity: byRarity.rows,
+      byBodyType: byBodyType.rows,
+      byTraitBodyTypeAndRarity: byTraitBodyTypeAndRarity.rows
+    });
+
+  } catch (error) {
+    console.error('Error fetching trait analytics overview:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * GET trait analytics for specific body type
+ * Returns individual creature trait scores for a body type, grouped by rarity
+ */
+app.get('/api/admin/analytics/traits/body-type/:id', async (req, res) => {
+  const bodyTypeId = req.params.id;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Get body type info
+    const bodyTypeResult = await client.query(
+      'SELECT * FROM dim_body_type WHERE id = $1',
+      [bodyTypeId]
+    );
+
+    if (bodyTypeResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Body type not found' });
+    }
+
+    const bodyType = bodyTypeResult.rows[0];
+
+    // Get all creatures with their trait scores
+    const creatures = await client.query(`
+      SELECT
+        c.id,
+        c.creature_name,
+        c.rarity_tier,
+        COALESCE(SUM(cst.score), 0) as total_score,
+        json_agg(
+          json_build_object(
+            'trait_id', cst.trait_category_id,
+            'trait_name', stc.category_name,
+            'score', cst.score,
+            'icon', stc.icon
+          ) ORDER BY stc.category_name
+        ) FILTER (WHERE cst.creature_id IS NOT NULL) as traits
+      FROM creatures c
+      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
+      LEFT JOIN creature_social_traits cst ON c.id = cst.creature_id
+      LEFT JOIN dim_social_trait_category stc ON cst.trait_category_id = stc.id
+      WHERE cp.body_type_id = $1 AND c.deleted_at IS NULL
+      GROUP BY c.id, c.creature_name, c.rarity_tier
+      ORDER BY c.rarity_tier, total_score DESC
+    `, [bodyTypeId]);
+
+    // Get statistics by rarity
+    const statsByRarity = await client.query(`
+      WITH creature_scores AS (
+        SELECT
+          c.id,
+          c.rarity_tier,
+          COALESCE(SUM(cst.score), 0) as total_score
+        FROM creatures c
+        LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
+        LEFT JOIN creature_social_traits cst ON c.id = cst.creature_id
+        WHERE cp.body_type_id = $1 AND c.deleted_at IS NULL
+        GROUP BY c.id, c.rarity_tier
+      )
+      SELECT
+        rarity_tier,
+        COUNT(*) as count,
+        ROUND(AVG(total_score)::numeric, 2) as avg_score,
+        ROUND(MIN(total_score)::numeric, 2) as min_score,
+        ROUND(MAX(total_score)::numeric, 2) as max_score
+      FROM creature_scores
+      GROUP BY rarity_tier
+      ORDER BY
+        CASE rarity_tier
+          WHEN 'Legendary' THEN 1
+          WHEN 'Ultra Rare' THEN 2
+          WHEN 'Rare' THEN 3
+          WHEN 'Uncommon' THEN 4
+          WHEN 'Common' THEN 5
+          ELSE 6
+        END
+    `, [bodyTypeId]);
+
+    res.json({
+      bodyType,
+      creatures: creatures.rows,
+      statsByRarity: statsByRarity.rows
+    });
+
+  } catch (error) {
+    console.error('Error fetching body type trait analytics:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
   }
 });
 

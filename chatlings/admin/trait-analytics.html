@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trait Analytics - Admin</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 1.8em;
+        }
+
+        .back-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .back-button:hover {
+            background: #5568d3;
+        }
+
+        .content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .view-btn {
+            padding: 10px 20px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .view-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .view-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .overview-view {
+            display: block;
+        }
+
+        .drilldown-view {
+            display: none;
+        }
+
+        .overview-view.hidden,
+        .drilldown-view.hidden {
+            display: none;
+        }
+
+        .overview-view.visible,
+        .drilldown-view.visible {
+            display: block;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .chart-container h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .chart-container p {
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #999;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e0e0e0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #667eea;
+        }
+
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.8em;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .drilldown-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .drilldown-header h2 {
+            color: #667eea;
+            font-size: 1.8em;
+        }
+
+        .creature-list {
+            margin-top: 20px;
+        }
+
+        .creature-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .creature-item.legendary {
+            border-left-color: #FFD700;
+        }
+
+        .creature-item.ultra-rare {
+            border-left-color: #9D50BB;
+        }
+
+        .creature-item.rare {
+            border-left-color: #667eea;
+        }
+
+        .creature-item.uncommon {
+            border-left-color: #10B981;
+        }
+
+        .creature-item.common {
+            border-left-color: #94A3B8;
+        }
+
+        .creature-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .creature-rarity {
+            font-size: 0.85em;
+            color: #999;
+            margin-left: 10px;
+        }
+
+        .creature-score {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Trait Analytics Dashboard</h1>
+            <a href="/admin" class="back-button">← Back to Admin</a>
+        </div>
+
+        <div class="content">
+            <div class="view-toggle">
+                <button class="view-btn active" onclick="showOverview()">📈 Overview</button>
+                <button class="view-btn" id="drilldown-btn" onclick="returnToOverview()" style="display: none;">← Back to Overview</button>
+            </div>
+
+            <!-- Overview View -->
+            <div class="overview-view visible" id="overview-view">
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Loading analytics data...</p>
+                </div>
+
+                <div id="overview-content" style="display: none;">
+                    <div class="charts-grid">
+                        <!-- Chart 1: Average Scores by Rarity -->
+                        <div class="chart-container">
+                            <h2>Average Trait Scores by Rarity</h2>
+                            <p>Overall average across all body types</p>
+                            <div class="chart-wrapper">
+                                <canvas id="rarityChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Chart 2: Average Scores by Body Type -->
+                        <div class="chart-container">
+                            <h2>Average Trait Scores by Body Type</h2>
+                            <p>Click on a bar to see individual creatures</p>
+                            <div class="chart-wrapper">
+                                <canvas id="bodyTypeChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Chart 3: Grouped Bar Chart (Body Type + Rarity) - Total -->
+                        <div class="chart-container">
+                            <h2>Base Trait Scores - Total: Body Type vs Rarity</h2>
+                            <p>Comparison of total average scores across both dimensions</p>
+                            <div class="chart-wrapper">
+                                <canvas id="groupedChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Individual Trait Charts (dynamically generated) -->
+                    <div id="individual-trait-charts"></div>
+                </div>
+            </div>
+
+            <!-- Drill-Down View -->
+            <div class="drilldown-view hidden" id="drilldown-view">
+                <div class="drilldown-header">
+                    <h2 id="drilldown-title">Body Type Analysis</h2>
+                </div>
+
+                <div class="stats-grid" id="drilldown-stats">
+                    <!-- Stats will be populated here -->
+                </div>
+
+                <div class="chart-container" style="margin-top: 30px;">
+                    <h2>Individual Creature Scores</h2>
+                    <p>Distribution of trait scores for all creatures of this body type</p>
+                    <div class="chart-wrapper">
+                        <canvas id="drilldownChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="creature-list" id="creature-list">
+                    <!-- Creature list will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let overviewData = null;
+        let charts = {};
+
+        // Rarity colors
+        const rarityColors = {
+            'Legendary': '#FFD700',
+            'Ultra Rare': '#9D50BB',
+            'Rare': '#667eea',
+            'Uncommon': '#10B981',
+            'Common': '#94A3B8'
+        };
+
+        async function init() {
+            try {
+                const response = await fetch('/api/admin/analytics/traits/overview');
+                if (!response.ok) throw new Error('Failed to load analytics data');
+
+                overviewData = await response.json();
+                console.log('Analytics data loaded:', overviewData);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('overview-content').style.display = 'block';
+
+                renderOverviewCharts();
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div class="error">
+                        <strong>Error loading analytics data</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function renderOverviewCharts() {
+            // Chart 1: By Rarity
+            const rarityData = overviewData.byRarity;
+            charts.rarity = new Chart(document.getElementById('rarityChart'), {
+                type: 'bar',
+                data: {
+                    labels: rarityData.map(r => r.rarity_tier),
+                    datasets: [{
+                        label: 'Average Trait Score',
+                        data: rarityData.map(r => parseFloat(r.avg_total_score)),
+                        backgroundColor: rarityData.map(r => rarityColors[r.rarity_tier] || '#667eea'),
+                        borderColor: rarityData.map(r => rarityColors[r.rarity_tier] || '#667eea'),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    const index = context.dataIndex;
+                                    const data = rarityData[index];
+                                    return [
+                                        `Creatures: ${data.creature_count}`,
+                                        `Min: ${data.min_total_score}`,
+                                        `Max: ${data.max_total_score}`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Average Score'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Chart 2: By Body Type (clickable)
+            const bodyTypeData = overviewData.byBodyType;
+            charts.bodyType = new Chart(document.getElementById('bodyTypeChart'), {
+                type: 'bar',
+                data: {
+                    labels: bodyTypeData.map(bt => bt.body_type_name),
+                    datasets: [{
+                        label: 'Average Trait Score',
+                        data: bodyTypeData.map(bt => parseFloat(bt.avg_total_score)),
+                        backgroundColor: '#667eea',
+                        borderColor: '#5568d3',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const bodyType = bodyTypeData[index];
+                            drillDownBodyType(bodyType.body_type_id, bodyType.body_type_name);
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    const index = context.dataIndex;
+                                    const data = bodyTypeData[index];
+                                    return [
+                                        `Creatures: ${data.creature_count}`,
+                                        `Min: ${data.min_total_score}`,
+                                        `Max: ${data.max_total_score}`,
+                                        '',
+                                        'Click to drill down'
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Average Score'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Chart 3: Grouped by Body Type and Rarity
+            const groupedData = overviewData.byBodyTypeAndRarity;
+
+            // Get unique body types and rarities
+            const bodyTypes = [...new Set(groupedData.map(d => d.body_type_name))];
+            const rarities = ['Legendary', 'Ultra Rare', 'Rare', 'Uncommon', 'Common'];
+
+            // Create datasets for each rarity
+            const datasets = rarities.map(rarity => {
+                return {
+                    label: rarity,
+                    data: bodyTypes.map(bodyType => {
+                        const entry = groupedData.find(d =>
+                            d.body_type_name === bodyType && d.rarity_tier === rarity
+                        );
+                        return entry ? parseFloat(entry.avg_total_score) : 0;
+                    }),
+                    backgroundColor: rarityColors[rarity],
+                    borderColor: rarityColors[rarity],
+                    borderWidth: 2
+                };
+            });
+
+            charts.grouped = new Chart(document.getElementById('groupedChart'), {
+                type: 'bar',
+                data: {
+                    labels: bodyTypes,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Average Score'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Render individual trait charts
+            renderIndividualTraitCharts();
+        }
+
+        function renderIndividualTraitCharts() {
+            const traitData = overviewData.byTraitBodyTypeAndRarity;
+            if (!traitData || traitData.length === 0) return;
+
+            // Get unique traits
+            const traits = [...new Set(traitData.map(d => d.trait_name))];
+            const container = document.getElementById('individual-trait-charts');
+
+            traits.forEach(traitName => {
+                // Filter data for this specific trait
+                const traitSpecificData = traitData.filter(d => d.trait_name === traitName);
+
+                // Get unique body types and rarities for this trait
+                const bodyTypes = [...new Set(traitSpecificData.map(d => d.body_type_name))];
+                const rarities = ['Legendary', 'Ultra Rare', 'Rare', 'Uncommon', 'Common'];
+
+                // Create chart container
+                const chartId = 'trait-chart-' + traitName.toLowerCase().replace(/\s+/g, '-');
+                const chartHTML = `
+                    <div class="charts-grid">
+                        <div class="chart-container">
+                            <h2>Base Trait Scores - ${traitName}: Body Type vs Rarity</h2>
+                            <p>Comparison of ${traitName} scores across body types and rarities</p>
+                            <div class="chart-wrapper">
+                                <canvas id="${chartId}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', chartHTML);
+
+                // Create datasets for each rarity
+                const datasets = rarities.map(rarity => {
+                    return {
+                        label: rarity,
+                        data: bodyTypes.map(bodyType => {
+                            const entry = traitSpecificData.find(d =>
+                                d.body_type_name === bodyType && d.rarity_tier === rarity
+                            );
+                            return entry ? parseFloat(entry.avg_score) : 0;
+                        }),
+                        backgroundColor: rarityColors[rarity],
+                        borderColor: rarityColors[rarity],
+                        borderWidth: 2
+                    };
+                });
+
+                // Create the chart
+                charts[chartId] = new Chart(document.getElementById(chartId), {
+                    type: 'bar',
+                    data: {
+                        labels: bodyTypes,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: 'Average Score (0-100)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        async function drillDownBodyType(bodyTypeId, bodyTypeName) {
+            try {
+                const response = await fetch(`/api/admin/analytics/traits/body-type/${bodyTypeId}`);
+                if (!response.ok) throw new Error('Failed to load body type data');
+
+                const data = await response.json();
+                console.log('Body type data:', data);
+
+                // Update title
+                document.getElementById('drilldown-title').textContent = `${bodyTypeName} - Detailed Analysis`;
+
+                // Show stats by rarity
+                const statsHTML = data.statsByRarity.map(stat => `
+                    <div class="stat-card">
+                        <h3>${stat.rarity_tier}</h3>
+                        <div class="stat-value">${stat.avg_score}</div>
+                        <div class="stat-label">Avg Score (${stat.count} creatures)</div>
+                        <div class="stat-label" style="margin-top: 5px;">Range: ${stat.min_score} - ${stat.max_score}</div>
+                    </div>
+                `).join('');
+                document.getElementById('drilldown-stats').innerHTML = statsHTML;
+
+                // Render scatter chart
+                if (charts.drilldown) {
+                    charts.drilldown.destroy();
+                }
+
+                const rarities = ['Legendary', 'Ultra Rare', 'Rare', 'Uncommon', 'Common'];
+                const datasets = rarities.map(rarity => {
+                    const creatures = data.creatures.filter(c => c.rarity_tier === rarity);
+                    return {
+                        label: rarity,
+                        data: creatures.map((c, i) => ({ x: i, y: parseFloat(c.total_score) })),
+                        backgroundColor: rarityColors[rarity],
+                        borderColor: rarityColors[rarity],
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    };
+                });
+
+                charts.drilldown = new Chart(document.getElementById('drilldownChart'), {
+                    type: 'scatter',
+                    data: { datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Total Trait Score'
+                                }
+                            },
+                            x: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+
+                // Show creature list
+                const creatureListHTML = data.creatures.map(creature => {
+                    const rarityClass = creature.rarity_tier.toLowerCase().replace(' ', '-');
+                    return `
+                        <div class="creature-item ${rarityClass}">
+                            <div>
+                                <span class="creature-name">${creature.creature_name}</span>
+                                <span class="creature-rarity">${creature.rarity_tier}</span>
+                            </div>
+                            <div class="creature-score">${creature.total_score}</div>
+                        </div>
+                    `;
+                }).join('');
+                document.getElementById('creature-list').innerHTML = creatureListHTML;
+
+                // Switch views
+                document.getElementById('overview-view').classList.remove('visible');
+                document.getElementById('overview-view').classList.add('hidden');
+                document.getElementById('drilldown-view').classList.remove('hidden');
+                document.getElementById('drilldown-view').classList.add('visible');
+                document.getElementById('drilldown-btn').style.display = 'block';
+
+            } catch (error) {
+                console.error('Error loading body type data:', error);
+                alert('Failed to load body type data: ' + error.message);
+            }
+        }
+
+        function returnToOverview() {
+            document.getElementById('drilldown-view').classList.remove('visible');
+            document.getElementById('drilldown-view').classList.add('hidden');
+            document.getElementById('overview-view').classList.remove('hidden');
+            document.getElementById('overview-view').classList.add('visible');
+            document.getElementById('drilldown-btn').style.display = 'none';
+        }
+
+        function showOverview() {
+            returnToOverview();
+        }
+
+        // Initialize on page load
+        init();
+    </script>
+</body>
+</html>
