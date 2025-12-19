@@ -65,7 +65,6 @@ function requireAdmin(dbConfig) {
       }
 
       // User is admin, allow access
-      console.log(`✅ Admin access granted: ${user.email} -> ${req.path}`);
       req.adminEmail = user.email; // Attach email for logging
       next();
 

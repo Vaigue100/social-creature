@@ -20,6 +20,11 @@
     <meta name="apple-mobile-web-app-title" content="Chatlings">
     <link rel="apple-touch-icon" href="/assets/icon-192.png">
 
+    <!-- Google Fonts - Fraktur -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="/user/components/shared-header-styles.css?v=2">
     <link rel="stylesheet" href="/user/components/creature-card-styles.css?v=3">
     <script src="/user/config.js"></script>
@@ -549,24 +554,24 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
-            margin-bottom: 5px;
-        }
-
-        .carousel-card-name {
-            font-size: 1.8em;
-            font-weight: bold;
-            color: #333;
-            text-align: center;
+            margin-bottom: 15px;
+            margin-top: -5px;
         }
 
         .carousel-card-rarity {
             display: inline-block;
-            padding: 8px 16px;
+            padding: 10px 20px;
             border-radius: 20px;
-            font-weight: 600;
-            font-size: 0.95em;
+            font-weight: 700;
+            font-size: 1.4em;
             color: white;
             white-space: nowrap;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .carousel-card-rarity:hover {
+            transform: scale(1.05);
         }
 
         .carousel-card-traits {
@@ -626,15 +631,22 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 100%;
+            min-height: 100%;
             max-height: 500px;
             backface-visibility: hidden;
             -webkit-backface-visibility: hidden;
-            overflow: hidden;
+            overflow-y: auto;
+            overflow-x: hidden;
             transform: rotateY(180deg);
             opacity: 0;
             visibility: hidden;
             transition: opacity 0s 0.3s, visibility 0s 0.3s;
+            padding: 10px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            justify-content: flex-start;
         }
 
         /* Show traits when flipping to traits */
@@ -655,11 +667,12 @@
             -webkit-backface-visibility: hidden;
             overflow-y: auto;
             transform: rotateX(180deg);
-            padding: 30px;
+            padding: 0;
             box-sizing: border-box;
             opacity: 0;
             visibility: hidden;
             transition: opacity 0s 0.3s, visibility 0s 0.3s;
+            background: rgba(0, 0, 0, 0.85);
         }
 
         /* Show lore when flipping to lore */
@@ -671,26 +684,26 @@
 
         .lore-display {
             width: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 25px;
-            border-radius: 10px;
-            font-family: Georgia, 'Times New Roman', serif;
+            height: 100%;
+            padding: 50px 60px 30px 60px;
+            box-sizing: border-box;
+            /* font-family is set dynamically per body type */
         }
 
         .lore-display h3 {
             color: #f4e4c1;
-            margin-bottom: 15px;
-            font-size: 1.6em;
+            margin-bottom: 20px;
+            font-size: 2.2em;
             text-shadow: 0 2px 6px rgba(0,0,0,0.8);
             font-weight: bold;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
         }
 
         .lore-display h4 {
             color: #d4c4a1;
-            margin-top: 20px;
-            margin-bottom: 10px;
-            font-size: 1.3em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-size: 1.8em;
             text-shadow: 0 2px 6px rgba(0,0,0,0.8);
             font-weight: bold;
             font-style: italic;
@@ -698,10 +711,11 @@
 
         .lore-display p {
             color: #ffffff;
-            line-height: 1.8;
-            font-size: 1.05em;
-            margin-bottom: 15px;
+            line-height: 1.4;
+            font-size: 1.5em;
+            margin-bottom: 20px;
             text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+            text-indent: 2em;
         }
 
         /* Lore button - scroll icon only */
@@ -805,15 +819,57 @@
         }
 
         /* Trait grid for flip side */
+        /* Rizz & Glow special stats */
+        .special-stats-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 14px;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+        }
+
+        .special-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            min-width: 70px;
+        }
+
+        .special-stat-icon {
+            font-size: 1.5em;
+        }
+
+        .special-stat-label {
+            font-size: 0.7em;
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .special-stat-value {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: white;
+        }
+
         .trait-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            padding: 20px;
+            grid-template-columns: repeat(4, 0.8fr);
+            gap: 10px;
+            padding: 12px 20px;
             background: rgba(155, 89, 182, 0.05);
             border-radius: 15px;
-            height: 100%;
             box-sizing: border-box;
+            flex: 1;
+            align-content: start;
+            justify-content: center;
         }
 
         .trait-grid-item {
@@ -821,25 +877,28 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 5px;
-            padding: 10px;
+            gap: 4px;
+            padding: 10px 4px;
             background: white;
-            border-radius: 10px;
+            border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            min-height: 70px;
         }
 
         .trait-grid-icon {
-            font-size: 1.5em;
+            font-size: 1.3em;
         }
 
         .trait-grid-label {
-            font-size: 0.75em;
+            font-size: 0.7em;
             color: #666;
             font-weight: 600;
+            text-align: center;
+            line-height: 1.2;
         }
 
         .trait-grid-value {
-            font-size: 1.3em;
+            font-size: 1.2em;
             font-weight: 700;
             color: #667eea;
         }
@@ -847,13 +906,18 @@
         /* Trait total badge */
         .carousel-card-trait-total {
             display: inline-block;
-            padding: 8px 16px;
+            padding: 10px 20px;
             border-radius: 20px;
-            font-weight: 600;
-            font-size: 0.95em;
+            font-weight: 700;
+            font-size: 1.4em;
             color: white;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             white-space: nowrap;
+            transition: transform 0.2s;
+        }
+
+        .carousel-card-trait-total:hover {
+            transform: scale(1.05);
         }
 
         @media (max-width: 768px) {
@@ -1019,10 +1083,13 @@
             renderCollections();
         }
 
+        let currentUserId = null;
+
         async function loadCollection() {
             const response = await fetch('/api/user/collection');
             const data = await response.json();
             allCreatures = data.creatures || [];
+            currentUserId = data.userId; // Store user ID globally
 
             renderCollections();
             renderBodyTypeFilters(); // Render filters after creatures are loaded
@@ -1116,7 +1183,7 @@
             return `
                 <div class="creature-card" data-creature-id="${creature.id}">
                     <div class="creature-image-wrapper" id="${cardId}" onclick="playAnimation('${creature.id}', '${cardId}')">
-                        <video class="creature-image creature-video" style="display: none;" muted playsinline></video>
+                        <video class="creature-image creature-video" style="display: none;" playsinline></video>
                         <img data-src="${imagePath}" alt="${creature.creature_name}" class="creature-image lazy-image" onerror="this.src='/assets/placeholder.png'">
                     </div>
                     <div class="creature-info">
@@ -1338,7 +1405,7 @@
             setupSwipeGestures();
         }
 
-        function renderCarousel() {
+        async function renderCarousel() {
             if (carouselBodyTypes.length === 0) return;
 
             const bodyType = carouselBodyTypes[currentBodyTypeIndex];
@@ -1350,15 +1417,19 @@
 
             // Render all creatures in track
             const track = document.getElementById('carouselTrack');
-            track.innerHTML = currentBodyTypeCreatures.map((creature, index) =>
+
+            // Render cards asynchronously
+            const cardPromises = currentBodyTypeCreatures.map((creature, index) =>
                 renderCarouselCard(creature, index)
-            ).join('');
+            );
+            const cards = await Promise.all(cardPromises);
+            track.innerHTML = cards.join('');
 
             updateCarouselPosition();
             updateNavigationButtons();
         }
 
-        function renderCarouselCard(creature, index) {
+        async function renderCarouselCard(creature, index) {
             const imagePath = creature.selected_image ? getImageUrl(creature.selected_image) : '/assets/placeholder.png';
             const rarityClass = `rarity-${(creature.rarity_tier || 'Common').toLowerCase().replace(' ', '-')}`;
             const isCurrent = index === currentCreatureIndex;
@@ -1371,20 +1442,44 @@
             const frameWidth = bodyType?.frame_width_percent || 100;
             const frameHeight = bodyType?.frame_height_percent || 100;
 
-            // Calculate total traits (existing 4 + placeholders for 6 more)
-            const abilityScore = creature.ability_score || 0;
-            const strengthScore = creature.strength_score || 0;
-            const affectionScore = creature.affection_score || 0;
-            const uniquenessScore = creature.uniqueness_score || 0;
-            const traitTotal = abilityScore + strengthScore + affectionScore + uniquenessScore;
+            // Fetch real social traits from API
+            let traits = [];
+            let rizz = 0;
+            let glow = 0;
+            let traitTotal = 0;
 
-            // Placeholder traits (will be replaced with real data later)
-            const speed = Math.floor(Math.random() * 100);
-            const intelligence = Math.floor(Math.random() * 100);
-            const charisma = Math.floor(Math.random() * 100);
-            const creativity = Math.floor(Math.random() * 100);
-            const luck = Math.floor(Math.random() * 100);
-            const energy = Math.floor(Math.random() * 100);
+            try {
+                // Fetch traits
+                const traitsResponse = await fetch(`/api/creature/${creature.id}/traits`);
+                if (traitsResponse.ok) {
+                    const traitsData = await traitsResponse.json();
+                    traits = traitsData.traits || [];
+                    traitTotal = traits.reduce((sum, t) => sum + (t.score || 0), 0);
+                } else {
+                    console.error('Traits API failed:', traitsResponse.status);
+                }
+
+                // Fetch rizz & glow stats for current user
+                if (currentUserId) {
+                    const statsResponse = await fetch(`/api/user/${currentUserId}/creature/${creature.id}/stats`);
+                    if (statsResponse.ok) {
+                        const statsData = await statsResponse.json();
+                        rizz = statsData.rizz || 0;
+                        glow = statsData.glow || 0;
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching trait data:', error);
+            }
+
+            // Generate trait grid items HTML
+            const traitGridItems = traits.map(trait => `
+                <div class="trait-grid-item">
+                    <div class="trait-grid-icon">${trait.icon || '⭐'}</div>
+                    <div class="trait-grid-label">${trait.trait_name}</div>
+                    <div class="trait-grid-value">${trait.score || 0}</div>
+                </div>
+            `).join('');
 
             return `
                 <div class="carousel-card ${isCurrent ? 'center' : ''}" data-index="${index}">
@@ -1398,10 +1493,7 @@
                                 <!-- Front Face: Creature Image -->
                                 <div class="flip-card-face flip-card-front">
                                     <div class="creature-image-container" id="carousel-creature-${creature.id}">
-                                        <button class="lore-button" onclick="event.stopPropagation(); showLore('${creature.id}')">
-                                            📜
-                                        </button>
-                                        <video class="creature-carousel-video" style="display: none; max-height: 500px; width: auto;" muted playsinline></video>
+                                        <video class="creature-carousel-video" style="display: none; max-height: 500px; width: auto;" playsinline></video>
                                         <img src="${imagePath}"
                                              alt="${creature.creature_name}"
                                              style="max-height: 500px; width: auto; display: block;"
@@ -1409,65 +1501,31 @@
                                     </div>
                                 </div>
 
-                                <!-- Traits Face: 2x5 Grid -->
+                                <!-- Traits Face: Rizz & Glow + 4x2 Grid -->
                                 <div class="flip-card-face flip-card-traits">
+                                    <!-- Rizz & Glow special stats at top -->
+                                    <div class="special-stats-container">
+                                        <div class="special-stat">
+                                            <div class="special-stat-icon">🔥</div>
+                                            <div class="special-stat-label">Rizz</div>
+                                            <div class="special-stat-value">${rizz}</div>
+                                        </div>
+                                        <div class="special-stat">
+                                            <div class="special-stat-icon">✨</div>
+                                            <div class="special-stat-label">Glow</div>
+                                            <div class="special-stat-value">${glow}</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Social traits grid (8 traits in 4x2) -->
                                     <div class="trait-grid">
-                                        <div class="trait-grid-item">
-                                            <div class="trait-grid-icon">🎯</div>
-                                            <div class="trait-grid-label">Ability</div>
-                                            <div class="trait-grid-value">${abilityScore}</div>
-                                        </div>
-                                        <div class="trait-grid-item">
-                                            <div class="trait-grid-icon">💪</div>
-                                            <div class="trait-grid-label">Strength</div>
-                                            <div class="trait-grid-value">${strengthScore}</div>
-                                        </div>
-                                        <div class="trait-grid-item">
-                                            <div class="trait-grid-icon">❤️</div>
-                                            <div class="trait-grid-label">Affection</div>
-                                            <div class="trait-grid-value">${affectionScore}</div>
-                                        </div>
-                                        <div class="trait-grid-item">
-                                            <div class="trait-grid-icon">🎨</div>
-                                            <div class="trait-grid-label">Uniqueness</div>
-                                            <div class="trait-grid-value">${uniquenessScore}</div>
-                                        </div>
-                                        <div class="trait-grid-item">
-                                            <div class="trait-grid-icon">⚡</div>
-                                            <div class="trait-grid-label">Speed</div>
-                                            <div class="trait-grid-value">${speed}</div>
-                                        </div>
-                                        <div class="trait-grid-item">
-                                            <div class="trait-grid-icon">🧠</div>
-                                            <div class="trait-grid-label">Intelligence</div>
-                                            <div class="trait-grid-value">${intelligence}</div>
-                                        </div>
-                                        <div class="trait-grid-item">
-                                            <div class="trait-grid-icon">😊</div>
-                                            <div class="trait-grid-label">Charisma</div>
-                                            <div class="trait-grid-value">${charisma}</div>
-                                        </div>
-                                        <div class="trait-grid-item">
-                                            <div class="trait-grid-icon">✨</div>
-                                            <div class="trait-grid-label">Creativity</div>
-                                            <div class="trait-grid-value">${creativity}</div>
-                                        </div>
-                                        <div class="trait-grid-item">
-                                            <div class="trait-grid-icon">🍀</div>
-                                            <div class="trait-grid-label">Luck</div>
-                                            <div class="trait-grid-value">${luck}</div>
-                                        </div>
-                                        <div class="trait-grid-item">
-                                            <div class="trait-grid-icon">🔋</div>
-                                            <div class="trait-grid-label">Energy</div>
-                                            <div class="trait-grid-value">${energy}</div>
-                                        </div>
+                                        ${traitGridItems}
                                     </div>
                                 </div>
 
                                 <!-- Lore Face: Creature Lore -->
                                 <div class="flip-card-face flip-card-lore">
-                                    <div class="lore-display">
+                                    <div class="lore-display" style="font-family: ${bodyType.lore_font || 'Georgia, serif'}">
                                         <h3>${creature.creature_name}'s Story</h3>
                                         <p>${creature.vibe || 'A mysterious creature with an untold story...'}</p>
 
@@ -1481,9 +1539,12 @@
                             <!-- Creature Info - Always visible, outside flip area -->
                             <div class="creature-lore-section">
                                 <div class="carousel-card-header">
-                                    <div class="carousel-card-name">${creature.creature_name}</div>
-                                    <div class="carousel-card-rarity ${rarityClass}">${creature.rarity_tier || 'Common'}</div>
-                                    <div class="carousel-card-trait-total">⭐ ${traitTotal}</div>
+                                    <div class="carousel-card-rarity ${rarityClass}" onclick="event.stopPropagation(); showLore('${creature.id}')" style="cursor: pointer;">
+                                        ${creature.creature_name}
+                                    </div>
+                                    <div class="carousel-card-trait-total" onclick="event.stopPropagation(); flipCard('${creature.id}')" style="cursor: pointer;">
+                                        ⭐ ${traitTotal}
+                                    </div>
                                 </div>
                             </div>
 
@@ -1493,8 +1554,10 @@
             `;
         }
 
-        // Animation timer for carousel
+        // Animation timer and tracking for carousel
         let carouselAnimationTimer = null;
+        const creatureAnimations = {}; // Store animations per creature
+        const animationCycleIndex = {}; // Track which animation to play next
 
         function updateCarouselPosition() {
             const track = document.getElementById('carouselTrack');
@@ -1520,16 +1583,6 @@
                 const offsetToCenter = (containerWidth / 2) - (cardWidth / 2);
                 const currentCardOffset = currentCreatureIndex * (cardWidth + gap);
                 const translateX = offsetToCenter - currentCardOffset;
-
-                console.log('Carousel positioning:', {
-                    cardWidth,
-                    gap,
-                    containerWidth,
-                    currentCreatureIndex,
-                    offsetToCenter,
-                    currentCardOffset,
-                    translateX
-                });
 
                 track.style.transform = `translateX(${translateX}px)`;
 
@@ -1566,29 +1619,20 @@
 
             if (!video || !img) return;
 
-            // Check if video already has a source loaded
-            if (!video.src || video.src === window.location.href) {
+            // Fetch animations if not already cached
+            if (!creatureAnimations[creatureId]) {
                 try {
-                    // Fetch available animations for this creature
                     const response = await fetch(`/api/creatures/${creatureId}/animations`);
 
                     if (response.ok) {
                         const animationsGrouped = await response.json();
 
-                        // Look for pose animations specifically
-                        let animationData = null;
-
+                        // Store pose animations
                         if (animationsGrouped.pose && animationsGrouped.pose.animations && animationsGrouped.pose.animations.length > 0) {
-                            // Get random pose animation
-                            const poseAnimations = animationsGrouped.pose.animations;
-                            animationData = poseAnimations[Math.floor(Math.random() * poseAnimations.length)];
-                        }
-
-                        if (animationData && animationData.file_name) {
-                            const animationUrl = getAnimationUrl(animationData.file_name);
-                            video.src = animationUrl;
+                            creatureAnimations[creatureId] = animationsGrouped.pose.animations;
+                            animationCycleIndex[creatureId] = 0;
                         } else {
-                            return;
+                            return; // No animations available
                         }
                     } else {
                         return;
@@ -1599,10 +1643,36 @@
                 }
             }
 
-            // Play the animation
+            // Get the current animation in the cycle
+            const animations = creatureAnimations[creatureId];
+            if (!animations || animations.length === 0) return;
+
+            const currentIndex = animationCycleIndex[creatureId] || 0;
+            const animationData = animations[currentIndex];
+
+            if (!animationData || !animationData.file_name) return;
+
+            const animationUrl = getAnimationUrl(animationData.file_name);
+
+            // Only set source if it's different (prevents unnecessary loading)
+            if (video.src !== animationUrl) {
+                video.src = animationUrl;
+
+                // Wait for video to be ready before switching
+                await new Promise((resolve) => {
+                    video.onloadeddata = resolve;
+                    // Timeout fallback in case video doesn't load
+                    setTimeout(resolve, 1000);
+                });
+            }
+
+            // Move to next animation in cycle
+            animationCycleIndex[creatureId] = (currentIndex + 1) % animations.length;
+
+            // Reset to beginning and switch to video
+            video.currentTime = 0;
             img.style.display = 'none';
             video.style.display = 'block';
-            video.currentTime = 0;
 
             try {
                 await video.play();
@@ -1610,12 +1680,16 @@
                 // Revert to image if play fails
                 video.style.display = 'none';
                 img.style.display = 'block';
+                return;
             }
 
-            // Return to static image when video ends
+            // Return to static image when video ends, then restart timer
             video.onended = () => {
                 video.style.display = 'none';
                 img.style.display = 'block';
+
+                // Restart the timer for next animation
+                startCarouselAnimationTimer();
             };
         }
 

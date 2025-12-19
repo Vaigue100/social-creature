@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Animations - Chatlings Admin</title>
+    <title>Manage Chatlings - Chatlings Admin</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -92,8 +92,38 @@
             object-fit: cover;
         }
 
+        .deleted-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+
+        .deleted-cross {
+            font-size: 120px;
+            color: #dc3545;
+            opacity: 0.9;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            pointer-events: none;
+        }
+
+        .creature-card.deleted {
+            opacity: 0.7;
+            border: 2px solid #dc3545;
+        }
+
         .creature-info {
             padding: 15px;
+        }
+
+        .creature-info.hidden {
+            display: none;
         }
 
         .creature-name {
@@ -111,13 +141,14 @@
 
         .creature-rarity {
             display: inline-block;
-            padding: 4px 8px;
+            padding: 6px 10px;
             border-radius: 4px;
             font-size: 12px;
             font-weight: 500;
             background: #f0f0f0;
             color: #666;
             margin-bottom: 10px;
+            border: 1px solid #e0e0e0;
             cursor: pointer;
             transition: all 0.2s;
         }
@@ -125,12 +156,82 @@
         .creature-rarity:hover {
             background: #667eea;
             color: white;
+            border-color: #667eea;
+        }
+
+        .rarity-dropdown {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            background: white;
+            color: #666;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .rarity-dropdown:focus {
+            outline: none;
+            border-color: #667eea;
         }
 
         .animation-count {
             font-size: 14px;
             color: #666;
+            margin-bottom: 8px;
+        }
+
+        .user-count {
+            font-size: 14px;
+            color: #666;
             margin-bottom: 12px;
+        }
+
+        .traits-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .trait-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .reroll-traits-btn {
+            width: 100%;
+            padding: 8px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+        }
+
+        .reroll-traits-btn:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        .reroll-traits-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .upload-btn {
@@ -147,6 +248,79 @@
 
         .upload-btn:hover {
             transform: translateY(-2px);
+        }
+
+        .delete-btn {
+            width: 100%;
+            padding: 10px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+
+        .delete-btn:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .delete-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .filter-checkbox {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .filter-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .show-info-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .show-info-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .filter-checkbox label {
+            font-size: 14px;
+            color: #666;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
         }
 
         /* Modal Styles */
@@ -373,12 +547,22 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎬 Manage Animations</h1>
-            <p>Upload and manage animation clips for your creatures</p>
+            <h1>🦋 Manage Chatlings</h1>
+            <p>Manage your creatures: upload animations, edit names and rarity, or retire chatlings</p>
+        </div>
+
+        <div class="filter-checkbox">
+            <div class="filter-left">
+                <label>
+                    <input type="checkbox" id="includeDeletedCheckbox" onchange="toggleDeletedFilter()">
+                    Show deleted chatlings
+                </label>
+            </div>
+            <button class="show-info-btn" id="showInfoBtn" onclick="toggleInfoVisibility()">Show Info</button>
         </div>
 
         <div class="search-box">
-            <input type="text" id="searchInput" class="search-input" placeholder="Search creatures by name...">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search chatlings by name...">
         </div>
 
         <div class="filter-box" style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
@@ -444,6 +628,54 @@
         </div>
     </div>
 
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content" style="max-width: 1400px; transform: scale(1.2); margin: 40px auto;">
+            <div class="modal-header">
+                <h2 style="color: #dc3545;">⚠️ Delete Chatling</h2>
+                <button class="close-btn" onclick="closeDeleteModal()">&times;</button>
+            </div>
+
+            <div id="deleteModalContent" style="padding: 20px 0;">
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+                    <strong style="color: #856404;">⚠️ WARNING: This action cannot be undone!</strong>
+                </div>
+
+                <div id="deleteCreatureInfo" style="margin-bottom: 20px;"></div>
+
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <h3 style="color: #dc3545; margin-bottom: 10px; font-size: 16px;">Affected Users:</h3>
+                    <div id="affectedUsersInfo" style="line-height: 1.8;"></div>
+                </div>
+
+                <div style="background: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; border-radius: 4px; margin-bottom: 15px;">
+                    <h3 style="color: #1976D2; margin-bottom: 10px; font-size: 16px;">📢 Users will receive this notification:</h3>
+                    <p id="notificationPreview" style="color: #555; font-style: italic; margin: 0; line-height: 1.6;"></p>
+                </div>
+
+                <div style="background: #fff; border: 2px solid #dc3545; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                    <h3 style="color: #dc3545; margin-bottom: 10px; font-size: 16px;">What will happen:</h3>
+                    <ul style="margin: 0; padding-left: 20px; color: #555; line-height: 1.8;">
+                        <li>Chatling will be <strong>soft deleted</strong> (marked as deleted, data preserved)</li>
+                        <li>Removed from <strong>all user teams</strong></li>
+                        <li>Removed from <strong>all user collections</strong></li>
+                        <li>All affected users will receive a <strong>notification</strong></li>
+                        <li>Users will see the chatling has "left to spend time with family" 💚</li>
+                    </ul>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="closeDeleteModal()" class="cancel-delete-btn" style="flex: 1; padding: 15px; background: #6c757d; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">
+                        Cancel
+                    </button>
+                    <button onclick="confirmDelete()" id="confirmDeleteBtn" class="confirm-delete-btn" style="flex: 1; padding: 15px; background: #dc3545; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">
+                        Delete Chatling
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let creatures = [];
         let animationTypes = [];
@@ -452,6 +684,7 @@
         let selectedFile = null;
         let currentBodyTypeFilter = '';
         let storageConfig = { useAzure: true, azureBaseUrl: '' };
+        let showInfo = false;
 
         // Helper function to get image URL based on storage config
         function getImageUrl(filename) {
@@ -465,7 +698,6 @@
         async function loadStorageConfig() {
             const response = await fetch('/api/config/storage');
             storageConfig = await response.json();
-            console.log('Storage config loaded:', storageConfig);
         }
 
         async function init() {
@@ -508,9 +740,30 @@
         }
 
         async function loadCreatures() {
-            const response = await fetch('/api/creatures');
+            const includeDeleted = document.getElementById('includeDeletedCheckbox').checked;
+            const url = includeDeleted ? '/api/creatures?include_deleted=true' : '/api/creatures';
+            const response = await fetch(url);
             creatures = await response.json();
             applyFilters();
+        }
+
+        function toggleDeletedFilter() {
+            loadCreatures();
+        }
+
+        function toggleInfoVisibility() {
+            showInfo = !showInfo;
+            const btn = document.getElementById('showInfoBtn');
+            btn.textContent = showInfo ? 'Hide Info' : 'Show Info';
+
+            // Toggle visibility of all creature-info sections
+            document.querySelectorAll('.creature-info').forEach(info => {
+                if (showInfo) {
+                    info.classList.remove('hidden');
+                } else {
+                    info.classList.add('hidden');
+                }
+            });
         }
 
         async function loadAnimationTypes() {
@@ -540,28 +793,48 @@
 
             creaturesArray.forEach(creature => {
                 const card = document.createElement('div');
-                card.className = 'creature-card';
+                card.className = `creature-card${creature.is_deleted ? ' deleted' : ''}`;
 
                 const imagePath = getImageUrl(creature.selected_image);
+                const deletedOverlay = creature.is_deleted ? `<div class="deleted-overlay"><div class="deleted-cross">✖</div></div>` : '';
+                const deleteButton = creature.is_deleted ?
+                    `<button class="delete-btn" disabled>Already Deleted</button>` :
+                    `<button class="delete-btn" onclick="confirmDeleteCreature('${creature.id}')">🗑️ Delete Chatling</button>`;
 
                 card.innerHTML = `
                     <div class="creature-image-wrapper">
                         <img src="${imagePath}" alt="${creature.creature_name}" class="creature-image" onerror="this.src='/assets/placeholder.png'">
+                        ${deletedOverlay}
                     </div>
-                    <div class="creature-info">
+                    <div class="creature-info ${showInfo ? '' : 'hidden'}">
                         <div class="creature-name" onclick="editCreatureName('${creature.id}')" title="Click to rename">${creature.creature_name}</div>
-                        <div class="creature-rarity" onclick="editCreatureRarity('${creature.id}')" title="Click to change rarity">${creature.rarity_tier}</div>
+                        <select class="rarity-dropdown" id="rarity-${creature.id}" onchange="changeCreatureRarity('${creature.id}', this.value)">
+                            <option value="Common" ${creature.rarity_tier === 'Common' ? 'selected' : ''}>Common</option>
+                            <option value="Uncommon" ${creature.rarity_tier === 'Uncommon' ? 'selected' : ''}>Uncommon</option>
+                            <option value="Rare" ${creature.rarity_tier === 'Rare' ? 'selected' : ''}>Rare</option>
+                            <option value="Epic" ${creature.rarity_tier === 'Epic' ? 'selected' : ''}>Epic</option>
+                            <option value="Legendary" ${creature.rarity_tier === 'Legendary' ? 'selected' : ''}>Legendary</option>
+                            <option value="Mythic" ${creature.rarity_tier === 'Mythic' ? 'selected' : ''}>Mythic</option>
+                        </select>
                         <div class="animation-count" id="count-${creature.id}">Loading...</div>
+                        <div class="user-count" id="user-count-${creature.id}">Loading users...</div>
+                        <div class="traits-container" id="traits-${creature.id}">Loading traits...</div>
+                        <button class="reroll-traits-btn" onclick="rerollTraits('${creature.id}')" id="reroll-${creature.id}">
+                            🎲 Re-roll Traits
+                        </button>
                         <button class="upload-btn" onclick="openUploadModal('${creature.id}')">
                             🎬 Upload Animation
                         </button>
+                        ${deleteButton}
                     </div>
                 `;
 
                 grid.appendChild(card);
 
-                // Load animation count
+                // Load animation count, user count, and traits
                 loadAnimationCount(creature.id);
+                loadUserCount(creature.id);
+                loadTraits(creature.id);
             });
 
             container.innerHTML = '';
@@ -576,10 +849,58 @@
                 const totalCount = Object.values(animations).reduce((sum, type) => sum + type.animations.length, 0);
                 const countEl = document.getElementById(`count-${creatureId}`);
                 if (countEl) {
-                    countEl.textContent = `${totalCount} animation${totalCount !== 1 ? 's' : ''}`;
+                    countEl.textContent = `🎬 ${totalCount} animation${totalCount !== 1 ? 's' : ''}`;
                 }
             } catch (error) {
                 console.error('Error loading animation count:', error);
+            }
+        }
+
+        async function loadUserCount(creatureId) {
+            try {
+                const response = await fetch(`/api/creatures/${creatureId}/user-count`);
+                const data = await response.json();
+
+                // Handle undefined/null values - default to 0
+                const userCount = (data && typeof data.userCount === 'number') ? data.userCount : 0;
+
+                const countEl = document.getElementById(`user-count-${creatureId}`);
+                if (countEl) {
+                    countEl.textContent = `👥 ${userCount} user${userCount !== 1 ? 's' : ''}`;
+                }
+            } catch (error) {
+                const countEl = document.getElementById(`user-count-${creatureId}`);
+                if (countEl) {
+                    countEl.textContent = '👥 0 users';
+                }
+            }
+        }
+
+        async function loadTraits(creatureId) {
+            try {
+                const response = await fetch(`/api/creature/${creatureId}/traits`);
+                const data = await response.json();
+
+                const traitsEl = document.getElementById(`traits-${creatureId}`);
+                if (!traitsEl) {
+                    return;
+                }
+
+                // Check if traits exist and have items
+                if (data && data.traits && Array.isArray(data.traits) && data.traits.length > 0) {
+                    traitsEl.innerHTML = data.traits.map(trait => `
+                        <div class="trait-badge" title="${trait.trait_name}">
+                            ${trait.icon} ${trait.score}
+                        </div>
+                    `).join('');
+                } else {
+                    traitsEl.innerHTML = '<div style="font-size: 12px; color: #999;">No traits</div>';
+                }
+            } catch (error) {
+                const traitsEl = document.getElementById(`traits-${creatureId}`);
+                if (traitsEl) {
+                    traitsEl.innerHTML = '<div style="font-size: 12px; color: #999;">Error loading traits</div>';
+                }
             }
         }
 
@@ -807,6 +1128,82 @@
             }
         }
 
+        async function changeCreatureRarity(creatureId, newRarity) {
+            const creature = creatures.find(c => c.id === creatureId);
+            if (!creature) return;
+
+            if (newRarity === creature.rarity_tier) return;
+
+            try {
+                const response = await fetch(`/api/creatures/${creatureId}/rarity`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rarity: newRarity })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Update local creature data
+                    creature.rarity_tier = newRarity;
+
+                    // Re-roll traits automatically when rarity changes
+                    await loadTraits(creatureId);
+
+                    alert(`Rarity updated to ${newRarity}! Traits have been automatically re-rolled.`);
+                } else {
+                    alert(`Error: ${result.error}`);
+                    // Reset dropdown to original value
+                    const dropdown = document.getElementById(`rarity-${creatureId}`);
+                    if (dropdown) {
+                        dropdown.value = creature.rarity_tier;
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating rarity:', error);
+                alert('Failed to update rarity. Please try again.');
+                // Reset dropdown to original value
+                const dropdown = document.getElementById(`rarity-${creatureId}`);
+                if (dropdown) {
+                    dropdown.value = creature.rarity_tier;
+                }
+            }
+        }
+
+        async function rerollTraits(creatureId) {
+            const btn = document.getElementById(`reroll-${creatureId}`);
+            if (!btn) {
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '🎲 Rolling...';
+
+            try {
+                const response = await fetch(`/api/creatures/${creatureId}/reroll-traits`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Reload traits to show new values
+                    await loadTraits(creatureId);
+                    btn.textContent = '🎲 Re-roll Traits';
+                    alert('Traits re-rolled successfully!');
+                } else {
+                    alert(`Error: ${result.error || 'Failed to re-roll traits'}`);
+                    btn.textContent = '🎲 Re-roll Traits';
+                }
+            } catch (error) {
+                alert('Failed to re-roll traits. Please try again.');
+                btn.textContent = '🎲 Re-roll Traits';
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
         async function editCreatureRarity(creatureId) {
             const creature = creatures.find(c => c.id === creatureId);
             if (!creature) return;
@@ -866,6 +1263,146 @@
             }
 
             renderCreatures(filtered);
+        }
+
+        let deleteCreatureId = null;
+
+        async function confirmDeleteCreature(creatureId) {
+            try {
+                // Show modal with loading state immediately
+                document.getElementById('deleteModal').classList.add('active');
+                document.getElementById('deleteModalContent').innerHTML = `
+                    <div style="text-align: center; padding: 60px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
+                        <h3 style="color: #667eea; margin-bottom: 10px;">Loading deletion information...</h3>
+                        <p style="color: #666;">Please wait while we gather affected user data.</p>
+                        <div class="spinner" style="margin: 20px auto;"></div>
+                    </div>
+                `;
+
+                // Get affected users count
+                const response = await fetch(`/api/creatures/${creatureId}/affected-users`);
+                const data = await response.json();
+
+                // Store creature ID for later
+                deleteCreatureId = creatureId;
+
+                // Restore modal content structure
+                document.getElementById('deleteModalContent').innerHTML = `
+                    <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+                        <strong style="color: #856404;">⚠️ WARNING: This action cannot be undone!</strong>
+                    </div>
+
+                    <div id="deleteCreatureInfo" style="margin-bottom: 20px;"></div>
+
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <h3 style="color: #dc3545; margin-bottom: 10px; font-size: 16px;">Affected Users:</h3>
+                        <div id="affectedUsersInfo" style="line-height: 1.8;"></div>
+                    </div>
+
+                    <div style="background: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; border-radius: 4px; margin-bottom: 15px;">
+                        <h3 style="color: #1976D2; margin-bottom: 10px; font-size: 16px;">📢 Users will receive this notification:</h3>
+                        <p id="notificationPreview" style="color: #555; font-style: italic; margin: 0; line-height: 1.6;"></p>
+                    </div>
+
+                    <div style="background: #fff; border: 2px solid #dc3545; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                        <h3 style="color: #dc3545; margin-bottom: 10px; font-size: 16px;">What will happen:</h3>
+                        <ul style="margin: 0; padding-left: 20px; color: #555; line-height: 1.8;">
+                            <li>Chatling will be <strong>soft deleted</strong> (marked as deleted, data preserved)</li>
+                            <li>Removed from <strong>all user teams</strong></li>
+                            <li>Removed from <strong>all user collections</strong></li>
+                            <li>All affected users will receive a <strong>notification</strong></li>
+                            <li>Users will see the chatling has "left to spend time with family" 💚</li>
+                        </ul>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="closeDeleteModal()" class="cancel-delete-btn" style="flex: 1; padding: 15px; background: #6c757d; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">
+                            Cancel
+                        </button>
+                        <button onclick="confirmDelete()" id="confirmDeleteBtn" class="confirm-delete-btn" style="flex: 1; padding: 15px; background: #dc3545; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">
+                            Delete Chatling
+                        </button>
+                    </div>
+                `;
+
+                // Populate modal with data
+                document.getElementById('deleteCreatureInfo').innerHTML = `
+                    <h3 style="color: #333; font-size: 20px; margin-bottom: 5px;">${data.creatureName}</h3>
+                    <p style="color: #666; margin: 0;">This chatling will be permanently removed from the game.</p>
+                `;
+
+                document.getElementById('affectedUsersInfo').innerHTML = `
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 24px; font-weight: bold; color: #dc3545;">${data.inCollections}</div>
+                            <div style="font-size: 12px; color: #666;">In Collections</div>
+                        </div>
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 24px; font-weight: bold; color: #dc3545;">${data.inTeams}</div>
+                            <div style="font-size: 12px; color: #666;">In Teams</div>
+                        </div>
+                        <div style="text-align: center; padding: 10px; background: white; border-radius: 6px;">
+                            <div style="font-size: 24px; font-weight: bold; color: #dc3545;">${data.totalAffected}</div>
+                            <div style="font-size: 12px; color: #666;">Total Affected</div>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('notificationPreview').textContent =
+                    `"${data.creatureName} has left the game to spend more time with their family. They'll be missed! 💚"`;
+
+                // Show modal
+                document.getElementById('deleteModal').classList.add('active');
+            } catch (error) {
+                console.error('Error getting affected users:', error);
+                alert('Failed to get deletion info. Check console for details.');
+            }
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('active');
+            deleteCreatureId = null;
+        }
+
+        async function confirmDelete() {
+            if (!deleteCreatureId) return;
+
+            // Disable button during deletion
+            const btn = document.getElementById('confirmDeleteBtn');
+            btn.disabled = true;
+            btn.textContent = 'Deleting...';
+
+            try {
+                await deleteCreature(deleteCreatureId);
+                closeDeleteModal();
+            } catch (error) {
+                // Re-enable button on error
+                btn.disabled = false;
+                btn.textContent = 'Delete Chatling';
+            }
+        }
+
+        async function deleteCreature(creatureId) {
+            try {
+                const response = await fetch(`/api/creatures/${creatureId}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(`✅ Chatling deleted successfully!\n\n${result.creatureName} has been retired.\n${result.affectedUsers} users have been notified.`);
+                    await loadCreatures();
+                    applyFilters();
+                } else {
+                    console.error('Delete error details:', result);
+                    alert(`❌ Error deleting chatling:\n\n${result.error}\n${result.detail || ''}\n\nCheck browser console and server logs for details.`);
+                }
+            } catch (error) {
+                console.error('Error deleting creature:', error);
+                alert('Failed to delete chatling. Check console for details.');
+            }
         }
 
         init();

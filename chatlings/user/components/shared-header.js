@@ -36,6 +36,22 @@ function initSharedHeader(activePage = 'home') {
         document.head.appendChild(modalJS);
     }
 
+    // Dynamically load creature card renderer component
+    if (!document.getElementById('creature-card-full-css')) {
+        const cardCSS = document.createElement('link');
+        cardCSS.id = 'creature-card-full-css';
+        cardCSS.rel = 'stylesheet';
+        cardCSS.href = '/user/components/creature-card-full.css';
+        document.head.appendChild(cardCSS);
+    }
+
+    if (!document.getElementById('creature-card-renderer-js')) {
+        const cardJS = document.createElement('script');
+        cardJS.id = 'creature-card-renderer-js';
+        cardJS.src = '/user/components/creature-card-renderer.js';
+        document.head.appendChild(cardJS);
+    }
+
     const headerHTML = `
         <header>
             <div class="header-left">
@@ -640,17 +656,33 @@ async function handleNotificationClick(notificationId, link) {
             }
         }
 
+        // Close dropdown
+        const dropdown = document.getElementById('notifications-dropdown');
+        if (dropdown) {
+            dropdown.classList.remove('show');
+        }
+
+        // Check if this is a showWelcome link (new creature notification)
+        if (link && link.includes('showWelcome=true')) {
+            console.log('🎬 ShowWelcome link detected, opening creature modal');
+            // Extract creature ID from URL
+            const urlParams = new URLSearchParams(link.split('?')[1]);
+            const creatureId = urlParams.get('id');
+
+            if (creatureId && typeof modalManager !== 'undefined') {
+                console.log('Opening creature card modal for:', creatureId);
+                await modalManager.showCreatureCard(creatureId);
+            } else {
+                console.log('No creature ID or modalManager not available, navigating normally');
+                window.location.href = link;
+            }
+        }
         // Navigate to link if provided AFTER marking as read completes
-        if (link && link !== '' && link !== '#' && link !== 'null' && link !== 'undefined') {
+        else if (link && link !== '' && link !== '#' && link !== 'null' && link !== 'undefined') {
             console.log('Navigating to:', link);
             window.location.href = link;
         } else {
             console.log('No valid link to navigate to:', link);
-            // If no link, just close the dropdown
-            const dropdown = document.getElementById('notifications-dropdown');
-            if (dropdown) {
-                dropdown.classList.remove('show');
-            }
         }
     } catch (error) {
         console.error('Error handling notification click:', error);

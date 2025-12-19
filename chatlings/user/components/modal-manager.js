@@ -310,6 +310,168 @@ class ModalManager {
         if (diffDays < 7) return `${diffDays}d ago`;
         return date.toLocaleDateString();
     }
+
+    /**
+     * Show creature card with welcome animation
+     * Uses reusable CreatureCardRenderer component
+     */
+    async showCreatureCard(creatureId) {
+        console.log('🎯 Showing creature card for:', creatureId);
+
+        try {
+            // Ensure creature card renderer is available
+            if (!window.creatureCardRenderer) {
+                throw new Error('Creature card renderer not loaded');
+            }
+
+            // Get user ID for stats
+            const currentUserId = window.currentUserId || (window.currentUserData && window.currentUserData.id);
+
+            // Fetch creature data first to check for welcome animation
+            const response = await fetch(`/api/creature/${creatureId}/details`);
+            if (!response.ok) throw new Error('Failed to load creature');
+            const creature = await response.json();
+            console.log('Creature data loaded:', creature);
+
+            // Check for welcome animation FIRST
+            const welcomeAnimationPath = `/animations/welcome/${creature.body_type_name?.toLowerCase()}.mp4`;
+            let hasWelcomeAnimation = false;
+
+            try {
+                const testResponse = await fetch(welcomeAnimationPath, { method: 'HEAD' });
+                hasWelcomeAnimation = testResponse.ok;
+                console.log('Welcome animation check:', welcomeAnimationPath, hasWelcomeAnimation);
+            } catch (e) {
+                console.log('No welcome animation found');
+            }
+
+            // If welcome animation exists, play it FIRST in fullscreen overlay
+            if (hasWelcomeAnimation) {
+                console.log('🎬 Playing welcome animation FIRST...');
+                await this.playFullscreenWelcomeAnimation(welcomeAnimationPath);
+            }
+
+            // Use the reusable renderer to generate card HTML
+            const cardHtml = await window.creatureCardRenderer.renderCard(
+                creatureId,
+                currentUserId,
+                {
+                    cardId: 'modal-creature-card',
+                    includeVideo: false,
+                    maxHeight: '500px',
+                    isCarousel: false
+                }
+            );
+
+            // Initialize the card interactions
+            window.creatureCardRenderer.initializeCard('modal-creature-card');
+
+            // Open modal AFTER animation completes
+            this.openModal(`New Chatling!`, cardHtml, { width: '750px' });
+
+        } catch (error) {
+            console.error('Error showing creature card:', error);
+            this.openModal('Error', `
+                <div style="text-align: center; padding: 40px; color: #e74c3c;">
+                    Failed to load creature. Please try again.
+                </div>
+            `);
+        }
+    }
+
+    /**
+     * Play welcome animation in fullscreen overlay BEFORE showing modal
+     */
+    async playFullscreenWelcomeAnimation(animationPath) {
+        return new Promise((resolve) => {
+            // Create fullscreen overlay for animation
+            const overlay = document.createElement('div');
+            overlay.id = 'welcome-animation-fullscreen';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.95);
+                z-index: 99999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: fadeIn 0.3s ease-in;
+            `;
+
+            const video = document.createElement('video');
+            video.style.cssText = `
+                max-width: 90%;
+                max-height: 90%;
+                width: auto;
+                height: auto;
+            `;
+            video.autoplay = true;
+            video.playsinline = true;
+            // NO muted attribute - play with sound!
+
+            overlay.appendChild(video);
+            document.body.appendChild(overlay);
+
+            video.src = animationPath;
+
+            video.onloadeddata = () => {
+                console.log('✨ Welcome animation loaded, playing with sound...');
+                video.currentTime = 0;
+
+                video.play().then(() => {
+                    console.log('🎬 Animation playing');
+                }).catch(err => {
+                    console.error('Error playing animation:', err);
+                    overlay.remove();
+                    resolve();
+                });
+            };
+
+            video.onended = () => {
+                console.log('✅ Animation ended, removing overlay');
+                overlay.style.animation = 'fadeOut 0.3s ease-out';
+                setTimeout(() => {
+                    overlay.remove();
+                    resolve();
+                }, 300);
+            };
+
+            video.onerror = () => {
+                console.log('❌ Error loading animation');
+                overlay.remove();
+                resolve();
+            };
+
+            // Timeout fallback (10 seconds)
+            setTimeout(() => {
+                if (document.body.contains(overlay)) {
+                    console.log('⏱️ Animation timeout, removing overlay');
+                    overlay.remove();
+                    resolve();
+                }
+            }, 10000);
+
+            // Add CSS animations
+            if (!document.getElementById('welcome-animation-styles')) {
+                const style = document.createElement('style');
+                style.id = 'welcome-animation-styles';
+                style.textContent = `
+                    @keyframes fadeIn {
+                        from { opacity: 0; }
+                        to { opacity: 1; }
+                    }
+                    @keyframes fadeOut {
+                        from { opacity: 1; }
+                        to { opacity: 0; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        });
+    }
 }
 
 // Initialize global modal manager

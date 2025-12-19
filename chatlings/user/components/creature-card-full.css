@@ -1,0 +1,395 @@
+/**
+ * Full Creature Card Styles
+ * Complete styling for the reusable creature card component
+ * Used across carousel, modals, notifications, etc.
+ */
+
+/* Base card structure */
+.creature-card-full {
+    max-width: 650px;
+    margin: 0 auto;
+}
+
+.creature-card-full .creature-frame-wrapper {
+    position: relative;
+    width: fit-content;
+    margin: 0 auto;
+    background: transparent;
+    padding: 45px;
+}
+
+/* When frame artwork exists, reduce padding significantly */
+.creature-card-full .creature-frame-wrapper.has-frame {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+}
+
+/* Frame overlay - exactly match combined image and info size */
+.creature-card-full .creature-frame-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    pointer-events: none;
+    z-index: 100;
+}
+
+/* Frame content sits below the frame overlay */
+.creature-card-full .creature-frame-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: fit-content;
+}
+
+/* Flip card system */
+.creature-card-full .flip-card-inner {
+    position: relative;
+    width: 100%;
+    min-height: 500px;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+    cursor: pointer;
+}
+
+.creature-card-full .flip-card-inner.flip-to-traits {
+    transform: rotateY(180deg);
+}
+
+.creature-card-full .flip-card-inner.flip-to-lore {
+    transform: rotateX(180deg);
+}
+
+/* Front face - normal flow, not absolute */
+.creature-card-full .flip-card-front {
+    position: relative;
+    width: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+/* Traits face - absolutely positioned overlay, flips horizontally */
+.creature-card-full .flip-card-traits {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    min-height: 100%;
+    max-height: 500px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
+    transform: rotateY(180deg);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0s 0.3s, visibility 0s 0.3s;
+    padding: 10px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: flex-start;
+}
+
+/* Show traits when flipping to traits */
+.creature-card-full .flip-card-inner.flip-to-traits .flip-card-traits {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0s 0.3s, visibility 0s 0.3s;
+}
+
+/* Lore face - absolutely positioned overlay, flips vertically */
+.creature-card-full .flip-card-lore {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow-y: auto;
+    transform: rotateX(180deg);
+    padding: 0;
+    box-sizing: border-box;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0s 0.3s, visibility 0s 0.3s;
+    background: rgba(0, 0, 0, 0.85);
+}
+
+/* Show lore when flipping to lore */
+.creature-card-full .flip-card-inner.flip-to-lore .flip-card-lore {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0s 0.3s, visibility 0s 0.3s;
+}
+
+/* Creature image container */
+.creature-card-full .creature-image-container {
+    position: relative;
+    width: fit-content;
+    max-height: 500px;
+    display: flex;
+    flex-direction: column;
+    z-index: 1;
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+.creature-card-full .creature-image-container img {
+    max-height: 500px;
+    width: auto;
+    display: block;
+}
+
+.creature-card-full .creature-image-container video {
+    max-height: 500px;
+    width: auto;
+    display: block;
+}
+
+/* Rizz & Glow special stats */
+.creature-card-full .special-stats-container {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 14px;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+}
+
+.creature-card-full .special-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    min-width: 70px;
+}
+
+.creature-card-full .special-stat-icon {
+    font-size: 1.5em;
+}
+
+.creature-card-full .special-stat-label {
+    font-size: 0.7em;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.creature-card-full .special-stat-value {
+    font-size: 1.3em;
+    font-weight: 700;
+    color: white;
+}
+
+/* Trait grid */
+.creature-card-full .trait-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 0.8fr);
+    gap: 10px;
+    padding: 12px 20px;
+    background: rgba(155, 89, 182, 0.05);
+    border-radius: 15px;
+    box-sizing: border-box;
+    flex: 1;
+    align-content: start;
+    justify-content: center;
+}
+
+.creature-card-full .trait-grid-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px 4px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    min-height: 70px;
+    transition: all 0.2s;
+}
+
+.creature-card-full .trait-grid-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.creature-card-full .trait-grid-icon {
+    font-size: 1.3em;
+}
+
+.creature-card-full .trait-grid-label {
+    font-size: 0.7em;
+    color: #666;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.creature-card-full .trait-grid-value {
+    font-size: 1.2em;
+    font-weight: 700;
+    color: #667eea;
+}
+
+/* Lore display */
+.creature-card-full .lore-display {
+    width: 100%;
+    height: 100%;
+    padding: 50px 60px 30px 60px;
+    box-sizing: border-box;
+    /* font-family is set dynamically per body type */
+}
+
+.creature-card-full .lore-display h3 {
+    color: #f4e4c1;
+    margin-bottom: 20px;
+    font-size: 2.2em;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.8);
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.creature-card-full .lore-display h4 {
+    color: #d4c4a1;
+    margin-top: 25px;
+    margin-bottom: 15px;
+    font-size: 1.8em;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.8);
+    font-weight: bold;
+    font-style: italic;
+}
+
+.creature-card-full .lore-display p {
+    color: #ffffff;
+    line-height: 1.4;
+    font-size: 1.5em;
+    margin-bottom: 20px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+    text-indent: 2em;
+}
+
+/* Creature info section */
+.creature-card-full .creature-lore-section {
+    width: 100%;
+    padding: 10px 30px 20px 30px;
+    background: rgba(155, 89, 182, 0.1);
+    border-radius: 0 0 15px 15px;
+    margin-top: 10px;
+    position: relative;
+    z-index: 1;
+}
+
+.creature-card-full .carousel-card-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 0px;
+}
+
+.creature-card-full .carousel-card-rarity {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 1.4em;
+    color: white;
+    white-space: nowrap;
+    text-align: center;
+    transition: transform 0.2s;
+}
+
+.creature-card-full .carousel-card-rarity:hover {
+    transform: scale(1.05);
+}
+
+.creature-card-full .carousel-card-trait-total {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 1.4em;
+    color: white;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    white-space: nowrap;
+    transition: transform 0.2s;
+}
+
+.creature-card-full .carousel-card-trait-total:hover {
+    transform: scale(1.05);
+}
+
+.creature-card-full .carousel-card-subtitle {
+    color: #999;
+    font-size: 0.9em;
+    margin-top: 5px;
+    text-align: center;
+}
+
+/* Rarity colors */
+.creature-card-full .rarity-legendary {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    color: #000;
+}
+
+.creature-card-full .rarity-ultra-rare {
+    background: linear-gradient(135deg, #9D50BB 0%, #6E48AA 100%);
+    color: #fff;
+}
+
+.creature-card-full .rarity-rare {
+    background: linear-gradient(135deg, #667eea 0%, #4F46E5 100%);
+    color: #fff;
+}
+
+.creature-card-full .rarity-uncommon {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    color: #fff;
+}
+
+.creature-card-full .rarity-common {
+    background: linear-gradient(135deg, #94A3B8 0%, #64748B 100%);
+    color: #fff;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .creature-card-full {
+        max-width: 100%;
+    }
+
+    .creature-card-full .creature-frame-wrapper {
+        padding: 20px;
+    }
+
+    .creature-card-full .lore-display {
+        padding: 30px 20px;
+    }
+
+    .creature-card-full .carousel-card-rarity {
+        font-size: 1.2em;
+    }
+
+    .creature-card-full .trait-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        padding: 10px;
+    }
+}

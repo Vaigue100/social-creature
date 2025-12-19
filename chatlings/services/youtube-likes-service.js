@@ -300,13 +300,21 @@ class YouTubeLikesService {
   /**
    * Claim a reward for a user (permanent)
    * Stores source_video_id to prevent duplicate claims from same video
+   * If user already has this creature, increments found_count and updates rizz
    */
   async claimReward(userId, creatureId, client, videoId = null) {
-    await client.query(`
-      INSERT INTO user_rewards (user_id, creature_id, platform, source_video_id)
-      VALUES ($1, $2, 'YouTube', $3)
-      ON CONFLICT (user_id, creature_id) DO NOTHING
+    const result = await client.query(`
+      INSERT INTO user_rewards (user_id, creature_id, platform, source_video_id, found_count, rizz)
+      VALUES ($1, $2, 'YouTube', $3, 1, 0)
+      ON CONFLICT (user_id, creature_id) DO UPDATE SET
+        found_count = user_rewards.found_count + 1,
+        rizz = LEAST(user_rewards.found_count, 10),
+        claimed_at = NOW(),
+        source_video_id = COALESCE(user_rewards.source_video_id, $3)
+      RETURNING found_count, rizz, (xmax = 0) AS was_new
     `, [userId, creatureId, videoId]);
+
+    return result.rows[0]; // Return stats for notification purposes
   }
 
   /**

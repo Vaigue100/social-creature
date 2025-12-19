@@ -30,6 +30,9 @@ class SocialInteractionService {
 
       const chatling1Id = currentChatling.creature_id;
 
+      // Get user's Rizz & Glow stats for their current chatling
+      const userStats = await this.getUserStats(client, userId, chatling1Id);
+
       // Check if they've already interacted
       const existingInteraction = await client.query(`
         SELECT * FROM creature_friendships
@@ -58,7 +61,8 @@ class SocialInteractionService {
       const categories = await this.rollCategories(client);
 
       // Get scores for both chatlings in those categories
-      const chatling1Scores = await this.getScores(client, chatling1Id, categories);
+      // User's chatling gets Rizz + Glow boost, opponent does not
+      const chatling1Scores = await this.getScores(client, chatling1Id, categories, userStats);
       const chatling2Scores = await this.getScores(client, chatling2Id, categories);
 
       // Calculate combined score
@@ -152,9 +156,24 @@ class SocialInteractionService {
   }
 
   /**
-   * Get scores for a chatling in specific categories
+   * Get user's Rizz & Glow stats for a specific creature
+   * Returns { rizz: number, glow: number } or default { rizz: 0, glow: 0 } if not found
    */
-  async getScores(client, chatlingId, categories) {
+  async getUserStats(client, userId, creatureId) {
+    const result = await client.query(`
+      SELECT rizz, glow
+      FROM user_rewards
+      WHERE user_id = $1 AND creature_id = $2
+    `, [userId, creatureId]);
+
+    return result.rows[0] || { rizz: 0, glow: 0 };
+  }
+
+  /**
+   * Get scores for a chatling in specific categories
+   * Optionally applies Rizz + Glow boost if userStats provided
+   */
+  async getScores(client, chatlingId, categories, userStats = null) {
     const result = await client.query(`
       SELECT cst.score, c.category_name, c.icon
       FROM creature_social_traits cst
@@ -163,6 +182,17 @@ class SocialInteractionService {
       AND cst.trait_category_id = ANY($2::int[])
       ORDER BY array_position($2::int[], cst.trait_category_id::int)
     `, [chatlingId, categories.map(c => c.id)]);
+
+    // Apply Rizz + Glow boost to each trait score
+    if (userStats) {
+      const statBoost = (userStats.rizz || 0) + (userStats.glow || 0);
+      return result.rows.map(row => ({
+        ...row,
+        base_score: row.score,  // Keep original for display
+        score: Math.max(0, Math.min(100, row.score + statBoost))  // Boosted, clamped to 0-100
+      }));
+    }
+
     return result.rows;
   }
 
@@ -183,13 +213,20 @@ class SocialInteractionService {
 
   /**
    * Add chatling to user's collection
+   * If already owned, increments found_count and updates rizz
    */
   async addToCollection(client, userId, creatureId) {
-    await client.query(`
-      INSERT INTO user_rewards (user_id, creature_id, claimed_at, platform)
-      VALUES ($1, $2, NOW(), 'social_interaction')
-      ON CONFLICT (user_id, creature_id) DO NOTHING
+    const result = await client.query(`
+      INSERT INTO user_rewards (user_id, creature_id, claimed_at, platform, found_count, rizz)
+      VALUES ($1, $2, NOW(), 'social_interaction', 1, 0)
+      ON CONFLICT (user_id, creature_id) DO UPDATE SET
+        found_count = user_rewards.found_count + 1,
+        rizz = LEAST(user_rewards.found_count, 10),
+        claimed_at = NOW()
+      RETURNING found_count, rizz, (xmax = 0) AS was_new
     `, [userId, creatureId]);
+
+    return result.rows[0]; // Return stats for notification purposes
   }
 
   /**

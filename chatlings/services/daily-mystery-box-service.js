@@ -101,10 +101,11 @@ class DailyMysteryBoxService {
           VALUES ($1, $2, 'DailyBox', 1, NOW())
         `, [userId, creature.id]);
       } else {
-        // Found again - increment counter
+        // Found again - increment counter and update rizz
         await client.query(`
           UPDATE user_rewards
           SET found_count = found_count + 1,
+              rizz = LEAST(found_count, 10),
               claimed_at = NOW()
           WHERE user_id = $1 AND creature_id = $2
         `, [userId, creature.id]);
