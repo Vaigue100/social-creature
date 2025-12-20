@@ -2997,6 +2997,345 @@ app.post('/api/user/team/assign', async (req, res) => {
   }
 });
 
+// ============================================================================
+// Hierarchical Team System API
+// ============================================================================
+
+const teamCalculator = require('./services/team-calculator');
+
+/**
+ * GET user's hierarchical team with full scoring breakdown
+ */
+app.get('/api/user/team/hierarchy', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Get all team positions for user
+    const positions = await client.query(`
+      SELECT
+        tp.id,
+        tp.creature_id,
+        tp.position_type,
+        tp.level,
+        tp.parent_position_id,
+        c.creature_name,
+        c.rarity_tier,
+        bt.body_type_name as body_type,
+        ur.rizz,
+        ur.glow as base_glow,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'trait_name', stc.category_name,
+              'score', cst.score,
+              'icon', stc.icon
+            ) ORDER BY stc.id
+          ) FILTER (WHERE cst.creature_id IS NOT NULL),
+          '[]'
+        ) as traits
+      FROM team_positions tp
+      JOIN creatures c ON tp.creature_id = c.id
+      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
+      LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+      LEFT JOIN user_rewards ur ON ur.user_id = tp.user_id AND ur.creature_id = tp.creature_id
+      LEFT JOIN creature_social_traits cst ON c.id = cst.creature_id
+      LEFT JOIN dim_social_trait_category stc ON cst.trait_category_id = stc.id
+      WHERE tp.user_id = $1 AND c.is_deleted = false
+      GROUP BY tp.id, tp.creature_id, tp.position_type, tp.level, tp.parent_position_id,
+               c.creature_name, c.rarity_tier, bt.body_type_name, ur.rizz, ur.glow
+      ORDER BY tp.level, tp.position_type
+    `, [req.session.userId]);
+
+    if (positions.rows.length === 0) {
+      return res.json({
+        teamTree: null,
+        score: null,
+        isEmpty: true
+      });
+    }
+
+    // Build hierarchical tree
+    const teamTree = buildTeamTree(positions.rows);
+
+    // Calculate team score
+    const scoreResult = teamCalculator.calculateTeamScore(teamTree);
+
+    res.json({
+      teamTree,
+      score: scoreResult,
+      isEmpty: false
+    });
+
+  } catch (error) {
+    console.error('Error fetching team hierarchy:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * POST add a creature to a team position
+ */
+app.post('/api/user/team/hierarchy/add', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { creatureId, positionType, parentPositionId } = req.body;
+
+  if (!creatureId || !positionType) {
+    return res.status(400).json({ error: 'creatureId and positionType required' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+    await client.query('BEGIN');
+
+    // Verify creature is in user's collection
+    const collectionCheck = await client.query(
+      `SELECT creature_id FROM user_rewards WHERE user_id = $1 AND creature_id = $2`,
+      [req.session.userId, creatureId]
+    );
+
+    if (collectionCheck.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Creature not in your collection' });
+    }
+
+    // Determine level from position type
+    const levelMap = {
+      architect: 1,
+      prime: 2,
+      analyst: 3,
+      engineer: 3,
+      clerk: 3,
+      assistant: 4
+    };
+
+    const level = levelMap[positionType];
+    if (!level) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Invalid position type' });
+    }
+
+    // Insert position
+    const result = await client.query(`
+      INSERT INTO team_positions (
+        user_id,
+        creature_id,
+        position_type,
+        level,
+        parent_position_id
+      ) VALUES ($1, $2, $3, $4, $5)
+      RETURNING id
+    `, [req.session.userId, creatureId, positionType, level, parentPositionId || null]);
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      positionId: result.rows[0].id,
+      positionType,
+      level
+    });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error adding to team:', error);
+
+    // Handle constraint violations with user-friendly messages
+    if (error.message.includes('Can only have')) {
+      return res.status(400).json({ error: error.message });
+    }
+    if (error.message.includes('duplicate key')) {
+      return res.status(400).json({ error: 'This position is already filled or creature is already on the team' });
+    }
+
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * DELETE remove a creature from team position
+ */
+app.delete('/api/user/team/hierarchy/:positionId', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { positionId } = req.params;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Verify position belongs to user
+    const result = await client.query(
+      `DELETE FROM team_positions
+       WHERE id = $1 AND user_id = $2
+       RETURNING id`,
+      [positionId, req.session.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Position not found or does not belong to you' });
+    }
+
+    res.json({ success: true, removedPositionId: positionId });
+
+  } catch (error) {
+    console.error('Error removing from team:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * GET available positions for user's team
+ * Returns which position slots are still available
+ */
+app.get('/api/user/team/hierarchy/available', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Get current positions
+    const current = await client.query(
+      `SELECT position_type, level, parent_position_id
+       FROM team_positions
+       WHERE user_id = $1`,
+      [req.session.userId]
+    );
+
+    const filled = current.rows.map(r => r.position_type);
+    const hasArchitect = filled.includes('architect');
+    const hasPrime = filled.includes('prime');
+
+    // Determine available positions
+    const available = [];
+
+    // Level 1: Architect (always available if not filled)
+    if (!hasArchitect) {
+      available.push({
+        positionType: 'architect',
+        level: 1,
+        requiresParent: false,
+        parentType: null
+      });
+    }
+
+    // Level 2: Prime (available if architect exists)
+    if (hasArchitect && !hasPrime) {
+      available.push({
+        positionType: 'prime',
+        level: 2,
+        requiresParent: true,
+        parentType: 'architect'
+      });
+    }
+
+    // Level 3: Dept heads (available if prime exists)
+    if (hasPrime) {
+      ['analyst', 'engineer', 'clerk'].forEach(type => {
+        if (!filled.includes(type)) {
+          available.push({
+            positionType: type,
+            level: 3,
+            requiresParent: true,
+            parentType: 'prime'
+          });
+        }
+      });
+    }
+
+    // Level 4: Assistants (one per dept head)
+    const deptHeads = current.rows.filter(r => r.level === 3);
+    const assistants = current.rows.filter(r => r.level === 4);
+
+    deptHeads.forEach(head => {
+      const hasAssistant = assistants.some(a => a.parent_position_id === head.id);
+      if (!hasAssistant) {
+        available.push({
+          positionType: 'assistant',
+          level: 4,
+          requiresParent: true,
+          parentType: head.position_type,
+          parentId: head.id
+        });
+      }
+    });
+
+    res.json({
+      available,
+      filled: current.rows
+    });
+
+  } catch (error) {
+    console.error('Error getting available positions:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Helper function to build hierarchical tree from flat position list
+ */
+function buildTeamTree(positions) {
+  if (positions.length === 0) return null;
+
+  // Create map of positions by ID
+  const posMap = new Map();
+  positions.forEach(pos => {
+    posMap.set(pos.id, {
+      ...pos,
+      children: [],
+      siblings: [],
+      parent: null
+    });
+  });
+
+  // Link parents and children
+  let architect = null;
+  posMap.forEach(pos => {
+    if (pos.parent_position_id) {
+      const parent = posMap.get(pos.parent_position_id);
+      if (parent) {
+        parent.children.push(pos);
+        pos.parent = parent;
+      }
+    } else if (pos.level === 1) {
+      architect = pos;
+    }
+  });
+
+  // Link siblings
+  posMap.forEach(pos => {
+    if (pos.parent) {
+      pos.siblings = pos.parent.children.filter(c => c.id !== pos.id);
+    }
+  });
+
+  return { architect };
+}
+
 /**
  * Trigger daily chatling visit
  * This can be called manually or automatically when user logs in

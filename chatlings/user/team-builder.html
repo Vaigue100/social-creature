@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Builder - Chatlings</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .score-banner {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            color: white;
+            text-align: center;
+        }
+
+        .score-banner h2 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .score-breakdown {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .score-item {
+            background: rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+
+        .score-item label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .score-item value {
+            font-size: 1.3em;
+            font-weight: bold;
+            display: block;
+        }
+
+        .org-chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        .org-chart {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+            padding: 20px;
+            min-width: 1200px;
+        }
+
+        .level {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            width: 100%;
+        }
+
+        .position-card {
+            background: linear-gradient(145deg, #f0f0f0, #ffffff);
+            border: 3px solid #667eea;
+            border-radius: 15px;
+            padding: 20px;
+            width: 280px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .position-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+
+        .position-card.empty {
+            border-style: dashed;
+            border-color: #ccc;
+            background: #f9f9f9;
+            cursor: pointer;
+        }
+
+        .position-card.empty:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+
+        .position-card.affinity-glow {
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+            border-color: #4CAF50;
+        }
+
+        .position-header {
+            text-align: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .position-type {
+            font-size: 0.9em;
+            color: #667eea;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .level-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            margin-left: 5px;
+        }
+
+        .creature-info {
+            text-align: center;
+        }
+
+        .creature-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .creature-rarity {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .creature-rarity.legendary { color: #FFD700; font-weight: bold; }
+        .creature-rarity.ultra-rare { color: #9D50BB; font-weight: bold; }
+        .creature-rarity.rare { color: #667eea; font-weight: bold; }
+        .creature-rarity.uncommon { color: #10B981; font-weight: bold; }
+        .creature-rarity.common { color: #94A3B8; }
+
+        .body-type {
+            display: inline-block;
+            background: #e0e7ff;
+            color: #667eea;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85em;
+        }
+
+        .stat-label {
+            color: #666;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .glow-stat {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            color: white;
+            padding: 8px;
+            border-radius: 8px;
+            margin-top: 10px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        .glow-breakdown {
+            font-size: 0.75em;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        .contribution {
+            background: #4CAF50;
+            color: white;
+            padding: 8px;
+            border-radius: 8px;
+            margin-top: 8px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .affinity-indicators {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+        }
+
+        .affinity-badge {
+            background: #4CAF50;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85em;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .connection-line {
+            position: absolute;
+            background: #667eea;
+            height: 3px;
+            transform-origin: left center;
+        }
+
+        .connection-line.affinity {
+            background: #4CAF50;
+            height: 4px;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+        }
+
+        .empty-state button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        .empty-state button:hover {
+            background: #5568d3;
+        }
+
+        .add-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .add-button:hover {
+            background: #5568d3;
+        }
+
+        .remove-button {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin-top: 8px;
+            width: 100%;
+        }
+
+        .remove-button:hover {
+            background: #dc2626;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 1.5em;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .creature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .creature-option {
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .creature-option:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+            transform: scale(1.05);
+        }
+
+        .close-modal {
+            background: #999;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #999;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e0e0e0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏢 Team Builder</h1>
+            <p>Build your hierarchical team with strategic Rizz cascade and body type affinity bonuses</p>
+        </div>
+
+        <div id="score-banner" style="display: none;"></div>
+
+        <div class="org-chart-container">
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Loading your team...</p>
+            </div>
+
+            <div id="org-chart" class="org-chart" style="display: none;"></div>
+
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <h2>No Team Yet</h2>
+                <p>Start building your team by adding an Architect</p>
+                <button onclick="showCreatureSelector('architect', null)">Add Architect</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Creature Selector Modal -->
+    <div id="creature-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-header">Select Creature for <span id="modal-position-type"></span></h2>
+            <div id="creature-grid" class="creature-grid"></div>
+            <button class="close-modal" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+
+    <script src="/user/config.js"></script>
+    <script>
+        let teamData = null;
+        let userCollection = [];
+        let currentSelectionPosition = null;
+        let currentSelectionParentId = null;
+
+        async function init() {
+            try {
+                // Fetch team hierarchy
+                const teamResponse = await fetch('/api/user/team/hierarchy');
+                teamData = await teamResponse.json();
+
+                // Fetch user collection
+                const collectionResponse = await fetch('/api/user/collection');
+                const collectionData = await collectionResponse.json();
+                userCollection = collectionData.creatures || [];
+
+                document.getElementById('loading').style.display = 'none';
+
+                if (teamData.isEmpty) {
+                    document.getElementById('empty-state').style.display = 'block';
+                } else {
+                    renderTeam();
+                }
+
+            } catch (error) {
+                console.error('Error loading team:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div class="error">
+                        <strong>Error loading team</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function renderTeam() {
+            if (!teamData || !teamData.teamTree || !teamData.teamTree.architect) {
+                document.getElementById('empty-state').style.display = 'block';
+                return;
+            }
+
+            // Render score banner
+            renderScoreBanner();
+
+            // Render org chart
+            const orgChart = document.getElementById('org-chart');
+            orgChart.style.display = 'flex';
+            orgChart.innerHTML = '';
+
+            renderOrgChart(teamData.teamTree.architect, orgChart);
+        }
+
+        function renderScoreBanner() {
+            const score = teamData.score;
+            const banner = document.getElementById('score-banner');
+
+            banner.innerHTML = `
+                <h2>Team Score: ${score.totalScore.toLocaleString()}</h2>
+                <div class="score-breakdown">
+                    <div class="score-item">
+                        <label>Base Score</label>
+                        <value>${score.breakdown.baseScore.toLocaleString()}</value>
+                    </div>
+                    <div class="score-item">
+                        <label>Synergy Bonus</label>
+                        <value>+${score.breakdown.synergyBonus.toLocaleString()}</value>
+                    </div>
+                    <div class="score-item">
+                        <label>Affinity Bonus</label>
+                        <value>+${score.breakdown.affinityDiversityMultiplier}%</value>
+                    </div>
+                    <div class="score-item">
+                        <label>Tier Bonuses</label>
+                        <value>+${score.breakdown.tierBonus}</value>
+                    </div>
+                    <div class="score-item">
+                        <label>Team Members</label>
+                        <value>${score.numPositions}/8</value>
+                    </div>
+                    <div class="score-item">
+                        <label>Affinity Connections</label>
+                        <value>🔗 ${score.numAffinityConnections}</value>
+                    </div>
+                </div>
+            `;
+
+            banner.style.display = 'block';
+        }
+
+        function renderOrgChart(architect, container) {
+            // Level 1: Architect
+            const level1 = document.createElement('div');
+            level1.className = 'level';
+            level1.appendChild(renderPositionCard(architect));
+            container.appendChild(level1);
+
+            // Level 2: Prime
+            if (architect.children && architect.children.length > 0) {
+                const prime = architect.children[0];
+                const level2 = document.createElement('div');
+                level2.className = 'level';
+                level2.appendChild(renderPositionCard(prime));
+                container.appendChild(level2);
+
+                // Level 3: Dept heads
+                if (prime.children && prime.children.length > 0) {
+                    const level3 = document.createElement('div');
+                    level3.className = 'level';
+                    prime.children.forEach(child => {
+                        level3.appendChild(renderPositionCard(child));
+                    });
+
+                    // Add empty slots for missing dept heads
+                    const deptTypes = ['analyst', 'engineer', 'clerk'];
+                    const filledTypes = prime.children.map(c => c.position_type);
+                    deptTypes.forEach(type => {
+                        if (!filledTypes.includes(type)) {
+                            level3.appendChild(renderEmptySlot(type, 3, prime.id));
+                        }
+                    });
+
+                    container.appendChild(level3);
+
+                    // Level 4: Assistants
+                    const level4 = document.createElement('div');
+                    level4.className = 'level';
+
+                    prime.children.forEach(deptHead => {
+                        if (deptHead.children && deptHead.children.length > 0) {
+                            level4.appendChild(renderPositionCard(deptHead.children[0]));
+                        } else {
+                            level4.appendChild(renderEmptySlot('assistant', 4, deptHead.id));
+                        }
+                    });
+
+                    if (level4.children.length > 0) {
+                        container.appendChild(level4);
+                    }
+                }
+            } else {
+                // Show empty Prime slot
+                const level2 = document.createElement('div');
+                level2.className = 'level';
+                level2.appendChild(renderEmptySlot('prime', 2, architect.id));
+                container.appendChild(level2);
+            }
+        }
+
+        function renderPositionCard(position) {
+            const card = document.createElement('div');
+            card.className = 'position-card';
+
+            // Find member details from score data
+            const memberDetails = teamData.score.members.find(m => m.creature_id === position.creature_id);
+
+            // Check for affinity
+            const hasAffinityParent = memberDetails?.glowDetails.horizontal.parentMatch;
+            const hasSiblingAffinity = memberDetails?.glowDetails.horizontal.siblings;
+
+            if (hasAffinityParent || hasSiblingAffinity) {
+                card.classList.add('affinity-glow');
+            }
+
+            let affinityIndicators = '';
+            let affinityCount = 0;
+            if (hasAffinityParent) affinityCount++;
+            if (hasSiblingAffinity) affinityCount += hasSiblingAffinity.count;
+
+            if (affinityCount > 0) {
+                affinityIndicators = `<div class="affinity-indicators"><div class="affinity-badge">${affinityCount}</div></div>`;
+            }
+
+            const rarityClass = (position.rarity_tier || '').toLowerCase().replace(' ', '-');
+
+            card.innerHTML = `
+                ${affinityIndicators}
+                <div class="position-header">
+                    <div class="position-type">
+                        ${position.position_type}
+                        <span class="level-badge">Level ${position.level}</span>
+                    </div>
+                </div>
+                <div class="creature-info">
+                    <div class="creature-name">${position.creature_name}</div>
+                    <div class="creature-rarity ${rarityClass}">${position.rarity_tier}</div>
+                    <div class="body-type">${position.body_type || 'Unknown'}</div>
+
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Rizz:</span>
+                            <span class="stat-value">${position.rizz || 0}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Base Glow:</span>
+                            <span class="stat-value">${position.base_glow || 0}</span>
+                        </div>
+                    </div>
+
+                    ${memberDetails ? `
+                        <div class="glow-stat">
+                            Effective Glow: ${memberDetails.effectiveGlow.toFixed(1)}
+                            <div class="glow-breakdown">
+                                ${hasAffinityParent ? '✨ +1.0 Parent Match<br>' : ''}
+                                ${hasSiblingAffinity ? `✨ +${hasSiblingAffinity.bonus} Siblings<br>` : ''}
+                                ${memberDetails.glowDetails.vertical.parent ? `⬆️ +${memberDetails.glowDetails.vertical.parent.bonus.toFixed(2)} Parent Rizz` : ''}
+                            </div>
+                        </div>
+                        <div class="contribution">
+                            Contributes: ${Math.round(memberDetails.contribution)} pts
+                        </div>
+                    ` : ''}
+
+                    <button class="remove-button" onclick="removePosition(${position.id})">Remove</button>
+                </div>
+            `;
+
+            return card;
+        }
+
+        function renderEmptySlot(positionType, level, parentId) {
+            const card = document.createElement('div');
+            card.className = 'position-card empty';
+
+            card.innerHTML = `
+                <div class="position-header">
+                    <div class="position-type">
+                        ${positionType}
+                        <span class="level-badge">Level ${level}</span>
+                    </div>
+                </div>
+                <div class="empty-state">
+                    <p>Empty Position</p>
+                    <button class="add-button" onclick="showCreatureSelector('${positionType}', ${parentId})">
+                        Add ${positionType}
+                    </button>
+                </div>
+            `;
+
+            return card;
+        }
+
+        async function showCreatureSelector(positionType, parentId) {
+            currentSelectionPosition = positionType;
+            currentSelectionParentId = parentId;
+
+            document.getElementById('modal-position-type').textContent = positionType;
+
+            // Filter available creatures
+            const grid = document.getElementById('creature-grid');
+            grid.innerHTML = '';
+
+            userCollection.forEach(creature => {
+                const option = document.createElement('div');
+                option.className = 'creature-option';
+                option.onclick = () => addCreatureToPosition(creature.creature_id);
+
+                const rarityClass = (creature.rarity_tier || '').toLowerCase().replace(' ', '-');
+
+                option.innerHTML = `
+                    <div class="creature-name">${creature.creature_name}</div>
+                    <div class="creature-rarity ${rarityClass}">${creature.rarity_tier}</div>
+                    <div class="body-type">${creature.body_type || 'Unknown'}</div>
+                `;
+
+                grid.appendChild(option);
+            });
+
+            document.getElementById('creature-modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('creature-modal').classList.remove('active');
+        }
+
+        async function addCreatureToPosition(creatureId) {
+            try {
+                const response = await fetch('/api/user/team/hierarchy/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        creatureId,
+                        positionType: currentSelectionPosition,
+                        parentPositionId: currentSelectionParentId
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to add creature');
+                }
+
+                closeModal();
+                init(); // Reload team
+
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function removePosition(positionId) {
+            if (!confirm('Remove this creature from your team?')) return;
+
+            try {
+                const response = await fetch(`/api/user/team/hierarchy/${positionId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to remove creature');
+                }
+
+                init(); // Reload team
+
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Initialize on page load
+        init();
+    </script>
+</body>
+</html>
