@@ -8,6 +8,7 @@ const YouTubeLikesService = require('./youtube-likes-service');
 const ChatroomBackgroundService = require('./chatroom-background-service');
 const YouTubeBackgroundService = require('./youtube-background-service');
 const DailyMysteryBoxService = require('./daily-mystery-box-service');
+const AvatarGenerationService = require('./avatar-generation-service');
 
 class Services {
   constructor(dbConfig) {
@@ -18,6 +19,7 @@ class Services {
     this.chatroomBackground = new ChatroomBackgroundService(dbConfig);
     this.youtubeBackground = new YouTubeBackgroundService(dbConfig, this.youtubeLikes);
     this.dailyMysteryBox = new DailyMysteryBoxService(dbConfig);
+    this.avatarGeneration = new AvatarGenerationService(dbConfig);
   }
 
   /**
@@ -56,6 +58,23 @@ class Services {
     // Start chatroom background service
     this.chatroomBackground.start();
 
+    // Start avatar generation service
+    console.log('✓ Avatar Generation Service starting (checks every 2 minutes)');
+
+    // Run initial check after 30 seconds
+    setTimeout(() => {
+      this.avatarGeneration.processQueue().catch(err => {
+        console.error('Avatar generation check error:', err);
+      });
+    }, 30 * 1000);
+
+    // Schedule 2-minute checks
+    this.avatarCheckInterval = setInterval(() => {
+      this.avatarGeneration.processQueue().catch(err => {
+        console.error('Avatar generation check error:', err);
+      });
+    }, 2 * 60 * 1000); // Every 2 minutes
+
     console.log('='.repeat(80) + '\n');
   }
 
@@ -68,6 +87,10 @@ class Services {
     if (this.youtubeCheckInterval) {
       clearInterval(this.youtubeCheckInterval);
       console.log('✓ YouTube background checker stopped');
+    }
+    if (this.avatarCheckInterval) {
+      clearInterval(this.avatarCheckInterval);
+      console.log('✓ Avatar generation service stopped');
     }
     console.log('✓ Services stopped');
   }

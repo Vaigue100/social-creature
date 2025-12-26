@@ -50,6 +50,68 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env
   console.warn('⚠️  Web Push VAPID keys not configured. Push notifications will not work.');
 }
 
+// ============================================================================
+// Azure Blob Storage Setup - ALL file storage
+// ============================================================================
+let blobServiceClient = null;
+let artworkContainerClient = null;
+let thumbsContainerClient = null;
+let animationsContainerClient = null;
+
+// Initialize Azure SDK synchronously
+(async function initializeAzure() {
+  try {
+    const { BlobServiceClient } = require('@azure/storage-blob');
+
+    if (!process.env.AZURE_STORAGE_CONNECTION_STRING) {
+      throw new Error('AZURE_STORAGE_CONNECTION_STRING environment variable is required');
+    }
+
+    blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
+
+    // Set up containers
+    const artworkContainer = process.env.AZURE_STORAGE_CONTAINER_ARTWORK || 'artwork';
+    const thumbsContainer = process.env.AZURE_STORAGE_CONTAINER_THUMBS || 'thumbs';
+    const animationsContainer = process.env.AZURE_STORAGE_CONTAINER_ANIMATIONS || 'animations';
+
+    artworkContainerClient = blobServiceClient.getContainerClient(artworkContainer);
+    thumbsContainerClient = blobServiceClient.getContainerClient(thumbsContainer);
+    animationsContainerClient = blobServiceClient.getContainerClient(animationsContainer);
+
+    // Ensure containers exist (synchronously)
+    await Promise.all([
+      artworkContainerClient.createIfNotExists({ access: 'blob' }),
+      thumbsContainerClient.createIfNotExists({ access: 'blob' }),
+      animationsContainerClient.createIfNotExists({ access: 'blob' })
+    ]);
+
+    console.log(`✓ Azure Blob Storage configured:`);
+    console.log(`  - Artwork: ${artworkContainer}`);
+    console.log(`  - Thumbs: ${thumbsContainer}`);
+    console.log(`  - Animations: ${animationsContainer}`);
+  } catch (error) {
+    console.error('');
+    console.error('================================================================================');
+    console.error('⚠️  CRITICAL ERROR: Azure Blob Storage initialization failed');
+    console.error('================================================================================');
+    console.error('');
+    console.error('Error:', error.message);
+    console.error('Stack:', error.stack);
+    console.error('');
+    console.error('All file storage requires Azure Blob Storage to be configured.');
+    console.error('Please verify AZURE_STORAGE_CONNECTION_STRING in your .env file');
+    console.error('');
+    console.error('================================================================================');
+    console.error('Server will exit in 30 seconds...');
+    console.error('================================================================================');
+    console.error('');
+
+    setTimeout(() => {
+      process.exit(1);
+    }, 30000);
+  }
+})();
+
 /**
  * Helper function to send push notifications to a user
  * @param {string} userId - The user's UUID
@@ -173,11 +235,157 @@ app.use('/admin', requireAuth);
 app.use('/admin', requireAdmin(config));
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
 
-// Image and animation routes (require authentication for security)
-app.use('/artwork', requireAuth, express.static(path.join(__dirname, 'artwork')));
-app.use('/images', requireAuth, express.static(path.join(__dirname, 'artwork', 'linked')));
-app.use('/thumbs', requireAuth, express.static(path.join(__dirname, 'artwork', 'thumbs')));
-app.use('/animations', requireAuth, express.static(path.join(__dirname, 'animations')));
+// ============================================================================
+// Azure Blob Storage Proxy Routes - Serve files from Azure
+// ============================================================================
+
+// Artwork proxy route
+app.get('/artwork/*', requireAuth, async (req, res) => {
+  try {
+    if (!artworkContainerClient) {
+      return res.status(503).send('Storage service not available');
+    }
+
+    const blobPath = req.params[0]; // Everything after /artwork/
+    const blockBlobClient = artworkContainerClient.getBlockBlobClient(blobPath);
+
+    // Check if blob exists
+    const exists = await blockBlobClient.exists();
+    if (!exists) {
+      return res.status(404).send('File not found');
+    }
+
+    // Get blob properties for content type
+    const properties = await blockBlobClient.getProperties();
+
+    // Stream the blob to response
+    const downloadResponse = await blockBlobClient.download();
+    res.setHeader('Content-Type', properties.contentType || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+    downloadResponse.readableStreamBody.pipe(res);
+  } catch (error) {
+    console.error('Error serving artwork from Azure:', error);
+    if (!res.headersSent) {
+      res.status(500).send('Error loading file');
+    }
+  }
+});
+
+// User avatar proxy route
+app.get('/user/*', requireAuth, async (req, res) => {
+  try {
+    if (!artworkContainerClient) {
+      return res.status(503).send('Storage service not available');
+    }
+
+    const blobPath = `user/${req.params[0]}`; // Add 'user/' prefix
+    const blockBlobClient = artworkContainerClient.getBlockBlobClient(blobPath);
+
+    // Check if blob exists
+    const exists = await blockBlobClient.exists();
+    if (!exists) {
+      return res.status(404).send('File not found');
+    }
+
+    // Get blob properties for content type
+    const properties = await blockBlobClient.getProperties();
+
+    // Stream the blob to response
+    const downloadResponse = await blockBlobClient.download();
+    res.setHeader('Content-Type', properties.contentType || 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+    downloadResponse.readableStreamBody.pipe(res);
+  } catch (error) {
+    console.error('Error serving user avatar from Azure:', error);
+    if (!res.headersSent) {
+      res.status(500).send('Error loading file');
+    }
+  }
+});
+
+// Images (linked artwork) proxy route
+app.get('/images/*', requireAuth, async (req, res) => {
+  try {
+    if (!artworkContainerClient) {
+      return res.status(503).send('Storage service not available');
+    }
+
+    const blobPath = `linked/${req.params[0]}`; // Add 'linked/' prefix
+    const blockBlobClient = artworkContainerClient.getBlockBlobClient(blobPath);
+
+    const exists = await blockBlobClient.exists();
+    if (!exists) {
+      return res.status(404).send('File not found');
+    }
+
+    const properties = await blockBlobClient.getProperties();
+    const downloadResponse = await blockBlobClient.download();
+    res.setHeader('Content-Type', properties.contentType || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    downloadResponse.readableStreamBody.pipe(res);
+  } catch (error) {
+    console.error('Error serving image from Azure:', error);
+    if (!res.headersSent) {
+      res.status(500).send('Error loading file');
+    }
+  }
+});
+
+// Thumbnails proxy route
+app.get('/thumbs/*', requireAuth, async (req, res) => {
+  try {
+    if (!thumbsContainerClient) {
+      return res.status(503).send('Storage service not available');
+    }
+
+    const blobPath = req.params[0];
+    const blockBlobClient = thumbsContainerClient.getBlockBlobClient(blobPath);
+
+    const exists = await blockBlobClient.exists();
+    if (!exists) {
+      return res.status(404).send('File not found');
+    }
+
+    const properties = await blockBlobClient.getProperties();
+    const downloadResponse = await blockBlobClient.download();
+    res.setHeader('Content-Type', properties.contentType || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    downloadResponse.readableStreamBody.pipe(res);
+  } catch (error) {
+    console.error('Error serving thumbnail from Azure:', error);
+    if (!res.headersSent) {
+      res.status(500).send('Error loading file');
+    }
+  }
+});
+
+// Animations proxy route
+app.get('/animations/*', requireAuth, async (req, res) => {
+  try {
+    if (!animationsContainerClient) {
+      return res.status(503).send('Storage service not available');
+    }
+
+    const blobPath = req.params[0];
+    const blockBlobClient = animationsContainerClient.getBlockBlobClient(blobPath);
+
+    const exists = await blockBlobClient.exists();
+    if (!exists) {
+      return res.status(404).send('File not found');
+    }
+
+    const properties = await blockBlobClient.getProperties();
+    const downloadResponse = await blockBlobClient.download();
+    res.setHeader('Content-Type', properties.contentType || 'video/mp4');
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    downloadResponse.readableStreamBody.pipe(res);
+  } catch (error) {
+    console.error('Error serving animation from Azure:', error);
+    if (!res.headersSent) {
+      res.status(500).send('Error loading file');
+    }
+  }
+});
 
 // Handle favicon requests (just return 204 No Content to avoid 404 errors)
 app.get('/favicon.ico', (req, res) => res.status(204).end());
@@ -208,9 +416,9 @@ app.get('/debug/session', async (req, res) => {
 
 // Root path - redirect to user hub (not admin!)
 app.get('/', (req, res) => {
-  // If user is logged in, send to user hub, otherwise to login
+  // If user is logged in, send to loading screen first, otherwise to login
   if (req.session && req.session.userId) {
-    res.redirect('/user/index.html');
+    res.redirect('/user/loading.html');
   } else {
     res.redirect('/user/login.html');
   }
@@ -278,8 +486,8 @@ app.get('/api/next-creature', async (req, res) => {
 
 /**
  * Save selected image for a creature
- * Moves selected image to linked/ folder and other 3 to discarded/ folder
- * If image already stored as BLOB, exports it to linked/ folder
+ * Copies selected image to linked/ folder in Azure and other 3 to discarded/ folder
+ * If image already stored as BLOB in database, uploads it to Azure
  */
 app.post('/api/select-image', async (req, res) => {
   const { creatureId, imageFilename } = req.body;
@@ -293,31 +501,31 @@ app.post('/api/select-image', async (req, res) => {
   try {
     await client.connect();
 
-    // Create folders if they don't exist
-    const linkedDir = path.join(__dirname, 'artwork', 'linked');
-    const discardedDir = path.join(__dirname, 'artwork', 'discarded');
-    if (!fs.existsSync(linkedDir)) fs.mkdirSync(linkedDir, { recursive: true });
-    if (!fs.existsSync(discardedDir)) fs.mkdirSync(discardedDir, { recursive: true });
+    // Check if file exists in Azure artwork container
+    const sourceBlob = artworkContainerClient.getBlockBlobClient(imageFilename);
+    const sourceExists = await sourceBlob.exists();
 
-    const sourcePath = path.join(__dirname, 'artwork', imageFilename);
-    const linkedPath = path.join(linkedDir, imageFilename);
-
-    // Check if file exists in artwork folder or if it's already a BLOB
-    if (fs.existsSync(sourcePath)) {
-      // Move selected image to linked folder
-      fs.renameSync(sourcePath, linkedPath);
-      console.log(`Moved to linked: ${imageFilename}`);
+    if (sourceExists) {
+      // Copy selected image to linked/ folder in Azure
+      const linkedBlob = artworkContainerClient.getBlockBlobClient(`linked/${imageFilename}`);
+      await linkedBlob.beginCopyFromURL(sourceBlob.url);
+      console.log(`Copied to linked in Azure: ${imageFilename}`);
     } else {
-      // File doesn't exist - check if it's stored as BLOB and export it
+      // File doesn't exist in Azure - check if it's stored as BLOB in database
       const blobResult = await client.query(
         'SELECT selected_image_data FROM creatures WHERE id = $1 AND selected_image_data IS NOT NULL',
         [creatureId]
       );
 
       if (blobResult.rows.length > 0 && blobResult.rows[0].selected_image_data) {
-        // Export BLOB to linked folder
-        fs.writeFileSync(linkedPath, blobResult.rows[0].selected_image_data);
-        console.log(`Exported from BLOB to linked: ${imageFilename}`);
+        // Upload BLOB data to Azure linked folder
+        const linkedBlob = artworkContainerClient.getBlockBlobClient(`linked/${imageFilename}`);
+        await linkedBlob.uploadData(blobResult.rows[0].selected_image_data, {
+          blobHTTPHeaders: {
+            blobContentType: 'image/png' // Assuming PNG, adjust if needed
+          }
+        });
+        console.log(`Uploaded from database BLOB to Azure linked: ${imageFilename}`);
       }
     }
 
@@ -341,19 +549,20 @@ app.post('/api/select-image', async (req, res) => {
         queueResult.rows[0].image_4_path
       ].filter(Boolean);
 
-      // Move the other 3 images to discarded folder
+      // Copy the other 3 images to discarded folder in Azure
       for (const filename of allImages) {
         if (filename !== imageFilename) {
-          const sourceFile = path.join(__dirname, 'artwork', filename);
-          const discardedFile = path.join(discardedDir, filename);
-
           try {
-            if (fs.existsSync(sourceFile)) {
-              fs.renameSync(sourceFile, discardedFile);
-              console.log(`Moved to discarded: ${filename}`);
+            const sourceImageBlob = artworkContainerClient.getBlockBlobClient(filename);
+            const imageExists = await sourceImageBlob.exists();
+
+            if (imageExists) {
+              const discardedBlob = artworkContainerClient.getBlockBlobClient(`discarded/${filename}`);
+              await discardedBlob.beginCopyFromURL(sourceImageBlob.url);
+              console.log(`Copied to discarded in Azure: ${filename}`);
             }
           } catch (err) {
-            console.error(`Error moving ${filename} to discarded:`, err);
+            console.error(`Error copying ${filename} to discarded in Azure:`, err);
           }
         }
       }
@@ -393,10 +602,6 @@ app.post('/api/skip-images', async (req, res) => {
   try {
     await client.connect();
 
-    // Create discarded folder if it doesn't exist
-    const discardedDir = path.join(__dirname, 'artwork', 'discarded');
-    if (!fs.existsSync(discardedDir)) fs.mkdirSync(discardedDir, { recursive: true });
-
     // Get all 4 image filenames from queue
     const queueResult = await client.query(
       'SELECT image_1_path, image_2_path, image_3_path, image_4_path FROM image_selection_queue WHERE creature_id::uuid = $1',
@@ -411,18 +616,19 @@ app.post('/api/skip-images', async (req, res) => {
         queueResult.rows[0].image_4_path
       ].filter(Boolean);
 
-      // Move all 4 images to discarded folder
+      // Copy all 4 images to discarded folder in Azure
       for (const filename of imagePaths) {
-        const sourceFile = path.join(__dirname, 'artwork', filename);
-        const discardedFile = path.join(discardedDir, filename);
-
         try {
-          if (fs.existsSync(sourceFile)) {
-            fs.renameSync(sourceFile, discardedFile);
-            console.log(`Moved to discarded: ${filename}`);
+          const sourceBlob = artworkContainerClient.getBlockBlobClient(filename);
+          const exists = await sourceBlob.exists();
+
+          if (exists) {
+            const discardedBlob = artworkContainerClient.getBlockBlobClient(`discarded/${filename}`);
+            await discardedBlob.beginCopyFromURL(sourceBlob.url);
+            console.log(`Copied to discarded in Azure: ${filename}`);
           }
         } catch (err) {
-          console.error(`Error moving ${filename} to discarded:`, err);
+          console.error(`Error copying ${filename} to discarded in Azure:`, err);
         }
       }
     }
@@ -460,19 +666,16 @@ app.post('/api/trash-image', async (req, res) => {
   try {
     await client.connect();
 
-    // Create trashed folder if it doesn't exist
-    const trashedDir = path.join(__dirname, 'artwork', 'trashed');
-    if (!fs.existsSync(trashedDir)) fs.mkdirSync(trashedDir, { recursive: true });
+    // Copy image from linked to trashed folder in Azure
+    const linkedBlob = artworkContainerClient.getBlockBlobClient(`linked/${imageFilename}`);
+    const exists = await linkedBlob.exists();
 
-    const linkedPath = path.join(__dirname, 'artwork', 'linked', imageFilename);
-    const trashedPath = path.join(trashedDir, imageFilename);
-
-    // Move image from linked to trashed folder
-    if (fs.existsSync(linkedPath)) {
-      fs.renameSync(linkedPath, trashedPath);
-      console.log(`Moved to trashed: ${imageFilename}`);
+    if (exists) {
+      const trashedBlob = artworkContainerClient.getBlockBlobClient(`trashed/${imageFilename}`);
+      await trashedBlob.beginCopyFromURL(linkedBlob.url);
+      console.log(`Copied to trashed in Azure: ${imageFilename}`);
     } else {
-      console.log(`Image not found in linked folder: ${imageFilename}`);
+      console.log(`Image not found in Azure linked folder: ${imageFilename}`);
     }
 
     // Unlink image from database (set selected_image to NULL and soft delete)
@@ -579,9 +782,8 @@ app.get('/api/creatures', async (req, res) => {
         c.is_active,
         c.is_deleted,
         c.deleted_at,
-        cp.body_type_id
+        c.body_type_id
       FROM creatures c
-      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
       WHERE ${whereClause}
       ORDER BY c.is_deleted ASC, c.creature_name ASC
     `);
@@ -616,9 +818,8 @@ app.put('/api/creatures/:id/name', async (req, res) => {
     const checkResult = await client.query(`
       SELECT c.id
       FROM creatures c
-      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
       WHERE LOWER(c.creature_name) = LOWER($1)
-        AND cp.body_type_id = $2
+        AND c.body_type_id = $2
         AND c.id != $3
       LIMIT 1
     `, [name.trim(), bodyTypeId, id]);
@@ -947,10 +1148,9 @@ app.post('/api/creatures/:id/reroll-traits', async (req, res) => {
 
     // Get creature info
     const creatureResult = await client.query(`
-      SELECT c.id, c.creature_name, c.rarity_tier, cp.body_type_id, bt.body_type_name
+      SELECT c.id, c.creature_name, c.rarity_tier, c.body_type_id, bt.body_type_name
       FROM creatures c
-      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
-      LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+      LEFT JOIN dim_body_type bt ON c.body_type_id = bt.id
       WHERE c.id = $1
     `, [id]);
 
@@ -1027,10 +1227,9 @@ app.patch('/api/creatures/:id/rarity', async (req, res) => {
 
     // Get body type for trait generation
     const creatureResult = await client.query(`
-      SELECT c.id, c.creature_name, c.rarity_tier, cp.body_type_id, bt.body_type_name
+      SELECT c.id, c.creature_name, c.rarity_tier, c.body_type_id, bt.body_type_name
       FROM creatures c
-      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
-      LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+      LEFT JOIN dim_body_type bt ON c.body_type_id = bt.id
       WHERE c.id = $1
     `, [id]);
 
@@ -1091,29 +1290,12 @@ app.get('/api/creatures-by-dimensions', async (req, res) => {
     filters.push('c.is_deleted = false');
 
     if (body_type_id) {
-      filters.push(`cp.body_type_id = $${paramIndex++}`);
+      filters.push(`c.body_type_id = $${paramIndex++}`);
       params.push(body_type_id);
     }
-    if (activity_id) {
-      filters.push(`cp.activity_id = $${paramIndex++}`);
-      params.push(activity_id);
-    }
-    if (mood_id) {
-      filters.push(`cp.mood_id = $${paramIndex++}`);
-      params.push(mood_id);
-    }
-    if (color_scheme_id) {
-      filters.push(`cp.color_scheme_id = $${paramIndex++}`);
-      params.push(color_scheme_id);
-    }
-    if (quirk_id) {
-      filters.push(`cp.quirk_id = $${paramIndex++}`);
-      params.push(quirk_id);
-    }
-    if (size_id) {
-      filters.push(`cp.size_id = $${paramIndex++}`);
-      params.push(size_id);
-    }
+
+    // Note: Other dimension filters (activity, mood, color, quirk, size) are no longer available
+    // since creature_prompts table was removed
 
     const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
 
@@ -1124,21 +1306,9 @@ app.get('/api/creatures-by-dimensions', async (req, res) => {
         c.selected_image,
         c.rarity_tier,
         c.is_active,
-        cp.id as prompt_id,
-        bt.body_type_name,
-        sa.activity_name,
-        sm.mood_name,
-        cs.scheme_name as color_scheme,
-        sq.quirk_name,
-        sc.size_name
+        bt.body_type_name
       FROM creatures c
-      JOIN creature_prompts cp ON c.prompt_id = cp.id
-      JOIN dim_body_type bt ON cp.body_type_id = bt.id
-      JOIN dim_social_activity sa ON cp.activity_id = sa.id
-      JOIN dim_social_mood sm ON cp.mood_id = sm.id
-      JOIN dim_color_scheme cs ON cp.color_scheme_id = cs.id
-      JOIN dim_special_quirk sq ON cp.quirk_id = sq.id
-      JOIN dim_size_category sc ON cp.size_id = sc.id
+      LEFT JOIN dim_body_type bt ON c.body_type_id = bt.id
       ${whereClause}
       ORDER BY c.is_active DESC, c.id
       LIMIT 100
@@ -1468,14 +1638,13 @@ app.get('/api/user/collection', async (req, res) => {
         c.rarity_tier,
         c.vibe as species_name,
         bt.body_type_name,
-        cp.body_type_id,
+        c.body_type_id,
         ur.claimed_at,
         ur.platform,
         ur.found_count
       FROM user_rewards ur
       JOIN creatures c ON ur.creature_id = c.id
-      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
-      LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+      LEFT JOIN dim_body_type bt ON c.body_type_id = bt.id
       WHERE ur.user_id = $1
         AND c.is_active = true
         AND c.is_deleted = false
@@ -1544,9 +1713,23 @@ app.get('/api/body-types', async (req, res) => {
     await client.connect();
 
     const result = await client.query(`
-      SELECT id, body_type_name as display_name
-      FROM dim_body_type
-      ORDER BY body_type_name
+      SELECT
+        bt.id,
+        bt.body_type_name,
+        bt.body_type_name as display_name,
+        bt.frame_filename,
+        btfc.frame_width_percent,
+        btfc.frame_height_percent,
+        btfc.image_width_percent,
+        btfc.image_max_width_px,
+        btfc.image_max_height_vh,
+        btfc.image_min_width_px,
+        btfc.image_margin_top_px,
+        btfc.info_panel_bg_color,
+        btfc.lore_font
+      FROM dim_body_type bt
+      LEFT JOIN body_type_frame_config btfc ON bt.body_type_name = btfc.body_type_name
+      ORDER BY bt.body_type_name
     `);
 
     res.json(result.rows);
@@ -1632,24 +1815,23 @@ app.post('/api/idle-game/state', async (req, res) => {
 /**
  * Get list of welcome animations
  */
-app.get('/api/animations/welcome', (req, res) => {
+app.get('/api/animations/welcome', async (req, res) => {
   try {
-    const welcomeDir = path.join(__dirname, 'animations', 'welcome');
-
-    // Check if directory exists
-    if (!fs.existsSync(welcomeDir)) {
-      console.error('Welcome animations directory not found:', welcomeDir);
-      return res.status(404).json({ error: 'Welcome animations directory not found' });
+    // List blobs in the welcome/ folder in Azure
+    const videos = [];
+    for await (const blob of animationsContainerClient.listBlobsFlat({ prefix: 'welcome/' })) {
+      if (blob.name.endsWith('.mp4')) {
+        // Extract just the filename from the full path
+        const filename = blob.name.split('/').pop();
+        videos.push(`/animations/welcome/${filename}`);
+      }
     }
 
-    const files = fs.readdirSync(welcomeDir);
-    const videos = files.filter(file => file.endsWith('.mp4'));
+    console.log(`Found ${videos.length} welcome animations in Azure`);
 
-    console.log(`Found ${videos.length} welcome animations:`, videos);
-
-    res.json({ videos: videos.map(v => `/animations/welcome/${v}`) });
+    res.json({ videos });
   } catch (error) {
-    console.error('Error reading welcome animations:', error);
+    console.error('Error reading welcome animations from Azure:', error);
     res.status(500).json({ error: 'Failed to load animations' });
   }
 });
@@ -1657,25 +1839,25 @@ app.get('/api/animations/welcome', (req, res) => {
 /**
  * Get list of processed animations for a specific creature
  */
-app.get('/api/animations/creature/:creatureId', (req, res) => {
+app.get('/api/animations/creature/:creatureId', async (req, res) => {
   try {
     const { creatureId } = req.params;
-    const processedDir = path.join(__dirname, 'animations', 'processed', creatureId);
 
-    // Check if directory exists
-    if (!fs.existsSync(processedDir)) {
-      // No animations for this creature yet - return empty array
-      return res.json({ animations: [] });
+    // List blobs in the processed/{creatureId}/ folder in Azure
+    const animations = [];
+    for await (const blob of animationsContainerClient.listBlobsFlat({ prefix: `processed/${creatureId}/` })) {
+      if (blob.name.endsWith('.mp4')) {
+        // Extract just the filename
+        const filename = blob.name.split('/').pop();
+        animations.push(`/animations/processed/${creatureId}/${filename}`);
+      }
     }
 
-    const files = fs.readdirSync(processedDir);
-    const videos = files.filter(file => file.endsWith('.mp4'));
+    console.log(`Found ${animations.length} animations for creature ${creatureId} in Azure`);
 
-    console.log(`Found ${videos.length} animations for creature ${creatureId}`);
-
-    res.json({ animations: videos.map(v => `/animations/processed/${creatureId}/${v}`) });
+    res.json({ animations });
   } catch (error) {
-    console.error('Error reading creature animations:', error);
+    console.error('Error reading creature animations from Azure:', error);
     res.status(500).json({ error: 'Failed to load animations' });
   }
 });
@@ -2511,6 +2693,380 @@ app.post('/api/notifications', async (req, res) => {
 });
 
 // ============================================================================
+// AVATAR GENERATION
+// ============================================================================
+
+/**
+ * Create avatar generation request
+ * Accepts questionnaire answers and queues avatar generation
+ */
+app.post('/api/user/avatar/create', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const { answers } = req.body;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Check for existing queue item
+    const existingResult = await client.query(
+      'SELECT id, status FROM avatar_generation_queue WHERE user_id = $1',
+      [userId]
+    );
+
+    if (existingResult.rows.length > 0) {
+      return res.status(400).json({
+        error: 'You already have an avatar request in progress. Please wait for it to complete.'
+      });
+    }
+
+    // Generate prompt from answers
+    const promptText = services.avatarGeneration.generatePrompt(answers);
+
+    // Create queue item
+    const result = await client.query(`
+      INSERT INTO avatar_generation_queue (user_id, questionnaire_data, prompt_text)
+      VALUES ($1, $2, $3)
+      RETURNING id
+    `, [userId, JSON.stringify(answers), promptText]);
+
+    // Calculate position and estimated time
+    const positionResult = await client.query(`
+      SELECT COUNT(*) as position
+      FROM avatar_generation_queue
+      WHERE status = 'pending' AND created_at < (
+        SELECT created_at FROM avatar_generation_queue WHERE id = $1
+      )
+    `, [result.rows[0].id]);
+
+    const position = parseInt(positionResult.rows[0].position);
+
+    // Get average completion time from last 20 completed items
+    const avgResult = await client.query(`
+      SELECT AVG(EXTRACT(EPOCH FROM (completed_at - started_at))) as avg_seconds
+      FROM (
+        SELECT completed_at, started_at
+        FROM avatar_generation_queue
+        WHERE status = 'completed' AND started_at IS NOT NULL
+        ORDER BY completed_at DESC
+        LIMIT 20
+      ) recent_completions
+    `);
+
+    const avgMinutes = avgResult.rows[0]?.avg_seconds
+      ? Math.ceil(avgResult.rows[0].avg_seconds / 60)
+      : 5;
+
+    const estimatedMinutes = avgMinutes * (position + 1);
+
+    res.json({
+      success: true,
+      queueId: result.rows[0].id,
+      estimatedMinutes,
+      position
+    });
+
+  } catch (error) {
+    console.error('Error creating avatar queue:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Get avatar queue status for current user
+ */
+app.get('/api/user/avatar/queue-status', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT status, image_count, created_at, started_at
+      FROM avatar_generation_queue
+      WHERE user_id = $1
+    `, [userId]);
+
+    if (result.rows.length === 0) {
+      return res.json({ status: 'none' });
+    }
+
+    const item = result.rows[0];
+
+    // Calculate position
+    const positionResult = await client.query(`
+      SELECT COUNT(*) as position
+      FROM avatar_generation_queue
+      WHERE status = 'pending' AND created_at < $1
+    `, [item.created_at]);
+
+    const position = parseInt(positionResult.rows[0].position);
+
+    // Get average time
+    const avgResult = await client.query(`
+      SELECT AVG(EXTRACT(EPOCH FROM (completed_at - started_at))) as avg_seconds
+      FROM avatar_generation_queue
+      WHERE status = 'completed' AND started_at IS NOT NULL
+      ORDER BY completed_at DESC LIMIT 20
+    `);
+
+    const avgMinutes = avgResult.rows[0]?.avg_seconds
+      ? Math.ceil(avgResult.rows[0].avg_seconds / 60)
+      : 5;
+
+    const estimatedMinutes = item.status === 'processing'
+      ? Math.max(1, avgMinutes - Math.floor((Date.now() - new Date(item.started_at)) / 60000))
+      : avgMinutes * (position + 1);
+
+    res.json({
+      status: item.status,
+      imageCount: item.image_count,
+      totalImages: 9,
+      estimatedMinutes,
+      position
+    });
+
+  } catch (error) {
+    console.error('Error getting queue status:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Get avatar candidates (9 images) for selection
+ */
+app.get('/api/user/avatar/candidates', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT status FROM avatar_generation_queue WHERE user_id = $1
+    `, [userId]);
+
+    if (result.rows.length === 0 || result.rows[0].status !== 'completed') {
+      return res.status(400).json({ error: 'Avatar generation not complete' });
+    }
+
+    const images = [];
+    for (let i = 1; i <= 9; i++) {
+      images.push({
+        number: i,
+        url: `/user/${userId}_${i}.png`
+      });
+    }
+
+    res.json({ images });
+
+  } catch (error) {
+    console.error('Error getting avatar candidates:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Select avatar from candidates
+ */
+app.post('/api/user/avatar/select', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const { selectedNumber } = req.body;
+  const client = new Client(config);
+
+  try {
+    if (selectedNumber < 1 || selectedNumber > 9) {
+      return res.status(400).json({ error: 'Invalid selection (must be 1-9)' });
+    }
+
+    await client.connect();
+
+    // Update user profile
+    await client.query(`
+      UPDATE users
+      SET avatar_selected_number = $1, avatar_created_at = NOW()
+      WHERE id = $2
+    `, [selectedNumber, userId]);
+
+    // Delete queue item (cleanup)
+    await client.query('DELETE FROM avatar_generation_queue WHERE user_id = $1', [userId]);
+
+    res.json({
+      success: true,
+      avatarUrl: `/user/${userId}_${selectedNumber}.png`
+    });
+
+  } catch (error) {
+    console.error('Error selecting avatar:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Get current user's avatar and queue status
+ */
+app.get('/api/user/avatar/current', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Check for avatar
+    const result = await client.query(`
+      SELECT avatar_selected_number, avatar_created_at
+      FROM users
+      WHERE id = $1
+    `, [userId]);
+
+    const user = result.rows[0];
+
+    // Check for pending/processing queue item
+    const queueResult = await client.query(`
+      SELECT status, image_count
+      FROM avatar_generation_queue
+      WHERE user_id = $1
+    `, [userId]);
+
+    const queueItem = queueResult.rows[0];
+
+    // If there's a queue item
+    if (queueItem) {
+      return res.json({
+        hasAvatar: !!user.avatar_selected_number,
+        avatarUrl: user.avatar_selected_number ? `/user/${userId}_${user.avatar_selected_number}.png` : null,
+        createdAt: user.avatar_created_at,
+        queueStatus: queueItem.status,
+        imageCount: queueItem.image_count || 0
+      });
+    }
+
+    // No queue item
+    if (!user.avatar_selected_number) {
+      return res.json({ hasAvatar: false });
+    }
+
+    res.json({
+      hasAvatar: true,
+      avatarUrl: `/user/${userId}_${user.avatar_selected_number}.png`,
+      createdAt: user.avatar_created_at
+    });
+
+  } catch (error) {
+    console.error('Error getting current avatar:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Admin: Get all avatar generation queue items
+ */
+app.get('/api/admin/avatar-queue', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Check if user is admin
+    const adminCheck = await client.query(`
+      SELECT is_admin FROM users WHERE id = $1
+    `, [userId]);
+
+    if (!adminCheck.rows[0]?.is_admin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    // Get all queue items with user info
+    const result = await client.query(`
+      SELECT
+        aq.id,
+        aq.user_id,
+        aq.questionnaire_data,
+        aq.prompt_text,
+        aq.status,
+        aq.created_at,
+        aq.started_at,
+        aq.completed_at,
+        aq.error_message,
+        aq.image_count,
+        u.username,
+        u.email
+      FROM avatar_generation_queue aq
+      JOIN users u ON aq.user_id = u.id
+      ORDER BY aq.created_at DESC
+    `);
+
+    res.json({ queue: result.rows });
+
+  } catch (error) {
+    console.error('Error getting avatar queue:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Admin: Retry a failed avatar generation
+ */
+app.post('/api/admin/avatar-queue/:id/retry', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const queueId = req.params.id;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Check if user is admin
+    const adminCheck = await client.query(`
+      SELECT is_admin FROM users WHERE id = $1
+    `, [userId]);
+
+    if (!adminCheck.rows[0]?.is_admin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    // Reset the queue item to pending status
+    const result = await client.query(`
+      UPDATE avatar_generation_queue
+      SET
+        status = 'pending',
+        error_message = NULL,
+        started_at = NULL,
+        completed_at = NULL,
+        image_count = 0
+      WHERE id = $1
+      RETURNING id, user_id, status
+    `, [queueId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Queue item not found' });
+    }
+
+    console.log(`Admin ${userId} retried avatar generation for queue item ${queueId}`);
+    res.json({ success: true, queueItem: result.rows[0] });
+
+  } catch (error) {
+    console.error('Error retrying avatar generation:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+// ============================================================================
 // OAUTH AUTHENTICATION (Google, GitHub, etc.)
 // ============================================================================
 
@@ -2617,13 +3173,13 @@ app.get('/auth/google/callback',
             console.error('Error assigning daily chatling:', visitError);
           })
           .finally(() => {
-            res.redirect('/user/index.html');
+            res.redirect('/user/loading.html');
           });
       });
 
     } catch (error) {
       console.error('Error in OAuth callback:', error);
-      res.redirect('/user/index.html'); // Fallback to main page
+      res.redirect('/user/loading.html'); // Fallback to loading page
     } finally {
       await client.end();
     }
@@ -2819,11 +3375,10 @@ app.get('/api/user/team', async (req, res) => {
             c.creature_name,
             c.selected_image,
             c.rarity_tier,
-            cp.body_type_id,
+            c.body_type_id,
             bt.body_type_name
           FROM creatures c
-          LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
-          LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+          LEFT JOIN dim_body_type bt ON c.body_type_id = bt.id
           WHERE c.id = $1 AND c.is_deleted = false
         `, [creatureId]);
 
@@ -3041,8 +3596,7 @@ app.get('/api/user/team/hierarchy', async (req, res) => {
         ) as traits
       FROM team_positions tp
       JOIN creatures c ON tp.creature_id = c.id
-      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
-      LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+      LEFT JOIN dim_body_type bt ON c.body_type_id = bt.id
       LEFT JOIN user_rewards ur ON ur.user_id = tp.user_id AND ur.creature_id = tp.creature_id
       LEFT JOIN creature_social_traits cst ON c.id = cst.creature_id
       LEFT JOIN dim_social_trait_category stc ON cst.trait_category_id = stc.id
@@ -3060,14 +3614,36 @@ app.get('/api/user/team/hierarchy', async (req, res) => {
       });
     }
 
-    // Build hierarchical tree
+    // Build hierarchical tree (with parent references for calculator)
     const teamTree = buildTeamTree(positions.rows);
 
-    // Calculate team score
+    // Calculate team score (needs parent references)
     const scoreResult = teamCalculator.calculateTeamScore(teamTree);
 
+    // Clean tree to remove circular references before sending to client
+    function cleanTreeForJSON(tree) {
+      if (!tree) return tree;
+
+      function cleanNode(node) {
+        if (!node) return node;
+        const cleaned = { ...node };
+        delete cleaned.parent; // Remove parent reference
+        delete cleaned.siblings; // Remove siblings reference (also contains parent refs)
+        if (cleaned.children && cleaned.children.length > 0) {
+          cleaned.children = cleaned.children.map(child => cleanNode(child));
+        }
+        return cleaned;
+      }
+
+      return {
+        architect: tree.architect ? cleanNode(tree.architect) : null
+      };
+    }
+
+    const cleanedTree = cleanTreeForJSON(teamTree);
+
     res.json({
-      teamTree,
+      teamTree: cleanedTree,
       score: scoreResult,
       isEmpty: false
     });
@@ -3084,11 +3660,17 @@ app.get('/api/user/team/hierarchy', async (req, res) => {
  * POST add a creature to a team position
  */
 app.post('/api/user/team/hierarchy/add', async (req, res) => {
+  console.log('➕ Adding creature to team position');
+  console.log('   User:', req.session.userId);
+
   if (!req.session.userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
   const { creatureId, positionType, parentPositionId } = req.body;
+  console.log('   Creature:', creatureId);
+  console.log('   Position:', positionType);
+  console.log('   Parent:', parentPositionId);
 
   if (!creatureId || !positionType) {
     return res.status(400).json({ error: 'creatureId and positionType required' });
@@ -3111,14 +3693,37 @@ app.post('/api/user/team/hierarchy/add', async (req, res) => {
       return res.status(403).json({ error: 'Creature not in your collection' });
     }
 
+    // Check if creature is already on the team
+    const existingPosition = await client.query(
+      `SELECT tp.position_type, c.creature_name
+       FROM team_positions tp
+       JOIN creatures c ON tp.creature_id = c.id
+       WHERE tp.user_id = $1 AND tp.creature_id = $2`,
+      [req.session.userId, creatureId]
+    );
+
+    if (existingPosition.rows.length > 0) {
+      const currentRole = existingPosition.rows[0].position_type;
+      const creatureName = existingPosition.rows[0].creature_name;
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: `${creatureName} is assigned to ${currentRole} role, please vacate that role to assign it elsewhere.`,
+        errorType: 'creature_already_assigned',
+        currentRole: currentRole,
+        creatureName: creatureName
+      });
+    }
+
     // Determine level from position type
     const levelMap = {
       architect: 1,
       prime: 2,
-      analyst: 3,
-      engineer: 3,
-      clerk: 3,
-      assistant: 4
+      strategist: 3,
+      innovator: 3,
+      curator: 3,
+      sentinel: 3,
+      pathfinder: 3,
+      apprentice: 4
     };
 
     const level = levelMap[positionType];
@@ -3141,6 +3746,8 @@ app.post('/api/user/team/hierarchy/add', async (req, res) => {
 
     await client.query('COMMIT');
 
+    console.log('✅ Successfully added creature to team position:', positionType);
+
     res.json({
       success: true,
       positionId: result.rows[0].id,
@@ -3150,7 +3757,7 @@ app.post('/api/user/team/hierarchy/add', async (req, res) => {
 
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Error adding to team:', error);
+    console.error('❌ Error adding to team:', error);
 
     // Handle constraint violations with user-friendly messages
     if (error.message.includes('Can only have')) {
@@ -3203,10 +3810,91 @@ app.delete('/api/user/team/hierarchy/:positionId', async (req, res) => {
 });
 
 /**
+ * DELETE vacate a position and all subordinates (cascading delete)
+ */
+app.delete('/api/user/team/hierarchy/:positionId/vacate', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { positionId } = req.params;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+    await client.query('BEGIN');
+
+    // Verify position belongs to user
+    const verifyResult = await client.query(
+      `SELECT id, position_type FROM team_positions
+       WHERE id = $1 AND user_id = $2`,
+      [positionId, req.session.userId]
+    );
+
+    if (verifyResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Position not found or does not belong to you' });
+    }
+
+    // Recursive function to get all subordinate position IDs
+    async function getAllSubordinates(parentId) {
+      const children = await client.query(
+        `SELECT id FROM team_positions WHERE parent_position_id = $1`,
+        [parentId]
+      );
+
+      let allIds = children.rows.map(r => r.id);
+
+      // Recursively get subordinates of each child
+      for (const child of children.rows) {
+        const grandchildren = await getAllSubordinates(child.id);
+        allIds = allIds.concat(grandchildren);
+      }
+
+      return allIds;
+    }
+
+    // Get all subordinate IDs
+    const subordinateIds = await getAllSubordinates(positionId);
+
+    // Delete all subordinates first (from bottom up)
+    if (subordinateIds.length > 0) {
+      await client.query(
+        `DELETE FROM team_positions WHERE id = ANY($1)`,
+        [subordinateIds]
+      );
+    }
+
+    // Delete the target position
+    await client.query(
+      `DELETE FROM team_positions WHERE id = $1`,
+      [positionId]
+    );
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      vacatedPositionId: positionId,
+      subordinatesRemoved: subordinateIds.length
+    });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error vacating position:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
  * GET available positions for user's team
  * Returns which position slots are still available
  */
 app.get('/api/user/team/hierarchy/available', async (req, res) => {
+  console.log('📋 Getting available team positions for user:', req.session.userId);
+
   if (!req.session.userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -3215,72 +3903,96 @@ app.get('/api/user/team/hierarchy/available', async (req, res) => {
 
   try {
     await client.connect();
+    console.log('✓ Database connected');
 
-    // Get current positions
+    // Get current positions with creature names
     const current = await client.query(
-      `SELECT position_type, level, parent_position_id
-       FROM team_positions
-       WHERE user_id = $1`,
+      `SELECT tp.id, tp.position_type, tp.level, tp.parent_position_id, c.creature_name
+       FROM team_positions tp
+       LEFT JOIN creatures c ON tp.creature_id = c.id
+       WHERE tp.user_id = $1`,
       [req.session.userId]
     );
 
-    const filled = current.rows.map(r => r.position_type);
-    const hasArchitect = filled.includes('architect');
-    const hasPrime = filled.includes('prime');
+    console.log('✓ Query executed, found', current.rows.length, 'positions');
 
-    // Determine available positions
+    const filled = current.rows.map(r => r.position_type);
+
+    // Determine all positions (including filled ones for replacement)
     const available = [];
 
-    // Level 1: Architect (always available if not filled)
-    if (!hasArchitect) {
-      available.push({
-        positionType: 'architect',
-        level: 1,
-        requiresParent: false,
-        parentType: null
-      });
-    }
+    // Level 1: Architect (always show)
+    const architectPos = current.rows.find(r => r.position_type === 'architect');
+    const architectData = {
+      position_type: 'architect',
+      level: 1,
+      parent_position_id: null,
+      is_filled: !!architectPos,
+      current_creature_name: architectPos?.creature_name || null,
+      position_id: architectPos?.id || null,
+      user_id: req.session.userId  // Add user context
+    };
+    available.push(architectData);
 
-    // Level 2: Prime (available if architect exists)
-    if (hasArchitect && !hasPrime) {
-      available.push({
-        positionType: 'prime',
-        level: 2,
-        requiresParent: true,
-        parentType: 'architect'
-      });
-    }
-
-    // Level 3: Dept heads (available if prime exists)
-    if (hasPrime) {
-      ['analyst', 'engineer', 'clerk'].forEach(type => {
-        if (!filled.includes(type)) {
-          available.push({
-            positionType: type,
-            level: 3,
-            requiresParent: true,
-            parentType: 'prime'
-          });
-        }
-      });
-    }
-
-    // Level 4: Assistants (one per dept head)
-    const deptHeads = current.rows.filter(r => r.level === 3);
-    const assistants = current.rows.filter(r => r.level === 4);
-
-    deptHeads.forEach(head => {
-      const hasAssistant = assistants.some(a => a.parent_position_id === head.id);
-      if (!hasAssistant) {
-        available.push({
-          positionType: 'assistant',
-          level: 4,
-          requiresParent: true,
-          parentType: head.position_type,
-          parentId: head.id
-        });
-      }
+    // Level 2: Prime (always show, parent is architect)
+    const primePos = current.rows.find(r => r.position_type === 'prime');
+    available.push({
+      position_type: 'prime',
+      level: 2,
+      parent_position_id: architectPos?.id || null,
+      parent_type: 'architect',
+      is_filled: !!primePos,
+      current_creature_name: primePos?.creature_name || null,
+      position_id: primePos?.id || null,
+      user_id: req.session.userId
     });
+
+    // Level 3: Dept heads (always show, parent is architect)
+    ['strategist', 'innovator', 'curator', 'sentinel', 'pathfinder'].forEach(type => {
+      const deptPos = current.rows.find(r => r.position_type === type);
+      available.push({
+        position_type: type,
+        level: 3,
+        parent_position_id: architectPos?.id || null,
+        parent_type: 'architect',
+        is_filled: !!deptPos,
+        current_creature_name: deptPos?.creature_name || null,
+        position_id: deptPos?.id || null,
+        user_id: req.session.userId
+      });
+    });
+
+    // Level 4: Apprentices (one for Prime and one per dept head)
+    // Prime's apprentice (if Prime exists)
+    if (primePos) {
+      const primeApprentice = current.rows.find(r => r.level === 4 && r.parent_position_id === primePos.id);
+      available.push({
+        position_type: 'apprentice',
+        level: 4,
+        parent_position_id: primePos.id,
+        parent_type: 'prime',
+        is_filled: !!primeApprentice,
+        current_creature_name: primeApprentice?.creature_name || null,
+        position_id: primeApprentice?.id || null
+      });
+    }
+
+    // Dept heads' apprentices
+    const deptHeads = current.rows.filter(r => r.level === 3);
+    deptHeads.forEach(head => {
+      const apprentice = current.rows.find(r => r.level === 4 && r.parent_position_id === head.id);
+      available.push({
+        position_type: 'apprentice',
+        level: 4,
+        parent_position_id: head.id,
+        parent_type: head.position_type,
+        is_filled: !!apprentice,
+        current_creature_name: apprentice?.creature_name || null,
+        position_id: apprentice?.id || null
+      });
+    });
+
+    console.log('✓ Returning', available.length, 'available positions');
 
     res.json({
       available,
@@ -3288,7 +4000,8 @@ app.get('/api/user/team/hierarchy/available', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting available positions:', error);
+    console.error('❌ Error getting available positions:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ error: error.message });
   } finally {
     await client.end();
@@ -3497,12 +4210,10 @@ app.get('/api/random-creature-with-traits', async (req, res) => {
         c.creature_name,
         c.selected_image,
         c.rarity_tier,
-        cp.color_scheme_id,
-        cp.body_type_id,
+        c.body_type_id,
         bt.body_type_name
       FROM creatures c
-      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
-      LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+      LEFT JOIN dim_body_type bt ON c.body_type_id = bt.id
       WHERE c.selected_image IS NOT NULL AND c.is_deleted = false
       ORDER BY RANDOM()
       LIMIT 1
@@ -3553,6 +4264,7 @@ app.get('/api/random-creature-with-traits', async (req, res) => {
       creature_name: creatureData.creature_name,
       selected_image: creatureData.selected_image,
       rarity_tier: creatureData.rarity_tier,
+      body_type_id: creatureData.body_type_id,
       body_type_name: creatureData.body_type_name,
       primary_color: primaryColor,
       overall_score: overallScore,
@@ -3584,12 +4296,10 @@ app.get('/api/creature/:creatureId/details', async (req, res) => {
         c.creature_name,
         c.selected_image,
         c.rarity_tier,
-        cp.color_scheme_id,
-        cp.body_type_id,
+        c.body_type_id,
         bt.body_type_name
       FROM creatures c
-      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
-      LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+      LEFT JOIN dim_body_type bt ON c.body_type_id = bt.id
       WHERE c.id = $1 AND c.is_deleted = false
     `, [creatureId]);
 
@@ -3637,6 +4347,7 @@ app.get('/api/creature/:creatureId/details', async (req, res) => {
       creature_name: creatureData.creature_name,
       selected_image: creatureData.selected_image,
       rarity_tier: creatureData.rarity_tier,
+      body_type_id: creatureData.body_type_id,
       body_type_name: creatureData.body_type_name,
       primary_color: primaryColor,
       overall_score: overallScore,
@@ -4419,6 +5130,185 @@ app.post('/api/admin/youtube-topics', async (req, res) => {
 });
 
 // ============================================================================
+// Body Type Admin API
+// ============================================================================
+
+/**
+ * POST create new body type
+ */
+app.post('/admin/body-type/create', async (req, res) => {
+  const { bodyTypeName, promptText, frameFilename } = req.body;
+
+  if (!bodyTypeName) {
+    return res.status(400).json({ error: 'bodyTypeName is required' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Check if body type already exists
+    const existingCheck = await client.query(
+      'SELECT id FROM dim_body_type WHERE body_type_name = $1',
+      [bodyTypeName]
+    );
+
+    if (existingCheck.rows.length > 0) {
+      return res.json({
+        success: false,
+        error: `Body type "${bodyTypeName}" already exists`
+      });
+    }
+
+    // Add to dim_body_type
+    await client.query(`
+      INSERT INTO dim_body_type (body_type_name, frame_filename, prompt_text)
+      VALUES ($1, $2, $3)
+    `, [bodyTypeName, frameFilename, promptText || '']);
+
+    console.log(`✅ Created body type: ${bodyTypeName}`);
+
+    // Add to body_type_frame_config with defaults
+    await client.query(`
+      INSERT INTO body_type_frame_config (
+        body_type_name,
+        image_width_percent,
+        image_max_width_px,
+        image_max_height_vh,
+        image_min_width_px,
+        image_margin_top_px,
+        info_panel_bg_color,
+        frame_width_percent,
+        frame_height_percent,
+        lore_font
+      )
+      VALUES ($1, 100, 600, 70, 250, 0, '#FFFFFF', 100, 100, 'Georgia, serif')
+      ON CONFLICT (body_type_name) DO NOTHING
+    `, [bodyTypeName]);
+
+    res.json({
+      success: true,
+      message: `Body type "${bodyTypeName}" created successfully`
+    });
+
+  } catch (error) {
+    console.error('Error creating body type:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * POST delete body type
+ * Checks for existing creatures with this body type first
+ */
+app.post('/admin/body-type/delete', async (req, res) => {
+  const { bodyTypeId } = req.body;
+
+  if (!bodyTypeId) {
+    return res.status(400).json({ error: 'bodyTypeId is required' });
+  }
+
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Get body type name
+    const bodyTypeResult = await client.query(
+      'SELECT body_type_name FROM dim_body_type WHERE id = $1',
+      [bodyTypeId]
+    );
+
+    if (bodyTypeResult.rows.length === 0) {
+      return res.json({
+        success: false,
+        error: 'Body type not found'
+      });
+    }
+
+    const bodyTypeName = bodyTypeResult.rows[0].body_type_name;
+
+    // Check how many creatures are using this body type
+    const creatureCheck = await client.query(`
+      SELECT COUNT(*) as count
+      FROM creatures c
+      WHERE c.body_type_id = $1
+        AND c.is_deleted = false
+    `, [bodyTypeId]);
+
+    const creatureCount = parseInt(creatureCheck.rows[0].count);
+
+    if (creatureCount > 0) {
+      return res.json({
+        success: false,
+        error: `Cannot delete "${bodyTypeName}". There are ${creatureCount} creature(s) with this body type. Please delete or reassign them first.`,
+        creatureCount: creatureCount
+      });
+    }
+
+    // Delete from body_type_frame_config first (foreign key dependency)
+    await client.query(
+      'DELETE FROM body_type_frame_config WHERE body_type_name = $1',
+      [bodyTypeName]
+    );
+
+    // Delete junction tables if they exist
+    await client.query(
+      'DELETE FROM dim_color_scheme_body_types WHERE body_type_id = $1',
+      [bodyTypeId]
+    );
+
+    await client.query(
+      'DELETE FROM dim_size_category_body_types WHERE body_type_id = $1',
+      [bodyTypeId]
+    );
+
+    await client.query(
+      'DELETE FROM dim_social_activity_body_types WHERE body_type_id = $1',
+      [bodyTypeId]
+    );
+
+    await client.query(
+      'DELETE FROM dim_social_mood_body_types WHERE body_type_id = $1',
+      [bodyTypeId]
+    );
+
+    await client.query(
+      'DELETE FROM dim_special_quirk_body_types WHERE body_type_id = $1',
+      [bodyTypeId]
+    );
+
+    // Finally delete the body type itself
+    await client.query(
+      'DELETE FROM dim_body_type WHERE id = $1',
+      [bodyTypeId]
+    );
+
+    console.log(`✅ Deleted body type: ${bodyTypeName}`);
+
+    res.json({
+      success: true,
+      message: `Body type "${bodyTypeName}" deleted successfully`
+    });
+
+  } catch (error) {
+    console.error('Error deleting body type:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  } finally {
+    await client.end();
+  }
+});
+
+// ============================================================================
 // Trait Analytics API
 // ============================================================================
 
@@ -4437,17 +5327,16 @@ app.get('/api/admin/analytics/traits/overview', async (req, res) => {
       WITH creature_scores AS (
         SELECT
           c.id,
-          cp.body_type_id,
+          c.body_type_id,
           c.rarity_tier,
           bt.body_type_name,
           COALESCE(SUM(cst.score), 0) as total_score,
           COUNT(cst.creature_id) as trait_count
         FROM creatures c
-        LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
-        LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+        LEFT JOIN dim_body_type bt ON c.body_type_id = bt.id
         LEFT JOIN creature_social_traits cst ON c.id = cst.creature_id
         WHERE c.deleted_at IS NULL
-        GROUP BY c.id, cp.body_type_id, c.rarity_tier, bt.body_type_name
+        GROUP BY c.id, c.body_type_id, c.rarity_tier, bt.body_type_name
       )
       SELECT
         body_type_id,
@@ -4507,15 +5396,14 @@ app.get('/api/admin/analytics/traits/overview', async (req, res) => {
       WITH creature_scores AS (
         SELECT
           c.id,
-          cp.body_type_id,
+          c.body_type_id,
           bt.body_type_name,
           COALESCE(SUM(cst.score), 0) as total_score
         FROM creatures c
-        LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
-        LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+        LEFT JOIN dim_body_type bt ON c.body_type_id = bt.id
         LEFT JOIN creature_social_traits cst ON c.id = cst.creature_id
         WHERE c.deleted_at IS NULL
-        GROUP BY c.id, cp.body_type_id, bt.body_type_name
+        GROUP BY c.id, c.body_type_id, bt.body_type_name
       )
       SELECT
         body_type_id,
@@ -4536,32 +5424,30 @@ app.get('/api/admin/analytics/traits/overview', async (req, res) => {
         stc.id as trait_id,
         stc.category_name as trait_name,
         stc.icon as trait_icon,
-        cp.body_type_id,
+        body_rarity_combos.body_type_id,
         bt.body_type_name,
-        c.rarity_tier,
+        body_rarity_combos.rarity_tier,
         COUNT(DISTINCT c.id) as creature_count,
         ROUND(AVG(cst.score)::numeric, 2) as avg_score,
         ROUND(MIN(cst.score)::numeric, 2) as min_score,
         ROUND(MAX(cst.score)::numeric, 2) as max_score
       FROM dim_social_trait_category stc
       CROSS JOIN LATERAL (
-        SELECT DISTINCT cp.body_type_id, bt.body_type_name, c.rarity_tier
+        SELECT DISTINCT c.body_type_id, bt.body_type_name, c.rarity_tier
         FROM creatures c
-        LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
-        LEFT JOIN dim_body_type bt ON cp.body_type_id = bt.id
+        LEFT JOIN dim_body_type bt ON c.body_type_id = bt.id
         WHERE c.deleted_at IS NULL AND bt.body_type_name IS NOT NULL
       ) AS body_rarity_combos
       LEFT JOIN dim_body_type bt ON body_rarity_combos.body_type_id = bt.id
-      LEFT JOIN creature_prompts cp ON cp.body_type_id = body_rarity_combos.body_type_id
-      LEFT JOIN creatures c ON c.prompt_id = cp.id
+      LEFT JOIN creatures c ON c.body_type_id = body_rarity_combos.body_type_id
         AND c.rarity_tier = body_rarity_combos.rarity_tier
         AND c.deleted_at IS NULL
       LEFT JOIN creature_social_traits cst ON c.id = cst.creature_id
         AND cst.trait_category_id = stc.id
-      GROUP BY stc.id, stc.category_name, stc.icon, cp.body_type_id, bt.body_type_name, c.rarity_tier
+      GROUP BY stc.id, stc.category_name, stc.icon, body_rarity_combos.body_type_id, bt.body_type_name, body_rarity_combos.rarity_tier
       HAVING COUNT(DISTINCT c.id) > 0
       ORDER BY stc.id, bt.body_type_name,
-        CASE c.rarity_tier
+        CASE body_rarity_combos.rarity_tier
           WHEN 'Legendary' THEN 1
           WHEN 'Ultra Rare' THEN 2
           WHEN 'Rare' THEN 3
@@ -4625,10 +5511,9 @@ app.get('/api/admin/analytics/traits/body-type/:id', async (req, res) => {
           ) ORDER BY stc.category_name
         ) FILTER (WHERE cst.creature_id IS NOT NULL) as traits
       FROM creatures c
-      LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
       LEFT JOIN creature_social_traits cst ON c.id = cst.creature_id
       LEFT JOIN dim_social_trait_category stc ON cst.trait_category_id = stc.id
-      WHERE cp.body_type_id = $1 AND c.deleted_at IS NULL
+      WHERE c.body_type_id = $1 AND c.deleted_at IS NULL
       GROUP BY c.id, c.creature_name, c.rarity_tier
       ORDER BY c.rarity_tier, total_score DESC
     `, [bodyTypeId]);
@@ -4641,9 +5526,8 @@ app.get('/api/admin/analytics/traits/body-type/:id', async (req, res) => {
           c.rarity_tier,
           COALESCE(SUM(cst.score), 0) as total_score
         FROM creatures c
-        LEFT JOIN creature_prompts cp ON c.prompt_id = cp.id
         LEFT JOIN creature_social_traits cst ON c.id = cst.creature_id
-        WHERE cp.body_type_id = $1 AND c.deleted_at IS NULL
+        WHERE c.body_type_id = $1 AND c.deleted_at IS NULL
         GROUP BY c.id, c.rarity_tier
       )
       SELECT
@@ -4686,54 +5570,13 @@ app.get('/api/admin/analytics/traits/body-type/:id', async (req, res) => {
 const AnimationService = require('./services/animation-service');
 const animationService = new AnimationService(config);
 
-// Set up Azure Blob Storage for animations
-let blobServiceClient = null;
-let animationsContainerClient = null;
-
-// Try to load Azure SDK (may fail if dependencies aren't installed)
-try {
-  const { BlobServiceClient } = require('@azure/storage-blob');
-
-  if (process.env.AZURE_STORAGE_CONNECTION_STRING) {
-    try {
-      blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
-      const containerName = process.env.AZURE_STORAGE_CONTAINER_ANIMATIONS || 'animations';
-      animationsContainerClient = blobServiceClient.getContainerClient(containerName);
-
-      // Ensure container exists
-      animationsContainerClient.createIfNotExists({ access: 'blob' })
-        .then(() => console.log(`✓ Azure Blob Storage configured for animations (container: ${containerName})`))
-        .catch(err => console.error('Error creating animations container:', err.message));
-    } catch (error) {
-      console.warn('⚠️  Azure Blob Storage not configured for animations:', error.message);
-    }
-  } else {
-    console.warn('⚠️  AZURE_STORAGE_CONNECTION_STRING not set - animations will only be saved locally');
-  }
-} catch (error) {
-  console.warn('⚠️  @azure/storage-blob module not available - animations will only be saved locally');
-  console.warn('   Run: npm install @azure/storage-blob');
-}
-
-// Set up multer for file uploads
+// ============================================================================
+// Multer Setup - Memory Storage (files go directly to Azure)
+// ============================================================================
 const multer = require('multer');
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, 'animations', 'processed');
-    // Ensure directory exists
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    // Generate filename: creatureId_animationType_timestamp.ext
-    const ext = path.extname(file.originalname);
-    const timestamp = Date.now();
-    const filename = `${req.body.creatureId}_${req.body.animationType}_${timestamp}${ext}`;
-    cb(null, filename);
-  }
-});
+
+// Use memory storage - files will be uploaded directly to Azure
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
@@ -4747,6 +5590,22 @@ const upload = multer({
   },
   limits: {
     fileSize: 100 * 1024 * 1024 // 100MB max file size
+  }
+});
+
+// Multer for image uploads
+const imageUpload = multer({
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    // Accept only image files
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  },
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB max file size
   }
 });
 
@@ -4792,66 +5651,50 @@ app.post('/api/animations/upload', upload.single('animation'), async (req, res) 
     const { creatureId, animationType, displayName } = req.body;
 
     if (!creatureId || !animationType) {
-      // Delete uploaded file if validation fails
-      fs.unlinkSync(req.file.path);
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    // Generate filename: creatureId_animationType_timestamp.ext
+    const ext = path.extname(req.file.originalname);
+    const timestamp = Date.now();
+    const filename = `${creatureId}_${animationType}_${timestamp}${ext}`;
+    const blobName = `processed/${filename}`;
+
+    // Upload directly to Azure Blob Storage
+    const blockBlobClient = animationsContainerClient.getBlockBlobClient(blobName);
+    await blockBlobClient.uploadData(req.file.buffer, {
+      blobHTTPHeaders: {
+        blobContentType: req.file.mimetype
+      }
+    });
+
+    const blobUrl = blockBlobClient.url;
+    console.log(`✅ Animation uploaded to Azure: ${blobName}`);
+    console.log(`   Size: ${(req.file.size / 1024 / 1024).toFixed(2)} MB`);
+
+    // Store path in database (relative path for our proxy route)
+    const relativePath = `/animations/${blobName}`;
+
     await client.connect();
-
-    // Store relative path for database
-    const relativePath = `/animations/processed/${req.file.filename}`;
-
-    // Insert into database
     const result = await client.query(`
       INSERT INTO creature_animations
       (creature_id, animation_type, file_path, file_name, display_name)
       VALUES ($1, $2, $3, $4, $5)
       RETURNING id
-    `, [creatureId, animationType, relativePath, req.file.filename, displayName || req.file.originalname]);
+    `, [creatureId, animationType, relativePath, filename, displayName || req.file.originalname]);
 
     const animationId = result.rows[0].id;
-
-    console.log(`✅ Animation uploaded locally: ${animationType} for creature ${creatureId}`);
-    console.log(`   File: ${req.file.filename}`);
-    console.log(`   Size: ${(req.file.size / 1024 / 1024).toFixed(2)} MB`);
-
-    // Upload to Azure Blob Storage (if configured)
-    let blobUrl = null;
-    if (animationsContainerClient) {
-      try {
-        const blobName = `processed/${req.file.filename}`;
-        const blockBlobClient = animationsContainerClient.getBlockBlobClient(blobName);
-
-        // Upload file to blob storage
-        await blockBlobClient.uploadFile(req.file.path, {
-          blobHTTPHeaders: {
-            blobContentType: req.file.mimetype
-          }
-        });
-
-        blobUrl = blockBlobClient.url;
-        console.log(`✅ Animation uploaded to Azure Blob Storage: ${blobName}`);
-      } catch (blobError) {
-        console.error('⚠️  Failed to upload to Azure Blob Storage:', blobError.message);
-        // Continue anyway - file is saved locally
-      }
-    }
 
     res.json({
       success: true,
       animationId: animationId,
       filePath: relativePath,
-      fileName: req.file.filename,
+      fileName: filename,
       blobUrl: blobUrl
     });
 
   } catch (error) {
     console.error('Error uploading animation:', error);
-    // Clean up file if database insert failed
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
     res.status(500).json({ error: error.message });
   } finally {
     await client.end();
@@ -4881,6 +5724,175 @@ app.get('/api/animation-types', async (req, res) => {
   }
 });
 
+// ============================================================================
+// LEADERBOARD ENDPOINTS
+// ============================================================================
+
+// Achievements Leaderboard
+app.get('/api/leaderboard/achievements', async (req, res) => {
+  const client = new Client(config);
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT
+        u.id as user_id,
+        u.username,
+        COUNT(DISTINCT ua.achievement_id) as score
+      FROM users u
+      LEFT JOIN user_achievements ua ON u.id = ua.user_id
+      GROUP BY u.id, u.username
+      HAVING COUNT(DISTINCT ua.achievement_id) > 0
+      ORDER BY score DESC, u.username ASC
+      LIMIT 100
+    `);
+
+    res.json({ rankings: result.rows });
+  } catch (error) {
+    console.error('Error fetching achievements leaderboard:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+// Team Score Leaderboard
+app.get('/api/leaderboard/team-score', async (req, res) => {
+  const client = new Client(config);
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT
+        u.id as user_id,
+        u.username,
+        COALESCE(SUM(
+          CASE
+            WHEN c.rarity_tier = 'Legendary' THEN 100
+            WHEN c.rarity_tier = 'Ultra Rare' THEN 50
+            WHEN c.rarity_tier = 'Rare' THEN 25
+            WHEN c.rarity_tier = 'Uncommon' THEN 10
+            ELSE 5
+          END
+        ), 0) as score
+      FROM users u
+      LEFT JOIN team_positions tp ON u.id = tp.user_id
+      LEFT JOIN creatures c ON tp.creature_id = c.id
+      GROUP BY u.id, u.username
+      HAVING COALESCE(SUM(
+          CASE
+            WHEN c.rarity_tier = 'Legendary' THEN 100
+            WHEN c.rarity_tier = 'Ultra Rare' THEN 50
+            WHEN c.rarity_tier = 'Rare' THEN 25
+            WHEN c.rarity_tier = 'Uncommon' THEN 10
+            ELSE 5
+          END
+        ), 0) > 0
+      ORDER BY score DESC, u.username ASC
+      LIMIT 100
+    `);
+
+    res.json({ rankings: result.rows });
+  } catch (error) {
+    console.error('Error fetching team score leaderboard:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+// Collection Size Leaderboard
+app.get('/api/leaderboard/collection', async (req, res) => {
+  const client = new Client(config);
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT
+        u.id as user_id,
+        u.username,
+        COUNT(c.id) as score
+      FROM users u
+      LEFT JOIN creatures c ON u.id = c.user_id
+      GROUP BY u.id, u.username
+      HAVING COUNT(c.id) > 0
+      ORDER BY score DESC, u.username ASC
+      LIMIT 100
+    `);
+
+    res.json({ rankings: result.rows });
+  } catch (error) {
+    console.error('Error fetching collection leaderboard:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+// Rarest Creatures Leaderboard
+app.get('/api/leaderboard/rarity', async (req, res) => {
+  const client = new Client(config);
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT
+        u.id as user_id,
+        u.username,
+        COALESCE(SUM(
+          CASE
+            WHEN c.rarity_tier = 'Legendary' THEN 1000
+            WHEN c.rarity_tier = 'Ultra Rare' THEN 100
+            WHEN c.rarity_tier = 'Rare' THEN 25
+            WHEN c.rarity_tier = 'Uncommon' THEN 5
+            ELSE 1
+          END
+        ), 0) as score
+      FROM users u
+      LEFT JOIN creatures c ON u.id = c.user_id
+      GROUP BY u.id, u.username
+      HAVING COALESCE(SUM(
+          CASE
+            WHEN c.rarity_tier = 'Legendary' THEN 1000
+            WHEN c.rarity_tier = 'Ultra Rare' THEN 100
+            WHEN c.rarity_tier = 'Rare' THEN 25
+            WHEN c.rarity_tier = 'Uncommon' THEN 5
+            ELSE 1
+          END
+        ), 0) > 0
+      ORDER BY score DESC, u.username ASC
+      LIMIT 100
+    `);
+
+    res.json({ rankings: result.rows });
+  } catch (error) {
+    console.error('Error fetching rarity leaderboard:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+// Global error handler - prevents server crash
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  if (!res.headersSent) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit - just log it
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Don't exit - just log it
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log('\n' + '='.repeat(80));
@@ -4893,6 +5905,11 @@ app.listen(PORT, () => {
   // Start background services
   services.start();
 });
+
+// Export artworkContainerClient for avatar generation service
+module.exports = {
+  artworkContainerClient
+};
 
 // Graceful shutdown
 process.on('SIGINT', () => {

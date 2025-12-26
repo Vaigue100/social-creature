@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Your Avatar - Chatlings</title>
+    <script src="/user/config.js"></script>
+    <script src="/user/components/auth-check.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            margin-bottom: 40px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .question {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .question.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .question-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .question-subtitle {
+            font-size: 0.9em;
+            color: #999;
+            margin-bottom: 20px;
+        }
+
+        .options {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .option {
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .option:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .option.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        }
+
+        .option-emoji {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .option-text {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9em;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: space-between;
+        }
+
+        button {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-back {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .btn-back:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-next {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            flex: 1;
+        }
+
+        .btn-next:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-next:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .color-limit-warning {
+            color: #dc3545;
+            font-size: 0.85em;
+            margin-top: -10px;
+            margin-bottom: 20px;
+            text-align: center;
+            display: none;
+        }
+
+        .color-limit-warning.show {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .options {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            }
+
+            .option {
+                padding: 15px;
+            }
+
+            .option-emoji {
+                font-size: 1.5em;
+            }
+
+            .option-text {
+                font-size: 0.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Create Your Avatar</h1>
+        <p class="subtitle">Answer 9 questions to generate your personalized avatar</p>
+
+        <!-- Loading state -->
+        <div id="loading-check" style="text-align: center; padding: 40px;">
+            <div style="font-size: 2em; margin-bottom: 10px;">⏳</div>
+            <div>Checking your request status...</div>
+        </div>
+
+        <!-- Already has request message -->
+        <div id="existing-request" style="display: none; text-align: center; padding: 60px 20px;">
+            <div style="font-size: 4em; margin-bottom: 20px;">🎨</div>
+            <div style="font-size: 1.5em; font-weight: bold; color: #667eea; margin-bottom: 15px;">
+                Avatar Request In Progress
+            </div>
+            <div style="font-size: 1.1em; color: #666; margin-bottom: 30px;">
+                Chatling engineers are working on your request
+            </div>
+            <button onclick="window.location.href='/user/index.html'"
+                    style="padding: 15px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-size: 1em; cursor: pointer; font-weight: 600;">
+                Return to Home
+            </button>
+        </div>
+
+        <!-- Questionnaire (hidden initially) -->
+        <div id="questionnaire-container" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+
+            <div id="questions-container"></div>
+            <div class="color-limit-warning" id="color-warning">
+                You can select up to 3 colors maximum
+            </div>
+
+            <div class="buttons">
+                <button class="btn-back" id="btn-back" onclick="previousQuestion()" style="display: none;">
+                    ← Back
+                </button>
+                <button class="btn-next" id="btn-next" onclick="nextQuestion()" disabled>
+                    Next →
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            {
+                id: 'vibe',
+                title: "What's your vibe?",
+                subtitle: "Choose the energy that best represents you",
+                multiSelect: false,
+                options: [
+                    { value: 'chill', emoji: '😌', text: 'Chill' },
+                    { value: 'energetic', emoji: '⚡', text: 'Energetic' },
+                    { value: 'mysterious', emoji: '🌙', text: 'Mysterious' },
+                    { value: 'playful', emoji: '🎈', text: 'Playful' },
+                    { value: 'confident', emoji: '💪', text: 'Confident' },
+                    { value: 'shy', emoji: '🙈', text: 'Shy' },
+                    { value: 'rebellious', emoji: '🔥', text: 'Rebellious' },
+                    { value: 'peaceful', emoji: '☮️', text: 'Peaceful' },
+                    { value: 'adventurous', emoji: '🗺️', text: 'Adventurous' },
+                    { value: 'sophisticated', emoji: '🎩', text: 'Sophisticated' },
+                    { value: 'quirky', emoji: '🤪', text: 'Quirky' },
+                    { value: 'elegant', emoji: '✨', text: 'Elegant' }
+                ]
+            },
+            {
+                id: 'color',
+                title: "Pick your colors",
+                subtitle: "Select up to 3 colors",
+                multiSelect: true,
+                maxSelections: 3,
+                options: [
+                    { value: 'blue', emoji: '💙', text: 'Blue' },
+                    { value: 'purple', emoji: '💜', text: 'Purple' },
+                    { value: 'green', emoji: '💚', text: 'Green' },
+                    { value: 'pink', emoji: '💗', text: 'Pink' },
+                    { value: 'orange', emoji: '🧡', text: 'Orange' },
+                    { value: 'red', emoji: '❤️', text: 'Red' },
+                    { value: 'yellow', emoji: '💛', text: 'Yellow' },
+                    { value: 'cyan', emoji: '🩵', text: 'Cyan' },
+                    { value: 'magenta', emoji: '💗', text: 'Magenta' },
+                    { value: 'black', emoji: '🖤', text: 'Black' },
+                    { value: 'white', emoji: '🤍', text: 'White' },
+                    { value: 'gray', emoji: '🩶', text: 'Gray' },
+                    { value: 'brown', emoji: '🤎', text: 'Brown' },
+                    { value: 'gold', emoji: '💛', text: 'Gold' },
+                    { value: 'silver', emoji: '🩶', text: 'Silver' },
+                    { value: 'multi coloured', emoji: '🌈', text: 'Multi Coloured' }
+                ]
+            },
+            {
+                id: 'mood',
+                title: "Your mood:",
+                subtitle: "How are you feeling today?",
+                multiSelect: false,
+                options: [
+                    { value: 'happy', emoji: '😊', text: 'Happy' },
+                    { value: 'calm', emoji: '😌', text: 'Calm' },
+                    { value: 'fierce', emoji: '😤', text: 'Fierce' },
+                    { value: 'sleepy', emoji: '😴', text: 'Sleepy' },
+                    { value: 'excited', emoji: '🤩', text: 'Excited' },
+                    { value: 'thoughtful', emoji: '🤔', text: 'Thoughtful' },
+                    { value: 'mischievous', emoji: '😈', text: 'Mischievous' },
+                    { value: 'determined', emoji: '😠', text: 'Determined' },
+                    { value: 'dreamy', emoji: '😍', text: 'Dreamy' },
+                    { value: 'proud', emoji: '😏', text: 'Proud' },
+                    { value: 'curious', emoji: '🧐', text: 'Curious' },
+                    { value: 'brave', emoji: '🦁', text: 'Brave' }
+                ]
+            },
+            {
+                id: 'style',
+                title: "Pick a style:",
+                subtitle: "What aesthetic speaks to you?",
+                multiSelect: false,
+                options: [
+                    { value: 'cute', emoji: '🥰', text: 'Cute' },
+                    { value: 'cool', emoji: '😎', text: 'Cool' },
+                    { value: 'elegant', emoji: '✨', text: 'Elegant' },
+                    { value: 'funny', emoji: '🤪', text: 'Funny' },
+                    { value: 'edgy', emoji: '🔪', text: 'Edgy' },
+                    { value: 'vintage', emoji: '📻', text: 'Vintage' },
+                    { value: 'futuristic', emoji: '🚀', text: 'Futuristic' },
+                    { value: 'minimalist', emoji: '⚪', text: 'Minimalist' },
+                    { value: 'maximalist', emoji: '🎨', text: 'Maximalist' },
+                    { value: 'gothic', emoji: '🦇', text: 'Gothic' },
+                    { value: 'pastel', emoji: '🌸', text: 'Pastel' },
+                    { value: 'neon', emoji: '🌈', text: 'Neon' }
+                ]
+            },
+            {
+                id: 'element',
+                title: "Choose an element:",
+                subtitle: "What power resonates with you?",
+                multiSelect: false,
+                options: [
+                    { value: 'fire', emoji: '🔥', text: 'Fire' },
+                    { value: 'water', emoji: '💧', text: 'Water' },
+                    { value: 'earth', emoji: '🌍', text: 'Earth' },
+                    { value: 'air', emoji: '💨', text: 'Air' },
+                    { value: 'lightning', emoji: '⚡', text: 'Lightning' },
+                    { value: 'ice', emoji: '❄️', text: 'Ice' },
+                    { value: 'nature', emoji: '🌿', text: 'Nature' },
+                    { value: 'cosmic', emoji: '🌌', text: 'Cosmic' }
+                ]
+            },
+            {
+                id: 'pattern',
+                title: "Pattern preference:",
+                subtitle: "What pattern catches your eye?",
+                multiSelect: false,
+                options: [
+                    { value: 'solid', emoji: '⬛', text: 'Solid' },
+                    { value: 'stripes', emoji: '🦓', text: 'Stripes' },
+                    { value: 'spots', emoji: '🐆', text: 'Spots' },
+                    { value: 'gradient', emoji: '🌈', text: 'Gradient' },
+                    { value: 'swirls', emoji: '🌀', text: 'Swirls' },
+                    { value: 'geometric', emoji: '🔷', text: 'Geometric' },
+                    { value: 'floral', emoji: '🌺', text: 'Floral' },
+                    { value: 'stars', emoji: '⭐', text: 'Stars' },
+                    { value: 'waves', emoji: '🌊', text: 'Waves' },
+                    { value: 'abstract', emoji: '🎨', text: 'Abstract' },
+                    { value: 'crystalline', emoji: '💎', text: 'Crystalline' },
+                    { value: 'flowing', emoji: '〰️', text: 'Flowing' }
+                ]
+            },
+            {
+                id: 'accessory',
+                title: "Pick an accessory:",
+                subtitle: "What would complete your look?",
+                multiSelect: false,
+                options: [
+                    { value: 'hat', emoji: '🎩', text: 'Hat' },
+                    { value: 'scarf', emoji: '🧣', text: 'Scarf' },
+                    { value: 'glasses', emoji: '🕶️', text: 'Glasses' },
+                    { value: 'crown', emoji: '👑', text: 'Crown' },
+                    { value: 'headphones', emoji: '🎧', text: 'Headphones' },
+                    { value: 'bow', emoji: '🎀', text: 'Bow' },
+                    { value: 'necklace', emoji: '📿', text: 'Necklace' },
+                    { value: 'earrings', emoji: '💎', text: 'Earrings' },
+                    { value: 'mask', emoji: '🎭', text: 'Mask' },
+                    { value: 'wings', emoji: '🦋', text: 'Wings' },
+                    { value: 'horns', emoji: '👿', text: 'Horns' },
+                    { value: 'halo', emoji: '😇', text: 'Halo' }
+                ]
+            },
+            {
+                id: 'clothingStyle',
+                title: "Clothing style:",
+                subtitle: "How do you like to dress?",
+                multiSelect: false,
+                options: [
+                    { value: 'casual', emoji: '👕', text: 'Casual' },
+                    { value: 'formal', emoji: '🤵', text: 'Formal' },
+                    { value: 'sporty', emoji: '⚽', text: 'Sporty' },
+                    { value: 'fantasy', emoji: '🧙', text: 'Fantasy' },
+                    { value: 'armor', emoji: '🛡️', text: 'Armor' },
+                    { value: 'robes', emoji: '🧥', text: 'Robes' },
+                    { value: 'streetwear', emoji: '👟', text: 'Streetwear' },
+                    { value: 'punk', emoji: '🎸', text: 'Punk' },
+                    { value: 'bohemian', emoji: '🌻', text: 'Bohemian' },
+                    { value: 'cyberpunk', emoji: '🤖', text: 'Cyberpunk' },
+                    { value: 'royal', emoji: '👸', text: 'Royal' },
+                    { value: 'wizard', emoji: '🔮', text: 'Wizard' }
+                ]
+            },
+            {
+                id: 'expression',
+                title: "Final touch - expression:",
+                subtitle: "What face will you show the world?",
+                multiSelect: false,
+                options: [
+                    { value: 'smiling', emoji: '😊', text: 'Smiling' },
+                    { value: 'winking', emoji: '😉', text: 'Winking' },
+                    { value: 'surprised', emoji: '😮', text: 'Surprised' },
+                    { value: 'determined', emoji: '😤', text: 'Determined' },
+                    { value: 'laughing', emoji: '😄', text: 'Laughing' },
+                    { value: 'smirking', emoji: '😏', text: 'Smirking' },
+                    { value: 'peaceful', emoji: '😌', text: 'Peaceful' },
+                    { value: 'intense', emoji: '😠', text: 'Intense' },
+                    { value: 'playful', emoji: '😜', text: 'Playful' },
+                    { value: 'confident', emoji: '😎', text: 'Confident' },
+                    { value: 'mysterious', emoji: '😶', text: 'Mysterious' },
+                    { value: 'cool', emoji: '🆒', text: 'Cool' }
+                ]
+            }
+        ];
+
+        let currentQuestionIndex = 0;
+        let answers = {};
+
+        function renderQuestions() {
+            const container = document.getElementById('questions-container');
+            container.innerHTML = questions.map((q, index) => `
+                <div class="question ${index === 0 ? 'active' : ''}" id="question-${index}">
+                    <div class="question-title">${q.title}</div>
+                    <div class="question-subtitle">${q.subtitle}</div>
+                    <div class="options">
+                        ${q.options.map(opt => `
+                            <div class="option" data-value="${opt.value}" onclick="selectOption('${q.id}', '${opt.value}', ${index}, ${q.multiSelect || false}, ${q.maxSelections || 1})">
+                                <div class="option-emoji">${opt.emoji}</div>
+                                <div class="option-text">${opt.text}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectOption(questionId, value, questionIndex, multiSelect, maxSelections) {
+            const question = document.getElementById(`question-${questionIndex}`);
+            const clickedOption = event.currentTarget;
+
+            if (multiSelect) {
+                // Multi-select logic (for colors)
+                if (!Array.isArray(answers[questionId])) {
+                    answers[questionId] = [];
+                }
+
+                const index = answers[questionId].indexOf(value);
+                if (index > -1) {
+                    // Deselect
+                    answers[questionId].splice(index, 1);
+                    clickedOption.classList.remove('selected');
+                } else {
+                    // Select (if under limit)
+                    if (answers[questionId].length < maxSelections) {
+                        answers[questionId].push(value);
+                        clickedOption.classList.add('selected');
+                    } else {
+                        // Show warning
+                        const warning = document.getElementById('color-warning');
+                        warning.classList.add('show');
+                        setTimeout(() => warning.classList.remove('show'), 2000);
+                        return;
+                    }
+                }
+
+                // Enable next if at least one selected
+                document.getElementById('btn-next').disabled = answers[questionId].length === 0;
+            } else {
+                // Single select logic
+                answers[questionId] = value;
+
+                // Update UI
+                question.querySelectorAll('.option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                clickedOption.classList.add('selected');
+
+                // Enable next button
+                document.getElementById('btn-next').disabled = false;
+            }
+        }
+
+        function nextQuestion() {
+            const currentQuestion = questions[currentQuestionIndex];
+
+            // Validate answer exists
+            if (!answers[currentQuestion.id] ||
+                (Array.isArray(answers[currentQuestion.id]) && answers[currentQuestion.id].length === 0)) {
+                return;
+            }
+
+            if (currentQuestionIndex < questions.length - 1) {
+                // Next question
+                document.getElementById(`question-${currentQuestionIndex}`).classList.remove('active');
+                currentQuestionIndex++;
+                document.getElementById(`question-${currentQuestionIndex}`).classList.add('active');
+
+                // Update buttons
+                document.getElementById('btn-back').style.display = 'block';
+
+                // Check if current question already has answer
+                const hasAnswer = answers[questions[currentQuestionIndex].id] &&
+                    (!Array.isArray(answers[questions[currentQuestionIndex].id]) ||
+                     answers[questions[currentQuestionIndex].id].length > 0);
+                document.getElementById('btn-next').disabled = !hasAnswer;
+
+                // Update progress
+                updateProgress();
+
+                // Update button text
+                if (currentQuestionIndex === questions.length - 1) {
+                    document.getElementById('btn-next').textContent = 'Generate Avatar 🎨';
+                }
+            } else {
+                // Submit
+                submitQuestionnaire();
+            }
+        }
+
+        function previousQuestion() {
+            if (currentQuestionIndex > 0) {
+                document.getElementById(`question-${currentQuestionIndex}`).classList.remove('active');
+                currentQuestionIndex--;
+                document.getElementById(`question-${currentQuestionIndex}`).classList.add('active');
+
+                // Update buttons
+                if (currentQuestionIndex === 0) {
+                    document.getElementById('btn-back').style.display = 'none';
+                }
+                document.getElementById('btn-next').disabled = false;
+                document.getElementById('btn-next').textContent = 'Next →';
+
+                // Update progress
+                updateProgress();
+            }
+        }
+
+        function updateProgress() {
+            const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+            document.getElementById('progress-fill').style.width = progress + '%';
+        }
+
+        async function submitQuestionnaire() {
+            const btn = document.getElementById('btn-next');
+            btn.disabled = true;
+            btn.textContent = 'Submitting...';
+
+            try {
+                const response = await fetch('/api/user/avatar/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ answers })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    // Show success and redirect
+                    btn.textContent = '✓ Request Submitted!';
+                    setTimeout(() => {
+                        window.location.href = '/user/index.html';
+                    }, 1000);
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                    btn.disabled = false;
+                    btn.textContent = 'Generate Avatar 🎨';
+                }
+            } catch (error) {
+                console.error('Error submitting questionnaire:', error);
+                alert('Failed to submit. Please try again.');
+                btn.disabled = false;
+                btn.textContent = 'Generate Avatar 🎨';
+            }
+        }
+
+        // Check for existing queue items on page load
+        async function checkExistingRequest() {
+            try {
+                const response = await fetch('/api/user/avatar/queue-status');
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Hide loading
+                    document.getElementById('loading-check').style.display = 'none';
+
+                    if (data.status !== 'none') {
+                        // User already has a queue item - show message
+                        document.getElementById('existing-request').style.display = 'block';
+                    } else {
+                        // No existing request - show questionnaire
+                        document.getElementById('questionnaire-container').style.display = 'block';
+                        renderQuestions();
+                        updateProgress();
+                    }
+                } else {
+                    // Error checking status - show questionnaire anyway
+                    document.getElementById('loading-check').style.display = 'none';
+                    document.getElementById('questionnaire-container').style.display = 'block';
+                    renderQuestions();
+                    updateProgress();
+                }
+            } catch (error) {
+                console.error('Error checking queue status:', error);
+                // On error, show questionnaire
+                document.getElementById('loading-check').style.display = 'none';
+                document.getElementById('questionnaire-container').style.display = 'block';
+                renderQuestions();
+                updateProgress();
+            }
+        }
+
+        // Initialize
+        checkExistingRequest();
+    </script>
+</body>
+</html>
