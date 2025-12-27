@@ -162,6 +162,42 @@
     transform: none;
 }
 
+/* Motes Display */
+.motes-display {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-weight: 700;
+    color: #333;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.motes-display:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5);
+}
+
+.motes-icon {
+    font-size: 1.2em;
+    animation: sparkle 2s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+.motes-count {
+    font-size: 1em;
+    min-width: 30px;
+    text-align: center;
+}
+
 /* Bell Button */
 .bell-button {
     background: none;

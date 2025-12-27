@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chatlings - Store</title>
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Theme color for mobile browsers -->
+    <meta name="theme-color" content="#667eea">
+
+    <!-- Apple iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Chatlings">
+    <link rel="apple-touch-icon" href="/assets/icon-192.png">
+
+    <script src="/user/config.js"></script>
+    <script src="/user/components/auth-check.js"></script>
+    <link rel="stylesheet" href="/user/components/simple-header-styles.css">
+    <script src="/user/components/simple-header.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding-bottom: 50px;
+        }
+
+        .store-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .store-header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .store-header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .store-header .motes-balance {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            margin-top: 20px;
+        }
+
+        .store-header .motes-balance .motes-icon {
+            font-size: 1.5em;
+            animation: sparkle 2s ease-in-out infinite;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+
+        .shop-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .shop-item {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .shop-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .shop-item-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .shop-item-icon {
+            font-size: 4em;
+            margin-bottom: 15px;
+        }
+
+        .shop-item-name {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .shop-item-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            flex-grow: 1;
+        }
+
+        .shop-item-prices {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .price-option {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .price-option:hover {
+            border-color: #667eea;
+            background: #f0f1ff;
+        }
+
+        .price-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .price-icon {
+            font-size: 1.5em;
+        }
+
+        .price-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .purchase-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .purchase-btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .purchase-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .purchase-btn-motes {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            color: #333;
+        }
+
+        .purchase-btn-motes:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5);
+        }
+
+        .purchase-btn-money {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .purchase-btn-money:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+        }
+
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.5em;
+            padding: 50px;
+        }
+
+        .error {
+            background: #ff6b6b;
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .empty-store {
+            text-align: center;
+            color: white;
+            font-size: 1.5em;
+            padding: 50px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-icon {
+            font-size: 5em;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .modal-message {
+            color: #666;
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .modal-btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-btn-confirm {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .modal-btn-confirm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+        }
+
+        .modal-btn-cancel {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .modal-btn-cancel:hover {
+            background: #d0d0d0;
+        }
+
+        @media (max-width: 768px) {
+            .store-header h1 {
+                font-size: 2em;
+            }
+
+            .shop-items {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="store-container">
+        <div id="shop-items-container">
+            <div class="loading">Loading shop items...</div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-icon" id="modal-icon">⚠️</div>
+            <div class="modal-title" id="modal-title">Confirm Purchase</div>
+            <div class="modal-message" id="modal-message">Are you sure?</div>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="modal-btn modal-btn-confirm" id="modal-confirm-btn" onclick="confirmPurchase()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success/Error Modal -->
+    <div id="result-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-icon" id="result-icon">✅</div>
+            <div class="modal-title" id="result-title">Success!</div>
+            <div class="modal-message" id="result-message">Purchase completed!</div>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-confirm" onclick="closeResultModal()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let userMotes = 0;
+        let shopItems = [];
+        let currentPurchase = null;
+
+        // Load shop items and user motes on page load
+        async function loadStore() {
+            try {
+                // Load user data
+                const userResponse = await fetch('/api/user/me');
+                if (userResponse.ok) {
+                    const user = await userResponse.json();
+                    userMotes = user.motes || 0;
+                    // Update header motes count
+                    const headerMotes = document.getElementById('motes-count');
+                    if (headerMotes) {
+                        headerMotes.textContent = userMotes.toLocaleString();
+                    }
+                }
+
+                // Load shop items
+                const itemsResponse = await fetch('/api/shop/items');
+                if (itemsResponse.ok) {
+                    shopItems = await itemsResponse.json();
+                    renderShopItems();
+                } else {
+                    throw new Error('Failed to load shop items');
+                }
+            } catch (error) {
+                console.error('Error loading store:', error);
+                document.getElementById('shop-items-container').innerHTML = `
+                    <div class="error">
+                        Failed to load store. Please try again later.
+                    </div>
+                `;
+            }
+        }
+
+        function renderShopItems() {
+            const container = document.getElementById('shop-items-container');
+
+            if (shopItems.length === 0) {
+                container.innerHTML = '<div class="empty-store">No items available at the moment.</div>';
+                return;
+            }
+
+            const itemsHTML = shopItems.map(item => {
+                const icon = getItemIcon(item.item_type);
+                const canAfford = userMotes >= (item.motes_price || 0);
+
+                return `
+                    <div class="shop-item">
+                        <div class="shop-item-header">
+                            <div class="shop-item-icon">${icon}</div>
+                            <div class="shop-item-name">${item.name}</div>
+                        </div>
+                        <div class="shop-item-description">${item.description}</div>
+
+                        <div class="shop-item-prices">
+                            ${item.motes_price ? `
+                                <div class="price-option">
+                                    <div class="price-label">
+                                        <span class="price-icon">✨</span>
+                                        <span>Motes</span>
+                                    </div>
+                                    <div class="price-value">${item.motes_price.toLocaleString()}</div>
+                                </div>
+                            ` : ''}
+
+                            ${item.real_money_price ? `
+                                <div class="price-option">
+                                    <div class="price-label">
+                                        <span class="price-icon">💷</span>
+                                        <span>Real Money</span>
+                                    </div>
+                                    <div class="price-value">£${parseFloat(item.real_money_price).toFixed(2)}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <div class="purchase-buttons">
+                            ${item.motes_price ? `
+                                <button class="purchase-btn purchase-btn-motes"
+                                        onclick="purchaseWithMotes('${item.id}')"
+                                        ${!canAfford ? 'disabled' : ''}>
+                                    <span>✨</span>
+                                    <span>Buy with Motes</span>
+                                    ${!canAfford ? '<span>(Not enough Motes)</span>' : ''}
+                                </button>
+                            ` : ''}
+
+                            ${item.real_money_price ? `
+                                <button class="purchase-btn purchase-btn-money"
+                                        onclick="purchaseWithMoney('${item.id}')">
+                                    <span>💷</span>
+                                    <span>Buy with Money</span>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = `<div class="shop-items">${itemsHTML}</div>`;
+        }
+
+        function getItemIcon(itemType) {
+            const icons = {
+                'avatar_reset': '🎨',
+                'motes_pack': '✨',
+                'premium': '⭐',
+                'cosmetic': '👗',
+                'boost': '🚀'
+            };
+            return icons[itemType] || '🎁';
+        }
+
+        function purchaseWithMotes(itemId) {
+            const item = shopItems.find(i => i.id === itemId);
+            if (!item) return;
+
+            if (userMotes < item.motes_price) {
+                showResultModal('❌', 'Insufficient Motes', 'You don\'t have enough Motes for this purchase.');
+                return;
+            }
+
+            currentPurchase = { itemId, method: 'motes', item };
+            showConfirmationModal(
+                '✨',
+                'Confirm Motes Purchase',
+                `Purchase "${item.name}" for ${item.motes_price.toLocaleString()} Motes?`
+            );
+        }
+
+        function purchaseWithMoney(itemId) {
+            const item = shopItems.find(i => i.id === itemId);
+            if (!item) return;
+
+            currentPurchase = { itemId, method: 'payment', item };
+            showConfirmationModal(
+                '💷',
+                'Confirm Payment',
+                `Purchase "${item.name}" for £${parseFloat(item.real_money_price).toFixed(2)}?`
+            );
+        }
+
+        async function confirmPurchase() {
+            if (!currentPurchase) return;
+
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Processing...';
+
+            try {
+                if (currentPurchase.method === 'motes') {
+                    const response = await fetch('/api/shop/purchase/motes', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ itemId: currentPurchase.itemId })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        userMotes = result.remainingMotes;
+                        // Update header motes count
+                        const headerMotes = document.getElementById('motes-count');
+                        if (headerMotes) {
+                            headerMotes.textContent = userMotes.toLocaleString();
+                        }
+
+                        // Save item name before closing modal (which clears currentPurchase)
+                        const itemName = currentPurchase.item.name;
+                        closeModal();
+                        showResultModal(
+                            '✅',
+                            'Purchase Successful!',
+                            `You purchased "${itemName}"! ${result.message || ''}`
+                        );
+
+                        renderShopItems(); // Refresh to update button states
+                    } else {
+                        const error = await response.json();
+                        throw new Error(error.error || 'Purchase failed');
+                    }
+                } else if (currentPurchase.method === 'payment') {
+                    // TODO: Implement Stripe payment flow
+                    closeModal();
+                    showResultModal(
+                        '⚠️',
+                        'Coming Soon',
+                        'Payment integration is coming soon! Please use Motes for now.'
+                    );
+                }
+            } catch (error) {
+                console.error('Purchase error:', error);
+                closeModal();
+                showResultModal('❌', 'Purchase Failed', error.message);
+            } finally {
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Confirm';
+            }
+        }
+
+        function showConfirmationModal(icon, title, message) {
+            document.getElementById('modal-icon').textContent = icon;
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('confirmation-modal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('confirmation-modal').classList.remove('show');
+            currentPurchase = null;
+        }
+
+        function showResultModal(icon, title, message) {
+            document.getElementById('result-icon').textContent = icon;
+            document.getElementById('result-title').textContent = title;
+            document.getElementById('result-message').textContent = message;
+            document.getElementById('result-modal').classList.add('show');
+        }
+
+        function closeResultModal() {
+            document.getElementById('result-modal').classList.remove('show');
+        }
+
+        // Close modals on background click
+        document.getElementById('confirmation-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'confirmation-modal') closeModal();
+        });
+
+        document.getElementById('result-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'result-modal') closeResultModal();
+        });
+
+        // Load store on page load
+        loadStore();
+    </script>
+</body>
+</html>

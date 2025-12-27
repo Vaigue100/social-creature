@@ -396,10 +396,30 @@
             </div>
         </div>
 
+        <!-- Processing Log -->
+        <div style="margin-bottom: 20px; background: #f8f9fa; border-radius: 10px; padding: 20px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+                <h3 style="margin: 0; color: #667eea;">Current Processing Log</h3>
+                <button onclick="toggleLog()" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9em;">
+                    <span id="log-toggle-icon">▼</span> Toggle
+                </button>
+            </div>
+            <div id="processing-log-container" style="display: block;">
+                <div id="processing-log" style="background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85em; max-height: 300px; overflow-y: auto; white-space: pre-wrap;">
+                    <div style="color: #888;">No processing activity yet...</div>
+                </div>
+                <div style="margin-top: 10px; text-align: right;">
+                    <button onclick="refreshLog()" style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85em;">
+                        🔄 Refresh Log
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
             <label for="status-filter" style="font-weight: 600; color: #666;">Filter by Status:</label>
             <select id="status-filter" onchange="filterTable()" style="padding: 8px 15px; border-radius: 8px; border: 2px solid #e0e0e0; font-size: 1em; background: white; cursor: pointer;">
-                <option value="pending,failed">Pending & Failed</option>
+                <option value="pending,processing,failed">Active</option>
                 <option value="all">All</option>
                 <option value="pending">Pending</option>
                 <option value="processing">Processing</option>
@@ -715,11 +735,58 @@
             }
         });
 
-        // Auto-refresh every 30 seconds
-        setInterval(loadQueue, 30000);
+        // Toggle log visibility
+        function toggleLog() {
+            const container = document.getElementById('processing-log-container');
+            const icon = document.getElementById('log-toggle-icon');
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                icon.textContent = '▼';
+            } else {
+                container.style.display = 'none';
+                icon.textContent = '▶';
+            }
+        }
+
+        // Load processing log
+        async function refreshLog() {
+            try {
+                const response = await fetch('/api/admin/avatar-processing-log');
+                if (response.ok) {
+                    const data = await response.json();
+                    const logContainer = document.getElementById('processing-log');
+
+                    if (data.log && data.log.length > 0) {
+                        logContainer.innerHTML = data.log.map(entry => {
+                            const timestamp = new Date(entry.timestamp).toLocaleTimeString();
+                            const color = entry.level === 'error' ? '#ff6b6b' :
+                                         entry.level === 'warn' ? '#ffa500' :
+                                         entry.level === 'success' ? '#51cf66' : '#d4d4d4';
+                            return `<div style="color: ${color};">[${timestamp}] ${entry.message}</div>`;
+                        }).join('');
+
+                        // Auto-scroll to bottom
+                        logContainer.scrollTop = logContainer.scrollHeight;
+                    } else {
+                        logContainer.innerHTML = '<div style="color: #888;">No processing activity yet...</div>';
+                    }
+                } else {
+                    console.error('Failed to load processing log');
+                }
+            } catch (error) {
+                console.error('Error loading processing log:', error);
+            }
+        }
+
+        // Auto-refresh queue and log every 30 seconds
+        setInterval(() => {
+            loadQueue();
+            refreshLog();
+        }, 30000);
 
         // Initial load
         loadQueue();
+        refreshLog();
     </script>
 </body>
 </html>

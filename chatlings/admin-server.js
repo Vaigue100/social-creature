@@ -1376,7 +1376,7 @@ app.get('/api/user/me', async (req, res) => {
     await client.connect();
 
     const result = await client.query(
-      `SELECT u.id, u.username, u.email, u.created_at, oa.provider_email
+      `SELECT u.id, u.username, u.email, u.created_at, u.motes, oa.provider_email
        FROM users u
        LEFT JOIN oauth_accounts oa ON u.id = oa.user_id
        WHERE u.id = $1
@@ -2888,6 +2888,20 @@ app.post('/api/user/avatar/select', requireAuth, async (req, res) => {
 
     await client.connect();
 
+    // Copy the selected avatar to the "picked" file
+    // This ensures the user's chosen avatar is preserved when they regenerate
+    const sourceBlobPath = `user/${userId}_${selectedNumber}.png`;
+    const destBlobPath = `user/${userId}_picked.png`;
+
+    const sourceBlobClient = artworkContainerClient.getBlockBlobClient(sourceBlobPath);
+    const destBlobClient = artworkContainerClient.getBlockBlobClient(destBlobPath);
+
+    // Copy the blob
+    const copyOperation = await destBlobClient.beginCopyFromURL(sourceBlobClient.url);
+    await copyOperation.pollUntilDone();
+
+    console.log(`✓ Copied avatar: ${sourceBlobPath} → ${destBlobPath}`);
+
     // Update user profile
     await client.query(`
       UPDATE users
@@ -2900,7 +2914,7 @@ app.post('/api/user/avatar/select', requireAuth, async (req, res) => {
 
     res.json({
       success: true,
-      avatarUrl: `/user/${userId}_${selectedNumber}.png`
+      avatarUrl: `/user/${userId}_picked.png`
     });
 
   } catch (error) {
@@ -2943,7 +2957,7 @@ app.get('/api/user/avatar/current', requireAuth, async (req, res) => {
     if (queueItem) {
       return res.json({
         hasAvatar: !!user.avatar_selected_number,
-        avatarUrl: user.avatar_selected_number ? `/user/${userId}_${user.avatar_selected_number}.png` : null,
+        avatarUrl: user.avatar_selected_number ? `/user/${userId}_picked.png` : null,
         createdAt: user.avatar_created_at,
         queueStatus: queueItem.status,
         imageCount: queueItem.image_count || 0
@@ -2957,7 +2971,7 @@ app.get('/api/user/avatar/current', requireAuth, async (req, res) => {
 
     res.json({
       hasAvatar: true,
-      avatarUrl: `/user/${userId}_${user.avatar_selected_number}.png`,
+      avatarUrl: `/user/${userId}_picked.png`,
       createdAt: user.avatar_created_at
     });
 
@@ -2967,6 +2981,124 @@ app.get('/api/user/avatar/current', requireAuth, async (req, res) => {
   } finally {
     await client.end();
   }
+});
+
+// ============================================================================
+// SHOP ENDPOINTS
+// ============================================================================
+
+/**
+ * Get all active shop items
+ */
+app.get('/api/shop/items', requireAuth, async (req, res) => {
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    const result = await client.query(`
+      SELECT id, item_type, name, description, motes_price, real_money_price, currency_code, display_order
+      FROM shop_items
+      WHERE is_active = true
+      ORDER BY display_order ASC, created_at ASC
+    `);
+
+    res.json(result.rows);
+
+  } catch (error) {
+    console.error('Error fetching shop items:', error);
+    res.status(500).json({ error: 'Failed to load shop items' });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Purchase shop item with motes
+ */
+app.post('/api/shop/purchase/motes', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const { itemId } = req.body;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+    await client.query('BEGIN');
+
+    // Get shop item
+    const itemResult = await client.query(`
+      SELECT * FROM shop_items WHERE id = $1 AND is_active = true
+    `, [itemId]);
+
+    if (itemResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Item not found or not available' });
+    }
+
+    const item = itemResult.rows[0];
+
+    if (!item.motes_price) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'This item cannot be purchased with Motes' });
+    }
+
+    // Get user's current motes
+    const userResult = await client.query(`
+      SELECT motes FROM users WHERE id = $1
+    `, [userId]);
+
+    const currentMotes = userResult.rows[0].motes;
+
+    if (currentMotes < item.motes_price) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Insufficient Motes' });
+    }
+
+    // Deduct motes
+    await client.query(`
+      UPDATE users SET motes = motes - $1 WHERE id = $2
+    `, [item.motes_price, userId]);
+
+    const newMotes = currentMotes - item.motes_price;
+
+    // Record purchase
+    await client.query(`
+      INSERT INTO user_purchases (
+        user_id, shop_item_id, purchase_method, motes_spent, status
+      ) VALUES ($1, $2, 'motes', $3, 'completed')
+    `, [userId, itemId, item.motes_price]);
+
+    // Execute item-specific logic using handler
+    const shopHandlers = require('./services/shop-item-handlers');
+    const result = await shopHandlers.handlePurchase(client, userId, item);
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      remainingMotes: newMotes,
+      message: result.message || ''
+    });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error processing motes purchase:', error);
+    res.status(500).json({ error: 'Failed to process purchase' });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Purchase shop item with real money (payment gateway)
+ * TODO: Implement Stripe/PayPal integration
+ */
+app.post('/api/shop/purchase/payment', requireAuth, async (req, res) => {
+  // Placeholder for future payment integration
+  res.status(501).json({
+    error: 'Payment integration coming soon',
+    message: 'Real money purchases will be available soon. Please use Motes for now.'
+  });
 });
 
 /**
@@ -3012,6 +3144,37 @@ app.get('/api/admin/avatar-queue', requireAuth, async (req, res) => {
 
   } catch (error) {
     console.error('Error getting avatar queue:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    await client.end();
+  }
+});
+
+/**
+ * Admin: Get current avatar processing log
+ */
+app.get('/api/admin/avatar-processing-log', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const client = new Client(config);
+
+  try {
+    await client.connect();
+
+    // Check if user is admin
+    const adminCheck = await client.query(`
+      SELECT is_admin FROM users WHERE id = $1
+    `, [userId]);
+
+    if (!adminCheck.rows[0]?.is_admin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    // Get log from avatar generation service
+    const log = services.avatarGeneration.getLog();
+    res.json({ log });
+
+  } catch (error) {
+    console.error('Error getting processing log:', error);
     res.status(500).json({ error: error.message });
   } finally {
     await client.end();

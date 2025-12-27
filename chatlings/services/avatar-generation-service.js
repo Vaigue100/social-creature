@@ -15,9 +15,37 @@ class AvatarGenerationService {
     this.dbConfig = dbConfig;
     this.isRunning = false;
     this.checkIntervalMinutes = 2;
+    this.processingLog = []; // Stores current processing log entries
 
     console.log(`🎨 Avatar Generation Service initialized`);
     console.log(`   Check interval: ${this.checkIntervalMinutes} minutes`);
+  }
+
+  /**
+   * Add entry to processing log
+   */
+  log(message, level = 'info') {
+    const entry = {
+      timestamp: new Date().toISOString(),
+      message,
+      level
+    };
+    this.processingLog.push(entry);
+    console.log(`[Avatar Service] ${message}`);
+  }
+
+  /**
+   * Clear the processing log (called when starting new queue item)
+   */
+  clearLog() {
+    this.processingLog = [];
+  }
+
+  /**
+   * Get current processing log
+   */
+  getLog() {
+    return this.processingLog;
   }
 
   /**
@@ -63,6 +91,11 @@ class AvatarGenerationService {
    * Process a single queue item - generate 9 images
    */
   async processQueueItem(queueItem, client) {
+    // Clear log for new processing
+    this.clearLog();
+    this.log(`🎨 Starting avatar generation for user ${queueItem.user_id}`, 'info');
+    this.log(`Prompt: ${queueItem.prompt_text}`, 'info');
+
     // Mark as processing
     await client.query(`
       UPDATE avatar_generation_queue
@@ -70,12 +103,14 @@ class AvatarGenerationService {
       WHERE id = $1
     `, [queueItem.id]);
 
+    this.log(`Marked queue item as processing`, 'info');
+
     try {
-      console.log(`   Generating 9 avatar images...`);
+      this.log(`Generating 9 avatar images...`, 'info');
 
       // Generate 9 images
       for (let i = 1; i <= 9; i++) {
-        console.log(`   Generating image ${i}/9...`);
+        this.log(`Generating image ${i}/9...`, 'info');
 
         const imageBuffer = await this.generateImage(queueItem.prompt_text, i);
         await this.uploadToAzure(imageBuffer, queueItem.user_id, i);
@@ -86,6 +121,8 @@ class AvatarGenerationService {
           SET image_count = $1
           WHERE id = $2
         `, [i, queueItem.id]);
+
+        this.log(`✓ Image ${i}/9 completed and uploaded`, 'success');
       }
 
       // Mark complete
@@ -95,12 +132,14 @@ class AvatarGenerationService {
         WHERE id = $1
       `, [queueItem.id]);
 
-      console.log(`   ✅ All 9 images generated successfully`);
+      this.log(`✅ All 9 images generated successfully!`, 'success');
 
       // Send notification
       await this.notifyUserComplete(queueItem.user_id, client);
+      this.log(`Notification sent to user`, 'success');
 
     } catch (error) {
+      this.log(`❌ Generation failed: ${error.message}`, 'error');
       console.error(`   ❌ Generation failed:`, error.message);
 
       // Mark failed (silent - user doesn't see error)
@@ -109,6 +148,8 @@ class AvatarGenerationService {
         SET status = 'failed', error_message = $1
         WHERE id = $2
       `, [error.message, queueItem.id]);
+
+      this.log(`Marked queue item as failed`, 'error');
     }
   }
 
@@ -127,16 +168,16 @@ class AvatarGenerationService {
       prompt += `${answers.vibe} vibe, `;
     }
 
-    // Color (can be multiple)
+    // Color (can be multiple) - specify it applies to the character only
     if (answers.color) {
       if (Array.isArray(answers.color)) {
         if (answers.color.includes('multi coloured')) {
-          prompt += 'multi coloured, ';
+          prompt += 'character is multi coloured, ';
         } else {
-          prompt += `${answers.color.join(' and ')} colors, `;
+          prompt += `character has ${answers.color.join(' and ')} colors, `;
         }
       } else {
-        prompt += `${answers.color} color, `;
+        prompt += `character is ${answers.color} colored, `;
       }
     }
 
@@ -176,7 +217,7 @@ class AvatarGenerationService {
     }
 
     // Always add automatic directives for consistent style
-    prompt += 'single creature only, full body visible, stylized 3D art, simple clean background';
+    prompt += 'single creature only, full body visible, stylized 3D art, plain dimly lit neutral background, background is separate from character colors';
 
     return prompt;
   }

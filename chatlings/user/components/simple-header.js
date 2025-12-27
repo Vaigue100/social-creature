@@ -11,6 +11,12 @@ function initSimpleHeader() {
             </div>
 
             <div class="header-right" id="header-right" style="display: none;">
+                <!-- Motes Display -->
+                <div class="motes-display" title="Your Motes - Click to visit Store" onclick="window.location.href='/user/store.html'">
+                    <span class="motes-icon">✨</span>
+                    <span class="motes-count" id="motes-count">0</span>
+                </div>
+
                 <!-- Notifications Dropdown -->
                 <div class="dropdown">
                     <button class="bell-button" onclick="toggleNotifications(event)" title="Notifications">
@@ -99,6 +105,12 @@ function updateHeaderUserInfo(user) {
     const userAvatar = document.getElementById('user-avatar');
     if (userAvatar && user.username) {
         userAvatar.textContent = user.username.charAt(0).toUpperCase();
+    }
+
+    // Update motes count
+    const motesCount = document.getElementById('motes-count');
+    if (motesCount && user.motes !== undefined) {
+        motesCount.textContent = user.motes.toLocaleString();
     }
 }
 
