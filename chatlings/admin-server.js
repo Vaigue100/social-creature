@@ -3,8 +3,11 @@
  * Serves the admin interface and handles image selection API
  */
 
-// Load environment variables
-require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+// Load environment variables (only in local development)
+// On Azure, environment variables come from App Settings (including Key Vault references)
+if (!process.env.WEBSITE_INSTANCE_ID) {
+  require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+}
 
 const express = require('express');
 const session = require('express-session');
@@ -63,11 +66,19 @@ let animationsContainerClient = null;
   try {
     const { BlobServiceClient } = require('@azure/storage-blob');
 
-    if (!process.env.AZURE_STORAGE_CONNECTION_STRING) {
+    const connString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+
+    if (!connString) {
+      console.error('❌ AZURE_STORAGE_CONNECTION_STRING is not set');
+      console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('AZURE') || k.includes('STORAGE')));
       throw new Error('AZURE_STORAGE_CONNECTION_STRING environment variable is required');
     }
 
-    blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
+    // Log connection string info (without exposing the key)
+    const accountMatch = connString.match(/AccountName=([^;]+)/);
+    console.log(`✓ Azure Storage connection string found (Account: ${accountMatch ? accountMatch[1] : 'unknown'})`);
+
+    blobServiceClient = BlobServiceClient.fromConnectionString(connString);
 
     // Set up containers
     const artworkContainer = process.env.AZURE_STORAGE_CONTAINER_ARTWORK || 'artwork';
