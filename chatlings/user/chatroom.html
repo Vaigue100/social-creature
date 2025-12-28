@@ -1,948 +1,652 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Chatroom - Chatlings</title>
-
-  <!-- PWA manifest -->
-  <link rel="manifest" href="/manifest.json">
-
-  <!-- Theme color for mobile browsers -->
-  <meta name="theme-color" content="#667eea">
-
-  <!-- Apple iOS -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Chatlings">
-  <link rel="apple-touch-icon" href="/assets/icon-192.png">
-
-  <script src="/user/config.js"></script>
-  <script src="/user/components/auth-check.js"></script>
-  <link rel="stylesheet" href="components/shared-header-styles.css">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      color: #333;
-    }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-
-    .content-wrapper {
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 15px;
-      padding: 40px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Tabs */
-    .tabs {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 30px;
-      flex-wrap: wrap;
-      border-bottom: 2px solid #f0f0f0;
-      padding-bottom: 10px;
-    }
-
-    .tab-button {
-      background: transparent;
-      color: #666;
-      border: none;
-      border-bottom: 3px solid transparent;
-      padding: 12px 24px;
-      cursor: pointer;
-      font-size: 1em;
-      transition: all 0.3s;
-      position: relative;
-      font-weight: 600;
-    }
-
-    .tab-button:hover {
-      color: #667eea;
-      background: rgba(102, 126, 234, 0.05);
-    }
-
-    .tab-button.active {
-      color: #667eea;
-      border-bottom-color: #667eea;
-    }
-
-    .tab-button .badge {
-      position: absolute;
-      top: -8px;
-      right: -8px;
-      background: #e74c3c;
-      color: white;
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.75em;
-      font-weight: bold;
-    }
-
-    .tab-content {
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
-
-    /* Conversation Card */
-    .conversation-card {
-      background: white;
-      border-radius: 15px;
-      padding: 30px;
-      margin-bottom: 20px;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-    }
-
-    .conversation-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-      padding-bottom: 15px;
-      border-bottom: 2px solid #f0f0f0;
-    }
-
-    .conversation-topic {
-      flex: 1;
-    }
-
-    .conversation-topic h3 {
-      color: #667eea;
-      font-size: 1.3em;
-      margin-bottom: 5px;
-    }
-
-    .conversation-meta {
-      color: #999;
-      font-size: 0.9em;
-    }
-
-    .unread-badge {
-      background: #e74c3c;
-      color: white;
-      padding: 4px 12px;
-      border-radius: 12px;
-      font-size: 0.85em;
-      font-weight: bold;
-    }
-
-    /* Participants */
-    .participants {
-      display: flex;
-      gap: 15px;
-      margin-bottom: 25px;
-      flex-wrap: wrap;
-    }
-
-    .participant {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: #f8f9fa;
-      padding: 10px 15px;
-      border-radius: 10px;
-    }
-
-    .participant-avatar {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 3px solid #667eea;
-    }
-
-    .participant-info {
-      flex: 1;
-    }
-
-    .participant-name {
-      font-weight: bold;
-      color: #333;
-      font-size: 0.95em;
-    }
-
-    .mood-indicator {
-      font-size: 0.85em;
-      padding: 2px 8px;
-      border-radius: 8px;
-      display: inline-block;
-      margin-top: 3px;
-    }
-
-    .mood-happy {
-      background: #d4edda;
-      color: #155724;
-    }
-
-    .mood-neutral {
-      background: #fff3cd;
-      color: #856404;
-    }
-
-    .mood-unhappy {
-      background: #f8d7da;
-      color: #721c24;
-    }
-
-    /* Chat Messages */
-    .chat-messages {
-      background: #f8f9fa;
-      border-radius: 12px;
-      padding: 20px;
-      min-height: 300px;
-    }
-
-    .chat-message {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 20px;
-      opacity: 0;
-      animation: fadeInMessage 0.5s forwards;
-    }
-
-    @keyframes fadeInMessage {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .message-avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      object-fit: cover;
-      flex-shrink: 0;
-    }
-
-    .message-content {
-      flex: 1;
-    }
-
-    .message-author {
-      font-weight: bold;
-      color: #667eea;
-      margin-bottom: 4px;
-      font-size: 0.9em;
-    }
-
-    .message-text {
-      background: white;
-      padding: 12px 16px;
-      border-radius: 12px;
-      color: #333;
-      line-height: 1.5;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-    }
-
-    .message-text.positive {
-      background: #d4edda;
-      border-left: 4px solid #28a745;
-    }
-
-    .message-text.negative {
-      background: #f8d7da;
-      border-left: 4px solid #dc3545;
-    }
-
-    .message-text.neutral {
-      background: #fff3cd;
-      border-left: 4px solid #ffc107;
-    }
-
-    /* Typing Indicator */
-    .typing-indicator {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    .typing-dots {
-      background: white;
-      padding: 12px 20px;
-      border-radius: 12px;
-      display: flex;
-      gap: 5px;
-    }
-
-    .typing-dots span {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #999;
-      animation: typing 1.4s infinite;
-    }
-
-    .typing-dots span:nth-child(2) {
-      animation-delay: 0.2s;
-    }
-
-    .typing-dots span:nth-child(3) {
-      animation-delay: 0.4s;
-    }
-
-    @keyframes typing {
-      0%, 60%, 100% {
-        transform: translateY(0);
-        opacity: 0.7;
-      }
-      30% {
-        transform: translateY(-10px);
-        opacity: 1;
-      }
-    }
-
-    /* Conversation History */
-    .history-list {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-    }
-
-    .history-item {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      cursor: pointer;
-      transition: all 0.3s;
-      border: 2px solid transparent;
-    }
-
-    .history-item:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-      border-color: #667eea;
-    }
-
-    .history-item-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 10px;
-    }
-
-    .history-topic {
-      color: #667eea;
-      font-weight: bold;
-    }
-
-    .history-date {
-      color: #999;
-      font-size: 0.85em;
-    }
-
-    .history-preview {
-      color: #666;
-      font-size: 0.9em;
-    }
-
-    /* Runaway Section */
-    .runaway-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 20px;
-    }
-
-    .runaway-card {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    }
-
-    .runaway-image {
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      object-fit: cover;
-      margin: 0 auto 15px;
-      border: 4px solid #e74c3c;
-      opacity: 0.7;
-    }
-
-    .runaway-name {
-      font-weight: bold;
-      color: #333;
-      font-size: 1.1em;
-      margin-bottom: 10px;
-    }
-
-    .runaway-info {
-      color: #666;
-      font-size: 0.9em;
-      margin-bottom: 15px;
-    }
-
-    .difficulty-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 8px;
-      font-size: 0.85em;
-      font-weight: bold;
-      margin-bottom: 15px;
-    }
-
-    .difficulty-easy {
-      background: #d4edda;
-      color: #155724;
-    }
-
-    .difficulty-normal {
-      background: #fff3cd;
-      color: #856404;
-    }
-
-    .difficulty-hard {
-      background: #f8d7da;
-      color: #721c24;
-    }
-
-    .recover-button {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1em;
-      font-weight: bold;
-      transition: all 0.3s;
-      width: 100%;
-    }
-
-    .recover-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-    }
-
-    /* Empty States */
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      color: #999;
-    }
-
-    .empty-state-icon {
-      font-size: 4em;
-      margin-bottom: 20px;
-      opacity: 0.5;
-    }
-
-    .empty-state h3 {
-      font-size: 1.5em;
-      margin-bottom: 10px;
-      color: #666;
-    }
-
-    .empty-state p {
-      font-size: 1em;
-      max-width: 500px;
-      margin: 0 auto;
-      line-height: 1.6;
-    }
-
-    /* Generate Button */
-    .generate-button {
-      background: #28a745;
-      color: white;
-      border: none;
-      padding: 15px 30px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 1.1em;
-      font-weight: bold;
-      transition: all 0.3s;
-      margin: 20px 0;
-      width: 100%;
-    }
-
-    .generate-button:hover {
-      background: #218838;
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
-    }
-
-    /* Loading Spinner */
-    .spinner {
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #667eea;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin: 20px auto;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .loading-text {
-      text-align: center;
-      color: #999;
-      margin-top: 10px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Chatroom - Chatlings</title>
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Theme color for mobile browsers -->
+    <meta name="theme-color" content="#667eea">
+
+    <!-- Apple iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Chatlings">
+    <link rel="apple-touch-icon" href="/assets/icon-192.png">
+
+    <script src="/user/config.js"></script>
+    <script src="/user/components/auth-check.js"></script>
+
+    <!-- Attitude Settings Component -->
+    <link rel="stylesheet" href="/user/components/attitude-settings.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2em;
+        }
+
+        .header .schedule-link {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .header .schedule-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .chatroom-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .video-section {
+            background: #000;
+            position: relative;
+        }
+
+        .video-thumbnail {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .video-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            padding: 20px;
+            color: white;
+        }
+
+        .video-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .video-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .chatroom-info {
+            padding: 30px;
+        }
+
+        .status-banner {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .status-banner.closed {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+        }
+
+        .status-banner h2 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+
+        .status-banner .countdown {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .hint-section {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .hint-section h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .hint-text {
+            color: #333;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+        }
+
+        .optimal-ranges-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .range-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .range-card .label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .range-card .value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .participate-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            border-radius: 30px;
+            font-size: 1.3em;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+            margin-bottom: 25px;
+        }
+
+        .participate-button:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+        }
+
+        .participate-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .results-section {
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .results-header h2 {
+            font-size: 1.5em;
+        }
+
+        .glow-earned {
+            font-size: 3em;
+            font-weight: bold;
+        }
+
+        .breakdown {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 1.1em;
+        }
+
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 5em;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h2 {
+            font-size: 2em;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .empty-state p {
+            font-size: 1.2em;
+            max-width: 600px;
+            margin: 0 auto 25px;
+            line-height: 1.6;
+        }
+
+        .empty-state a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .empty-state a:hover {
+            text-decoration: underline;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .back-button:hover {
+            transform: scale(1.1);
+            background: white;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .optimal-ranges-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
-  <script src="components/shared-header.js"></script>
+    <button class="back-button" onclick="window.location.href='index.html'" title="Back to Hub">←</button>
 
-  <div class="container">
-    <script>initSharedHeader('chatroom');</script>
+    <div class="container">
+        <div class="header">
+            <h1>🎥 YouTube Chatroom</h1>
+            <a href="chatroom-schedule.html" class="schedule-link">📅 View Schedule</a>
+        </div>
 
-    <div class="content-wrapper">
-      <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab-button active" onclick="switchTab('latest')">
-        Latest Conversation
-      </button>
-      <button class="tab-button" onclick="switchTab('history')">
-        History
-      </button>
-      <button class="tab-button" onclick="switchTab('runaways')" id="runaways-tab">
-        Runaways
-        <span class="badge" id="runaway-count" style="display: none;">0</span>
-      </button>
+        <div id="chatroom-content"></div>
     </div>
 
-    <!-- Latest Conversation Tab -->
-    <div id="latest-tab" class="tab-content active">
-      <button class="generate-button" onclick="generateConversation()">
-        🎲 Generate New Conversation (Test)
-      </button>
+    <!-- Attitude Settings Modal Component -->
+    <div id="attitude-settings-container"></div>
 
-      <div id="latest-conversation-container"></div>
-    </div>
+    <script>
+        let activeChatroom = null;
+        let participationResult = null;
 
-    <!-- History Tab -->
-    <div id="history-tab" class="tab-content">
-      <div class="conversation-card">
-        <h3 style="color: #667eea; margin-bottom: 20px;">Conversation History</h3>
-        <div id="history-list" class="history-list"></div>
-      </div>
-    </div>
+        async function loadActiveChatroom() {
+            try {
+                const response = await fetch('/api/chatroom/schedules/active');
+                if (!response.ok) {
+                    throw new Error('Failed to load chatroom');
+                }
 
-    <!-- Runaways Tab -->
-    <div id="runaways-tab-content" class="tab-content">
-      <div class="conversation-card">
-        <h3 style="color: #e74c3c; margin-bottom: 10px;">⚠️ Runaway Chatlings</h3>
-        <p style="color: #666; margin-bottom: 20px;">These chatlings became unhappy and left. Try to recover them!</p>
-        <div id="runaways-list" class="runaway-list"></div>
-      </div>
-    </div>
-    </div>
-  </div>
+                const data = await response.json();
+                activeChatroom = data.chatroom;
 
-  <script>
-    let conversations = [];
-    let runaways = [];
-    let currentlyAnimating = false;
+                renderChatroom();
 
-    // Initialize
-    async function init() {
-      await loadConversations();
-      await loadRunaways();
-      await markChatroomNotificationsRead();
-    }
+            } catch (error) {
+                console.error('Error loading chatroom:', error);
+                renderError();
+            }
+        }
 
-    // Mark all new_conversation notifications as read when visiting chatroom
-    async function markChatroomNotificationsRead() {
-      try {
-        // Get all unread chatroom notifications
-        const response = await fetch('/api/user/notifications');
-        if (response.ok) {
-          const data = await response.json();
-          const notifications = data.notifications || [];
-          const chatroomNotificationIds = notifications
-            .filter(n => n.notification_type === 'new_conversation' || n.notification_type === 'chatling_runaway' || n.notification_type === 'chatling_recovered')
-            .map(n => n.id);
+        function renderChatroom() {
+            const container = document.getElementById('chatroom-content');
 
-          if (chatroomNotificationIds.length > 0) {
-            console.log('Marking chatroom notifications as read:', chatroomNotificationIds);
-            // Mark them as read
-            await fetch('/api/user/notifications/mark-read', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ notificationIds: chatroomNotificationIds })
+            if (!activeChatroom) {
+                container.innerHTML = `
+                    <div class="chatroom-container">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📺</div>
+                            <h2>No Active Chatroom</h2>
+                            <p>There are no chatrooms open right now. Check the schedule to see when the next chatroom opens!</p>
+                            <a href="chatroom-schedule.html">View Chatroom Schedule →</a>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            const timeRemaining = formatTime(activeChatroom.timeRemaining);
+            const thumbnailUrl = activeChatroom.video_thumbnail_url || '/assets/placeholder-video.png';
+            const hasParticipated = activeChatroom.hasParticipated || participationResult;
+
+            container.innerHTML = `
+                <div class="chatroom-container">
+                    <div class="video-section">
+                        <img src="${thumbnailUrl}" alt="${activeChatroom.video_title}" class="video-thumbnail">
+                        <div class="video-overlay">
+                            <div class="video-title">${activeChatroom.video_title || 'Video'}</div>
+                            <div class="video-meta">
+                                <span>${formatCategory(activeChatroom.video_category)}</span>
+                                <span>•</span>
+                                <span>${activeChatroom.participant_count || 0} participants</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chatroom-info">
+                        <div class="status-banner">
+                            <h2>🔴 Chatroom Open</h2>
+                            <p>Participate now to earn glow!</p>
+                            <div class="countdown">Closes in ${timeRemaining}</div>
+                        </div>
+
+                        ${!hasParticipated ? renderParticipationUI() : renderParticipationResults()}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderParticipationUI() {
+            return `
+                ${activeChatroom.hint ? `
+                    <div class="hint-section">
+                        <h3>💡 Strategy Hint</h3>
+                        <p class="hint-text">${activeChatroom.hint}</p>
+                        <strong>Optimal Ranges:</strong>
+                        <div class="optimal-ranges-grid">
+                            <div class="range-card">
+                                <div class="label">Enthusiasm</div>
+                                <div class="value">${activeChatroom.optimal_enthusiasm_min}-${activeChatroom.optimal_enthusiasm_max}</div>
+                            </div>
+                            <div class="range-card">
+                                <div class="label">Criticism</div>
+                                <div class="value">${activeChatroom.optimal_criticism_min}-${activeChatroom.optimal_criticism_max}</div>
+                            </div>
+                            <div class="range-card">
+                                <div class="label">Humor</div>
+                                <div class="value">${activeChatroom.optimal_humor_min}-${activeChatroom.optimal_humor_max}</div>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <button class="participate-button" onclick="openParticipationModal()">
+                    ✨ Set Attitude & Participate
+                </button>
+
+                <div class="stats-section">
+                    <div class="stat-card">
+                        <div class="stat-label">Category</div>
+                        <div class="stat-value">${formatCategory(activeChatroom.video_category)}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Participants</div>
+                        <div class="stat-value">${activeChatroom.participant_count || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Time Left</div>
+                        <div class="stat-value" id="time-remaining">${formatTime(activeChatroom.timeRemaining)}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderParticipationResults() {
+            if (!participationResult) {
+                return `
+                    <div class="status-banner closed">
+                        <h2>✅ Already Participated</h2>
+                        <p>You've already participated in this chatroom. Check back for the next one!</p>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="results-section">
+                    <div class="results-header">
+                        <h2>🎉 Participation Complete!</h2>
+                        <div class="glow-earned">+${participationResult.glowEarned}</div>
+                    </div>
+                    <div class="breakdown">
+                        <div class="breakdown-item">
+                            <span>Base Participation:</span>
+                            <span>+${participationResult.breakdown.base}</span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span>Match Bonus:</span>
+                            <span>+${participationResult.breakdown.matchBonus.toFixed(1)}</span>
+                        </div>
+                        ${participationResult.breakdown.extremismPenalty > 0 ? `
+                            <div class="breakdown-item">
+                                <span>Extremism Penalty:</span>
+                                <span>-${participationResult.breakdown.extremismPenalty}</span>
+                            </div>
+                        ` : ''}
+                        ${participationResult.breakdown.varietyBonus !== 0 ? `
+                            <div class="breakdown-item">
+                                <span>Variety Bonus:</span>
+                                <span>${participationResult.breakdown.varietyBonus >= 0 ? '+' : ''}${participationResult.breakdown.varietyBonus}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderError() {
+            const container = document.getElementById('chatroom-content');
+            container.innerHTML = `
+                <div class="chatroom-container">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <h2>Error Loading Chatroom</h2>
+                        <p>We couldn't load the chatroom. Please try again later.</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function openParticipationModal() {
+            openAttitudeSettings(activeChatroom.id, handleParticipation);
+        }
+
+        async function handleParticipation(settings) {
+            try {
+                const response = await fetch('/api/chatroom/participate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chatroomId: activeChatroom.id,
+                        creatureId: settings.creatureId,
+                        enthusiasm: settings.enthusiasm,
+                        criticism: settings.criticism,
+                        humor: settings.humor
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to participate');
+                }
+
+                const result = await response.json();
+                participationResult = result;
+
+                // Reload chatroom to show results
+                renderChatroom();
+
+            } catch (error) {
+                console.error('Error participating:', error);
+                alert('Failed to participate: ' + error.message);
+            }
+        }
+
+        function formatTime(milliseconds) {
+            const totalSeconds = Math.floor(milliseconds / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            if (hours > 0) {
+                return `${hours}h ${minutes}m`;
+            } else if (minutes > 0) {
+                return `${minutes}m ${seconds}s`;
+            } else {
+                return `${seconds}s`;
+            }
+        }
+
+        function formatCategory(category) {
+            const categoryNames = {
+                'MUSIC': 'Music',
+                'COMEDY': 'Comedy',
+                'GAMING': 'Gaming',
+                'ENTERTAINMENT': 'Entertainment',
+                'REVIEW': 'Review',
+                'EDUCATION': 'Education',
+                'SCIENCE_TECH': 'Science & Tech',
+                'HOWTO_STYLE': 'How-To & Style',
+                'NEWS_POLITICS': 'News & Politics',
+                'PEOPLE_BLOGS': 'People & Blogs',
+                'DRAMA': 'Drama',
+                'INSPIRATIONAL': 'Inspirational',
+                'TUTORIAL': 'Tutorial',
+                'SPORTS': 'Sports',
+                'TRAVEL_EVENTS': 'Travel & Events',
+                'PETS_ANIMALS': 'Pets & Animals',
+                'GENERAL': 'General'
+            };
+            return categoryNames[category] || category;
+        }
+
+        // Load attitude settings component
+        fetch('/user/components/attitude-settings.html')
+            .then(r => r.text())
+            .then(html => {
+                document.getElementById('attitude-settings-container').innerHTML = html;
+                const script = document.createElement('script');
+                script.src = '/user/components/attitude-settings.js';
+                document.body.appendChild(script);
             });
-          }
-        }
-      } catch (error) {
-        console.error('Error marking chatroom notifications as read:', error);
-      }
-    }
 
-    // Switch tabs
-    function switchTab(tab) {
-      // Update tab buttons
-      document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-      event.target.classList.add('active');
+        // Load active chatroom on page load
+        window.addEventListener('load', loadActiveChatroom);
 
-      // Update tab content
-      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-      document.getElementById(`${tab}-tab${tab === 'runaways' ? '-content' : ''}`).classList.add('active');
-    }
+        // Update countdown every second
+        setInterval(() => {
+            if (activeChatroom && activeChatroom.timeRemaining > 0) {
+                activeChatroom.timeRemaining -= 1000;
+                const timeElement = document.getElementById('time-remaining');
+                if (timeElement) {
+                    timeElement.textContent = formatTime(activeChatroom.timeRemaining);
+                }
 
-    // Load conversations
-    async function loadConversations() {
-      try {
-        const response = await fetch('/api/chatroom/conversations');
-        conversations = await response.json();
-
-        if (conversations.length > 0) {
-          displayLatestConversation(conversations[0]);
-          displayHistory();
-        } else {
-          showEmptyState();
-        }
-      } catch (error) {
-        console.error('Error loading conversations:', error);
-      }
-    }
-
-    // Load runaways
-    async function loadRunaways() {
-      try {
-        const response = await fetch('/api/chatroom/runaways');
-        runaways = await response.json();
-
-        const badge = document.getElementById('runaway-count');
-        if (runaways.length > 0) {
-          badge.textContent = runaways.length;
-          badge.style.display = 'flex';
-        } else {
-          badge.style.display = 'none';
-        }
-
-        displayRunaways();
-      } catch (error) {
-        console.error('Error loading runaways:', error);
-      }
-    }
-
-    // Display latest conversation with animation
-    function displayLatestConversation(conversation) {
-      const container = document.getElementById('latest-conversation-container');
-
-      if (!conversation.messages || conversation.messages.length === 0) {
-        showEmptyState();
-        return;
-      }
-
-      const moodImpact = conversation.mood_impact || {};
-
-      const html = `
-        <div class="conversation-card">
-          <div class="conversation-header">
-            <div class="conversation-topic">
-              <h3>${conversation.topic_text}</h3>
-              <div class="conversation-meta">
-                ${new Date(conversation.created_at).toLocaleString()} • ${conversation.participant_count} participants
-              </div>
-            </div>
-            ${!conversation.is_read ? '<span class="unread-badge">NEW</span>' : ''}
-          </div>
-
-          <div class="participants" id="participants-${conversation.id}"></div>
-
-          <div class="chat-messages" id="messages-${conversation.id}"></div>
-        </div>
-      `;
-
-      container.innerHTML = html;
-
-      // Display participants
-      const participantsContainer = document.getElementById(`participants-${conversation.id}`);
-      const uniqueParticipants = {};
-
-      conversation.messages.forEach(msg => {
-        if (!uniqueParticipants[msg.creature_id]) {
-          uniqueParticipants[msg.creature_id] = {
-            id: msg.creature_id,
-            name: msg.creature_name,
-            image: msg.creature_image
-          };
-        }
-      });
-
-      Object.values(uniqueParticipants).forEach(p => {
-        let mood = 'neutral';
-        if (moodImpact.happy && moodImpact.happy.includes(p.id)) mood = 'happy';
-        if (moodImpact.unhappy && moodImpact.unhappy.includes(p.id)) mood = 'unhappy';
-
-        const moodEmoji = mood === 'happy' ? '😊' : mood === 'unhappy' ? '😞' : '😐';
-
-        participantsContainer.innerHTML += `
-          <div class="participant">
-            <img src="/images/${p.image}" alt="${p.name}" class="participant-avatar">
-            <div class="participant-info">
-              <div class="participant-name">${p.name}</div>
-              <span class="mood-indicator mood-${mood}">${moodEmoji} ${mood}</span>
-            </div>
-          </div>
-        `;
-      });
-
-      // Animate messages
-      animateConversation(conversation);
-
-      // Mark as read
-      if (!conversation.is_read) {
-        markAsRead(conversation.id);
-      }
-    }
-
-    // Animate conversation messages
-    async function animateConversation(conversation) {
-      if (currentlyAnimating) return;
-      currentlyAnimating = true;
-
-      const messagesContainer = document.getElementById(`messages-${conversation.id}`);
-      messagesContainer.innerHTML = '';
-
-      for (let i = 0; i < conversation.messages.length; i++) {
-        const message = conversation.messages[i];
-
-        // Show typing indicator (except for first message)
-        if (i > 0) {
-          const typingHtml = `
-            <div class="typing-indicator" id="typing-${i}">
-              <img src="${getImageUrl(message.creature_image)}" alt="${message.creature_name}" class="message-avatar">
-              <div class="typing-dots">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            </div>
-          `;
-          messagesContainer.innerHTML += typingHtml;
-
-          // Wait for typing
-          await sleep(1500);
-
-          // Remove typing indicator
-          document.getElementById(`typing-${i}`)?.remove();
-        }
-
-        // Show message
-        const messageHtml = `
-          <div class="chat-message">
-            <img src="${getImageUrl(message.creature_image)}" alt="${message.creature_name}" class="message-avatar">
-            <div class="message-content">
-              <div class="message-author">${message.creature_name}</div>
-              <div class="message-text ${message.sentiment || 'neutral'}">
-                ${message.message_text}
-              </div>
-            </div>
-          </div>
-        `;
-        messagesContainer.innerHTML += messageHtml;
-
-        // Scroll to bottom
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-        // Wait before next message
-        await sleep(1000);
-      }
-
-      currentlyAnimating = false;
-    }
-
-    // Display history
-    function displayHistory() {
-      const historyList = document.getElementById('history-list');
-
-      if (conversations.length === 0) {
-        historyList.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state-icon">📭</div>
-            <h3>No Conversations Yet</h3>
-            <p>Your chatlings haven't had any conversations yet. Check back later!</p>
-          </div>
-        `;
-        return;
-      }
-
-      historyList.innerHTML = conversations.map(conv => {
-        const preview = conv.messages && conv.messages.length > 0
-          ? `${conv.messages[0].creature_name}: ${conv.messages[0].message_text}`
-          : 'No messages';
-
-        return `
-          <div class="history-item" onclick="viewConversation('${conv.id}')">
-            <div class="history-item-header">
-              <div class="history-topic">${conv.topic_text}</div>
-              <div class="history-date">${new Date(conv.created_at).toLocaleDateString()}</div>
-            </div>
-            <div class="history-preview">${preview.substring(0, 100)}...</div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    // Display runaways
-    function displayRunaways() {
-      const runawaysList = document.getElementById('runaways-list');
-
-      if (runaways.length === 0) {
-        runawaysList.innerHTML = `
-          <div class="empty-state" style="grid-column: 1 / -1;">
-            <div class="empty-state-icon">🎉</div>
-            <h3>No Runaways!</h3>
-            <p>All your chatlings are happy and staying with you!</p>
-          </div>
-        `;
-        return;
-      }
-
-      runawaysList.innerHTML = runaways.map(runaway => {
-        const successRate = runaway.recovery_difficulty === 'easy' ? '80%'
-          : runaway.recovery_difficulty === 'normal' ? '50%' : '20%';
-
-        return `
-          <div class="runaway-card">
-            <img src="${getImageUrl(runaway.selected_image)}" alt="${runaway.creature_name}" class="runaway-image">
-            <div class="runaway-name">${runaway.creature_name}</div>
-            <div class="runaway-info">
-              Ran away ${new Date(runaway.ran_away_at).toLocaleDateString()}<br>
-              After ${runaway.unhappy_count} unhappy conversations
-            </div>
-            <div class="difficulty-badge difficulty-${runaway.recovery_difficulty}">
-              ${runaway.recovery_difficulty.toUpperCase()} (${successRate} success)
-            </div>
-            <button class="recover-button" onclick="recoverRunaway('${runaway.creature_id}')">
-              Try to Recover
-            </button>
-          </div>
-        `;
-      }).join('');
-    }
-
-    // View specific conversation
-    function viewConversation(conversationId) {
-      const conversation = conversations.find(c => c.id === conversationId);
-      if (conversation) {
-        switchTab('latest');
-        displayLatestConversation(conversation);
-      }
-    }
-
-    // Recover runaway
-    async function recoverRunaway(creatureId) {
-      if (!confirm('Attempt to recover this chatling? Success is not guaranteed.')) {
-        return;
-      }
-
-      try {
-        const response = await fetch(`/api/chatroom/recover/${creatureId}`, {
-          method: 'POST'
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          alert(`✅ ${result.message}`);
-          await loadRunaways();
-        } else {
-          alert(`❌ ${result.message}`);
-          if (result.newDifficulty) {
-            await loadRunaways(); // Refresh to show updated difficulty
-          }
-        }
-
-      } catch (error) {
-        console.error('Error recovering runaway:', error);
-        alert('Error attempting recovery. Please try again.');
-      }
-    }
-
-    // Generate conversation (for testing)
-    async function generateConversation() {
-      const button = event.target;
-      button.disabled = true;
-      button.innerHTML = '<div class="spinner" style="width: 20px; height: 20px; border-width: 3px; margin: 0 auto;"></div>';
-
-      try {
-        const response = await fetch('/api/chatroom/generate', {
-          method: 'POST'
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          alert('✅ ' + result.message);
-          await loadConversations();
-          await loadRunaways(); // Refresh in case anyone ran away
-        } else {
-          alert('⚠️ ' + result.message);
-        }
-
-      } catch (error) {
-        console.error('Error generating conversation:', error);
-        alert('Error generating conversation');
-      } finally {
-        button.disabled = false;
-        button.innerHTML = '🎲 Generate New Conversation (Test)';
-      }
-    }
-
-    // Mark conversation as read
-    async function markAsRead(conversationId) {
-      try {
-        await fetch(`/api/chatroom/mark-read/${conversationId}`, {
-          method: 'POST'
-        });
-      } catch (error) {
-        console.error('Error marking as read:', error);
-      }
-    }
-
-    // Show empty state
-    function showEmptyState() {
-      const container = document.getElementById('latest-conversation-container');
-      container.innerHTML = `
-        <div class="conversation-card">
-          <div class="empty-state">
-            <div class="empty-state-icon">💭</div>
-            <h3>No Conversations Yet</h3>
-            <p>Your chatlings haven't had any conversations yet. Conversations happen 1-2 times per day automatically. You can also generate one manually using the button above for testing!</p>
-          </div>
-        </div>
-      `;
-    }
-
-    // Helper: sleep
-    function sleep(ms) {
-      return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    // Initialize on load
-    init();
-  </script>
+                // Reload if chatroom has closed
+                if (activeChatroom.timeRemaining <= 0) {
+                    loadActiveChatroom();
+                }
+            }
+        }, 1000);
+    </script>
 </body>
 </html>

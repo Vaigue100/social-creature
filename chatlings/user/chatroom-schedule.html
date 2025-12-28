@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatroom Schedule - Chatlings</title>
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Theme color for mobile browsers -->
+    <meta name="theme-color" content="#667eea">
+
+    <!-- Apple iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Chatlings">
+    <link rel="apple-touch-icon" href="/assets/icon-192.png">
+
+    <script src="/user/config.js"></script>
+    <script src="/user/components/auth-check.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .active-chatroom-banner {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .active-chatroom-banner h2 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+
+        .active-chatroom-banner .join-button {
+            display: inline-block;
+            background: white;
+            color: #f5576c;
+            padding: 12px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+
+        .active-chatroom-banner .join-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .schedule-list {
+            display: grid;
+            gap: 20px;
+        }
+
+        .schedule-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+
+        .schedule-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .schedule-card.opening-soon {
+            border: 3px solid #f093fb;
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 8px 32px rgba(240, 147, 251, 0.3); }
+            50% { box-shadow: 0 8px 32px rgba(240, 147, 251, 0.6); }
+        }
+
+        .video-thumbnail {
+            position: relative;
+            background: #000;
+        }
+
+        .video-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-thumbnail .category-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .schedule-info {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .schedule-info h3 {
+            color: #333;
+            font-size: 1.4em;
+            margin-bottom: 15px;
+            line-height: 1.3;
+        }
+
+        .countdown {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .countdown .time-remaining {
+            font-size: 1.5em;
+            margin-top: 5px;
+        }
+
+        .countdown.opening-soon {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        .hint-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+
+        .hint-box .hint-label {
+            font-size: 0.85em;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .hint-box .hint-text {
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .optimal-settings {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .setting-range {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .setting-range .label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .setting-range .range {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .empty-state {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 60px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .empty-state h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .empty-state p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.5em;
+            margin-top: 100px;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .back-button:hover {
+            transform: scale(1.1);
+            background: white;
+        }
+
+        @media (max-width: 768px) {
+            .schedule-card {
+                grid-template-columns: 1fr;
+            }
+
+            .video-thumbnail {
+                height: 200px;
+            }
+
+            .optimal-settings {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="back-button" onclick="window.location.href='index.html'" title="Back to Hub">←</button>
+
+    <div class="container">
+        <div class="header">
+            <h1>YouTube Chatroom Schedule</h1>
+            <p>Join scheduled chatrooms to earn glow! Match your attitude to the video for maximum rewards.</p>
+        </div>
+
+        <div id="active-chatroom-container"></div>
+        <div id="schedule-container" class="loading">Loading schedule...</div>
+    </div>
+
+    <script>
+        let schedules = [];
+        let activeChatroom = null;
+        let updateInterval = null;
+
+        async function loadSchedule() {
+            try {
+                // Load active chatroom
+                const activeResponse = await fetch('/api/chatroom/schedules/active');
+                if (activeResponse.ok) {
+                    const activeData = await activeResponse.json();
+                    activeChatroom = activeData.chatroom;
+                }
+
+                // Load upcoming chatrooms
+                const upcomingResponse = await fetch('/api/chatroom/schedules/upcoming');
+                if (!upcomingResponse.ok) {
+                    throw new Error('Failed to load schedule');
+                }
+
+                const upcomingData = await upcomingResponse.json();
+                schedules = upcomingData.schedules || [];
+
+                renderSchedule();
+                startCountdownUpdates();
+
+            } catch (error) {
+                console.error('Error loading schedule:', error);
+                document.getElementById('schedule-container').innerHTML = `
+                    <div class="empty-state">
+                        <h2>Unable to Load Schedule</h2>
+                        <p>Please try again later.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderSchedule() {
+            // Render active chatroom banner
+            const activeContainer = document.getElementById('active-chatroom-container');
+            if (activeChatroom) {
+                const timeRemaining = formatTime(activeChatroom.timeRemaining);
+                activeContainer.innerHTML = `
+                    <div class="active-chatroom-banner">
+                        <h2>🔴 LIVE NOW: ${activeChatroom.video_title || 'Chatroom Open'}</h2>
+                        <p>Closes in ${timeRemaining} • ${activeChatroom.participant_count || 0} participants</p>
+                        ${activeChatroom.hasParticipated
+                            ? '<p><strong>✅ You already participated in this chatroom</strong></p>'
+                            : '<a href="chatroom.html" class="join-button">Join Now!</a>'
+                        }
+                    </div>
+                `;
+            } else {
+                activeContainer.innerHTML = '';
+            }
+
+            // Render upcoming schedule
+            const container = document.getElementById('schedule-container');
+
+            if (schedules.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h2>No Upcoming Chatrooms</h2>
+                        <p>Check back soon for new scheduled chatrooms!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="schedule-list">
+                    ${schedules.map(schedule => renderScheduleCard(schedule)).join('')}
+                </div>
+            `;
+        }
+
+        function renderScheduleCard(schedule) {
+            const timeRemaining = formatTime(schedule.timeUntilOpen);
+            const isOpeningSoon = schedule.isOpenSoon;
+            const thumbnailUrl = schedule.video_thumbnail_url || '/assets/placeholder-video.png';
+            const category = schedule.video_category || 'GENERAL';
+
+            return `
+                <div class="schedule-card ${isOpeningSoon ? 'opening-soon' : ''}" data-schedule-id="${schedule.id}">
+                    <div class="video-thumbnail">
+                        <img src="${thumbnailUrl}" alt="${schedule.video_title || 'Video'}">
+                        <div class="category-badge">${formatCategory(category)}</div>
+                    </div>
+                    <div class="schedule-info">
+                        <div>
+                            <h3>${schedule.video_title || 'Scheduled Chatroom'}</h3>
+
+                            <div class="countdown ${isOpeningSoon ? 'opening-soon' : ''}">
+                                <div>Opens in</div>
+                                <div class="time-remaining" data-time="${schedule.timeUntilOpen}">${timeRemaining}</div>
+                            </div>
+
+                            ${schedule.hint ? `
+                                <div class="hint-box">
+                                    <div class="hint-label">Strategy Hint</div>
+                                    <div class="hint-text">${schedule.hint}</div>
+                                </div>
+                            ` : ''}
+
+                            ${schedule.optimal_enthusiasm_min ? `
+                                <div class="optimal-settings">
+                                    <div class="setting-range">
+                                        <div class="label">Enthusiasm</div>
+                                        <div class="range">${schedule.optimal_enthusiasm_min}-${schedule.optimal_enthusiasm_max}</div>
+                                    </div>
+                                    <div class="setting-range">
+                                        <div class="label">Criticism</div>
+                                        <div class="range">${schedule.optimal_criticism_min}-${schedule.optimal_criticism_max}</div>
+                                    </div>
+                                    <div class="setting-range">
+                                        <div class="label">Humor</div>
+                                        <div class="range">${schedule.optimal_humor_min}-${schedule.optimal_humor_max}</div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <div class="actions">
+                            <button class="btn btn-secondary" onclick="setReminder(${schedule.id})">
+                                🔔 Set Reminder
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatTime(milliseconds) {
+            const totalSeconds = Math.floor(milliseconds / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            if (hours > 0) {
+                return `${hours}h ${minutes}m`;
+            } else if (minutes > 0) {
+                return `${minutes}m ${seconds}s`;
+            } else {
+                return `${seconds}s`;
+            }
+        }
+
+        function formatCategory(category) {
+            const categoryNames = {
+                'MUSIC': 'Music',
+                'COMEDY': 'Comedy',
+                'GAMING': 'Gaming',
+                'ENTERTAINMENT': 'Entertainment',
+                'REVIEW': 'Review',
+                'EDUCATION': 'Education',
+                'SCIENCE_TECH': 'Science & Tech',
+                'HOWTO_STYLE': 'How-To & Style',
+                'NEWS_POLITICS': 'News & Politics',
+                'PEOPLE_BLOGS': 'People & Blogs',
+                'DRAMA': 'Drama',
+                'INSPIRATIONAL': 'Inspirational',
+                'TUTORIAL': 'Tutorial',
+                'SPORTS': 'Sports',
+                'TRAVEL_EVENTS': 'Travel & Events',
+                'PETS_ANIMALS': 'Pets & Animals',
+                'GENERAL': 'General'
+            };
+            return categoryNames[category] || category;
+        }
+
+        function startCountdownUpdates() {
+            // Clear existing interval
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+
+            // Update every second
+            updateInterval = setInterval(() => {
+                const timeElements = document.querySelectorAll('.time-remaining');
+                let needsReload = false;
+
+                timeElements.forEach(el => {
+                    const timeRemaining = parseInt(el.dataset.time) - 1000;
+                    el.dataset.time = timeRemaining;
+
+                    if (timeRemaining <= 0) {
+                        needsReload = true;
+                    } else {
+                        el.textContent = formatTime(timeRemaining);
+                    }
+                });
+
+                // Reload if any chatroom has opened
+                if (needsReload) {
+                    loadSchedule();
+                }
+            }, 1000);
+        }
+
+        async function setReminder(scheduleId) {
+            // Request notification permission if not already granted
+            if ('Notification' in window) {
+                const permission = await Notification.requestPermission();
+
+                if (permission === 'granted') {
+                    alert('Reminder set! You\'ll receive a notification when the chatroom opens.');
+                    // TODO: Implement push notification subscription
+                } else {
+                    alert('Please enable notifications to set reminders.');
+                }
+            } else {
+                alert('Notifications are not supported in this browser.');
+            }
+        }
+
+        // Load schedule on page load
+        window.addEventListener('load', loadSchedule);
+
+        // Cleanup interval on page unload
+        window.addEventListener('beforeunload', () => {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+        });
+    </script>
+</body>
+</html>

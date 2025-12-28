@@ -1,0 +1,130 @@
+<div class="attitude-settings-modal" id="attitude-settings-modal" style="display: none;">
+    <div class="attitude-modal-overlay"></div>
+    <div class="attitude-modal-content">
+        <div class="attitude-modal-header">
+            <h2>Set Chatroom Attitude</h2>
+            <button class="attitude-modal-close" onclick="closeAttitudeSettings()">×</button>
+        </div>
+
+        <div class="attitude-modal-body">
+            <!-- Creature Selection -->
+            <div class="creature-selector">
+                <label>Select Creature</label>
+                <select id="attitude-creature-select" onchange="onCreatureChange()">
+                    <option value="">Loading creatures...</option>
+                </select>
+            </div>
+
+            <!-- Video Context Info -->
+            <div class="video-context-box" id="video-context-box" style="display: none;">
+                <h3 id="video-title"></h3>
+                <div class="video-category-badge" id="video-category"></div>
+                <div class="video-hint" id="video-hint"></div>
+            </div>
+
+            <!-- Attitude Sliders -->
+            <div class="attitude-sliders">
+                <div class="slider-group">
+                    <label>
+                        <span class="slider-label">Enthusiasm</span>
+                        <span class="slider-value" id="enthusiasm-value">5</span>
+                    </label>
+                    <input type="range" id="enthusiasm-slider" min="1" max="10" value="5"
+                           oninput="onSliderChange()">
+                    <div class="slider-description">How excited and positive your chatling will be</div>
+                </div>
+
+                <div class="slider-group">
+                    <label>
+                        <span class="slider-label">Criticism</span>
+                        <span class="slider-value" id="criticism-value">5</span>
+                    </label>
+                    <input type="range" id="criticism-slider" min="1" max="10" value="5"
+                           oninput="onSliderChange()">
+                    <div class="slider-description">How analytical and critical your chatling will be</div>
+                </div>
+
+                <div class="slider-group">
+                    <label>
+                        <span class="slider-label">Humor</span>
+                        <span class="slider-value" id="humor-value">5</span>
+                    </label>
+                    <input type="range" id="humor-slider" min="1" max="10" value="5"
+                           oninput="onSliderChange()">
+                    <div class="slider-description">How funny and playful your chatling will be</div>
+                </div>
+            </div>
+
+            <!-- Optimal Ranges Display -->
+            <div class="optimal-ranges" id="optimal-ranges" style="display: none;">
+                <h4>Optimal Ranges for This Video</h4>
+                <div class="ranges-grid">
+                    <div class="range-item">
+                        <span class="range-label">Enthusiasm:</span>
+                        <span class="range-values" id="optimal-enthusiasm">?-?</span>
+                    </div>
+                    <div class="range-item">
+                        <span class="range-label">Criticism:</span>
+                        <span class="range-values" id="optimal-criticism">?-?</span>
+                    </div>
+                    <div class="range-item">
+                        <span class="range-label">Humor:</span>
+                        <span class="range-values" id="optimal-humor">?-?</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Glow Preview -->
+            <div class="glow-preview">
+                <div class="glow-preview-header">
+                    <h3>Estimated Glow</h3>
+                    <div class="glow-value" id="estimated-glow">
+                        <span class="glow-number">?</span>
+                    </div>
+                </div>
+                <div class="glow-breakdown" id="glow-breakdown" style="display: none;">
+                    <div class="breakdown-item">
+                        <span>Base Participation:</span>
+                        <span id="breakdown-base">+2</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <span>Match Bonus:</span>
+                        <span id="breakdown-match">+0</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <span>Extremism Penalty:</span>
+                        <span id="breakdown-extremism">-0</span>
+                    </div>
+                    <div class="breakdown-item">
+                        <span>Variety Bonus:</span>
+                        <span id="breakdown-variety">+0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preset Management -->
+            <div class="preset-management">
+                <div class="preset-selector">
+                    <label>Quick Presets</label>
+                    <select id="preset-select" onchange="onPresetSelect()">
+                        <option value="">Custom Settings</option>
+                        <option value="enthusiastic">Enthusiastic (10-1-8)</option>
+                        <option value="critical">Critical (3-10-4)</option>
+                        <option value="humorous">Humorous (7-2-10)</option>
+                        <option value="balanced">Balanced (5-5-5)</option>
+                    </select>
+                </div>
+                <div class="preset-actions">
+                    <button class="btn-save-preset" onclick="saveCustomPreset()">
+                        💾 Save as Custom Preset
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="attitude-modal-footer">
+            <button class="btn btn-secondary" onclick="closeAttitudeSettings()">Cancel</button>
+            <button class="btn btn-primary" onclick="confirmAttitude()">Participate in Chatroom</button>
+        </div>
+    </div>
+</div>
