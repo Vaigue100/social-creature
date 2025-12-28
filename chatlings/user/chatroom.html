@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Chatroom - Chatlings</title>
+    <title>AI Conversations - Chatlings</title>
 
     <!-- PWA manifest -->
     <link rel="manifest" href="/manifest.json">
@@ -19,9 +19,6 @@
 
     <script src="/user/config.js"></script>
     <script src="/user/components/auth-check.js"></script>
-
-    <!-- Attitude Settings Component -->
-    <link rel="stylesheet" href="/user/components/attitude-settings.css">
 
     <style>
         * {
@@ -42,6 +39,7 @@
             margin: 0 auto;
         }
 
+        /* Header */
         .header {
             background: rgba(255, 255, 255, 0.95);
             padding: 25px;
@@ -58,7 +56,12 @@
             font-size: 2em;
         }
 
-        .header .schedule-link {
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 12px 24px;
@@ -66,23 +69,55 @@
             text-decoration: none;
             font-weight: bold;
             transition: all 0.3s;
+            border: none;
+            cursor: pointer;
         }
 
-        .header .schedule-link:hover {
+        .btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
 
-        .chatroom-container {
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        /* Loading State */
+        .loading {
             background: rgba(255, 255, 255, 0.95);
+            padding: 60px;
             border-radius: 15px;
-            overflow: hidden;
+            text-align: center;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         }
 
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Video Section */
         .video-section {
-            background: #000;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .video-thumbnail-container {
             position: relative;
+            background: #000;
         }
 
         .video-thumbnail {
@@ -104,549 +139,650 @@
         .video-title {
             font-size: 1.5em;
             font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .video-meta {
-            display: flex;
-            gap: 15px;
-            font-size: 0.9em;
-            opacity: 0.9;
-        }
-
-        .chatroom-info {
-            padding: 30px;
-        }
-
-        .status-banner {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 25px;
-            text-align: center;
-        }
-
-        .status-banner.closed {
-            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
-        }
-
-        .status-banner h2 {
-            font-size: 1.8em;
-            margin-bottom: 10px;
-        }
-
-        .status-banner .countdown {
-            font-size: 1.3em;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-
-        .hint-section {
-            background: #f8f9fa;
-            border-left: 4px solid #667eea;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-        }
-
-        .hint-section h3 {
-            color: #667eea;
-            margin-bottom: 10px;
-        }
-
-        .hint-text {
-            color: #333;
-            font-size: 1.1em;
-            margin-bottom: 15px;
-        }
-
-        .optimal-ranges-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .range-card {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-        }
-
-        .range-card .label {
-            font-size: 0.9em;
-            color: #666;
             margin-bottom: 5px;
         }
 
-        .range-card .value {
+        .video-category {
+            color: #ddd;
+            font-size: 0.9em;
+        }
+
+        /* Glow Summary */
+        .glow-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .glow-total {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .glow-breakdown {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9em;
+        }
+
+        .glow-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .glow-stat-value {
             font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .glow-stat-label {
+            opacity: 0.9;
+        }
+
+        /* Comments Section */
+        .comments-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .comments-header {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .comments-header h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .comments-info {
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        /* Comment */
+        .comment {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            opacity: 0;
+            animation: fadeInUp 0.5s forwards;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .comment-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+
+        .comment-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .comment-author {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .comment-sentiment {
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: bold;
+        }
+
+        .sentiment-positive {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .sentiment-neutral {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .sentiment-negative {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .comment-glow {
+            margin-left: auto;
             font-weight: bold;
             color: #667eea;
         }
 
-        .participate-button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 18px 40px;
-            border-radius: 30px;
-            font-size: 1.3em;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            transition: all 0.3s;
-            margin-bottom: 25px;
+        .comment-text {
+            color: #444;
+            line-height: 1.6;
+            margin-bottom: 10px;
         }
 
-        .participate-button:hover:not(:disabled) {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+        /* Typing indicator */
+        .typing-indicator {
+            display: inline-flex;
+            gap: 4px;
+            padding: 10px 0;
         }
 
-        .participate-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+            animation: typing 1.4s infinite;
         }
 
-        .results-section {
-            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
-            color: white;
-            padding: 25px;
-            border-radius: 12px;
-            margin-bottom: 25px;
-            animation: slideIn 0.5s ease-out;
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
         }
 
-        @keyframes slideIn {
-            from {
-                transform: translateY(-20px);
-                opacity: 0;
-            }
-            to {
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
                 transform: translateY(0);
+                opacity: 0.4;
+            }
+            30% {
+                transform: translateY(-10px);
                 opacity: 1;
             }
         }
 
-        .results-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        /* Replies */
+        .comment-replies {
+            margin-top: 15px;
+            margin-left: 30px;
+            padding-left: 15px;
+            border-left: 2px solid #ddd;
+        }
+
+        .reply {
             margin-bottom: 15px;
-        }
-
-        .results-header h2 {
-            font-size: 1.5em;
-        }
-
-        .glow-earned {
-            font-size: 3em;
-            font-weight: bold;
-        }
-
-        .breakdown {
-            background: rgba(255, 255, 255, 0.15);
-            padding: 15px;
+            padding: 12px;
+            background: white;
             border-radius: 8px;
+            border-left: 3px solid #764ba2;
+            opacity: 0;
+            animation: fadeInUp 0.5s forwards;
         }
 
-        .breakdown-item {
+        /* Attitude Settings Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
             display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            font-size: 1.1em;
         }
 
-        .stats-section {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin-bottom: 25px;
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
-        .stat-card {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-        }
-
-        .stat-label {
-            font-size: 0.9em;
-            color: #666;
-            margin-bottom: 8px;
-        }
-
-        .stat-value {
-            font-size: 2em;
-            font-weight: bold;
-            color: #667eea;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 80px 20px;
-            color: #666;
-        }
-
-        .empty-state-icon {
-            font-size: 5em;
+        .modal-header {
             margin-bottom: 20px;
         }
 
-        .empty-state h2 {
-            font-size: 2em;
-            margin-bottom: 15px;
+        .modal-header h2 {
             color: #667eea;
         }
 
-        .empty-state p {
-            font-size: 1.2em;
-            max-width: 600px;
-            margin: 0 auto 25px;
-            line-height: 1.6;
+        .attitude-control {
+            margin-bottom: 20px;
         }
 
-        .empty-state a {
-            color: #667eea;
-            text-decoration: none;
+        .attitude-control label {
+            display: block;
+            margin-bottom: 8px;
             font-weight: bold;
-            font-size: 1.1em;
+            color: #333;
         }
 
-        .empty-state a:hover {
-            text-decoration: underline;
+        .attitude-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
         }
 
-        .back-button {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: rgba(255, 255, 255, 0.9);
-            border: none;
-            width: 50px;
-            height: 50px;
+        .attitude-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
-            font-size: 24px;
+            background: #667eea;
             cursor: pointer;
-            z-index: 1000;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            transition: all 0.2s;
-            color: #667eea;
+        }
+
+        .attitude-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        .attitude-value {
+            display: inline-block;
+            margin-left: 10px;
             font-weight: bold;
+            color: #667eea;
         }
 
-        .back-button:hover {
-            transform: scale(1.1);
-            background: white;
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
         }
 
+        .modal-actions button {
+            flex: 1;
+        }
+
+        /* Error State */
+        .error {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .error h2 {
+            color: #f5576c;
+            margin-bottom: 15px;
+        }
+
+        .error p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        /* Responsive */
         @media (max-width: 768px) {
             .header {
                 flex-direction: column;
                 gap: 15px;
-                text-align: center;
             }
 
-            .optimal-ranges-grid {
-                grid-template-columns: 1fr;
+            .header h1 {
+                font-size: 1.5em;
             }
 
-            .stats-section {
-                grid-template-columns: 1fr;
+            .glow-summary {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .comment-replies {
+                margin-left: 15px;
             }
         }
     </style>
 </head>
 <body>
-    <button class="back-button" onclick="window.location.href='index.html'" title="Back to Hub">←</button>
-
     <div class="container">
+        <!-- Header -->
         <div class="header">
-            <h1>🎥 YouTube Chatroom</h1>
-            <a href="chatroom-schedule.html" class="schedule-link">📅 View Schedule</a>
+            <h1>🤖 AI Conversations</h1>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="openAttitudeSettings()">⚙️ Attitude Settings</button>
+                <a href="/user" class="btn">← Back to Home</a>
+            </div>
         </div>
 
-        <div id="chatroom-content"></div>
+        <!-- Main Content -->
+        <div id="content">
+            <!-- Loading state shown initially -->
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p>Loading AI conversation...</p>
+            </div>
+        </div>
     </div>
 
-    <!-- Attitude Settings Modal Component -->
-    <div id="attitude-settings-container"></div>
+    <!-- Attitude Settings Modal -->
+    <div id="attitudeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Chatling Attitude Settings</h2>
+                <p style="color: #666;">Customize how your chatlings appear in conversations</p>
+            </div>
+
+            <div class="attitude-control">
+                <label>
+                    Enthusiasm <span class="attitude-value" id="enthusiasmValue">5</span>
+                </label>
+                <input type="range" min="1" max="10" value="5" class="attitude-slider" id="enthusiasmSlider">
+            </div>
+
+            <div class="attitude-control">
+                <label>
+                    Criticism <span class="attitude-value" id="criticismValue">5</span>
+                </label>
+                <input type="range" min="1" max="10" value="5" class="attitude-slider" id="criticismSlider">
+            </div>
+
+            <div class="attitude-control">
+                <label>
+                    Humor <span class="attitude-value" id="humorValue">5</span>
+                </label>
+                <input type="range" min="1" max="10" value="5" class="attitude-slider" id="humorSlider">
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn" onclick="closeAttitudeModal()">Cancel</button>
+                <button class="btn btn-secondary" onclick="saveAttitude()">Save & Reload</button>
+            </div>
+        </div>
+    </div>
 
     <script>
-        let activeChatroom = null;
-        let participationResult = null;
+        let currentConversation = null;
 
-        async function loadActiveChatroom() {
+        // Load conversation on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadAttitudeSettings();
+            await loadConversation();
+        });
+
+        // Load latest AI conversation
+        async function loadConversation() {
             try {
-                const response = await fetch('/api/chatroom/schedules/active');
-                if (!response.ok) {
-                    throw new Error('Failed to load chatroom');
+                const response = await fetch('/api/chatroom/youtube/latest');
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load conversation');
                 }
 
-                const data = await response.json();
-                activeChatroom = data.chatroom;
-
-                renderChatroom();
+                currentConversation = data.conversation;
+                renderConversation(currentConversation);
 
             } catch (error) {
-                console.error('Error loading chatroom:', error);
-                renderError();
+                console.error('Error loading conversation:', error);
+                showError(error.message);
             }
         }
 
-        function renderChatroom() {
-            const container = document.getElementById('chatroom-content');
+        // Render conversation
+        function renderConversation(conversation) {
+            const content = document.getElementById('content');
 
-            if (!activeChatroom) {
-                container.innerHTML = `
-                    <div class="chatroom-container">
-                        <div class="empty-state">
-                            <div class="empty-state-icon">📺</div>
-                            <h2>No Active Chatroom</h2>
-                            <p>There are no chatrooms open right now. Check the schedule to see when the next chatroom opens!</p>
-                            <a href="chatroom-schedule.html">View Chatroom Schedule →</a>
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-
-            const timeRemaining = formatTime(activeChatroom.timeRemaining);
-            const thumbnailUrl = activeChatroom.video_thumbnail_url || '/assets/placeholder-video.png';
-            const hasParticipated = activeChatroom.hasParticipated || participationResult;
-
-            container.innerHTML = `
-                <div class="chatroom-container">
-                    <div class="video-section">
-                        <img src="${thumbnailUrl}" alt="${activeChatroom.video_title}" class="video-thumbnail">
+            const html = `
+                <!-- Video Section -->
+                <div class="video-section">
+                    <div class="video-thumbnail-container">
+                        <img src="https://i.ytimg.com/vi/${conversation.video.youtubeVideoId}/maxresdefault.jpg"
+                             alt="${conversation.video.title}"
+                             class="video-thumbnail"
+                             onerror="this.src='https://i.ytimg.com/vi/${conversation.video.youtubeVideoId}/hqdefault.jpg'">
                         <div class="video-overlay">
-                            <div class="video-title">${activeChatroom.video_title || 'Video'}</div>
-                            <div class="video-meta">
-                                <span>${formatCategory(activeChatroom.video_category)}</span>
-                                <span>•</span>
-                                <span>${activeChatroom.participant_count || 0} participants</span>
-                            </div>
+                            <div class="video-title">${conversation.video.title}</div>
+                            <div class="video-category">${conversation.video.category || 'General'}</div>
                         </div>
                     </div>
 
-                    <div class="chatroom-info">
-                        <div class="status-banner">
-                            <h2>🔴 Chatroom Open</h2>
-                            <p>Participate now to earn glow!</p>
-                            <div class="countdown">Closes in ${timeRemaining}</div>
+                    <!-- Glow Summary -->
+                    <div class="glow-summary">
+                        <div>
+                            <div style="font-size: 0.9em; opacity: 0.9;">Total Glow Earned</div>
+                            <div class="glow-total">${conversation.totalGlowChange > 0 ? '+' : ''}${conversation.totalGlowChange} ✨</div>
                         </div>
-
-                        ${!hasParticipated ? renderParticipationUI() : renderParticipationResults()}
+                        <div class="glow-breakdown">
+                            <div class="glow-stat">
+                                <div class="glow-stat-value" style="color: #4caf50;">${conversation.glowImpact.bySentiment.positive.count}</div>
+                                <div class="glow-stat-label">Positive</div>
+                            </div>
+                            <div class="glow-stat">
+                                <div class="glow-stat-value" style="color: #ffeb3b;">${conversation.glowImpact.bySentiment.neutral.count}</div>
+                                <div class="glow-stat-label">Neutral</div>
+                            </div>
+                            <div class="glow-stat">
+                                <div class="glow-stat-value" style="color: #f44336;">${conversation.glowImpact.bySentiment.negative.count}</div>
+                                <div class="glow-stat-label">Negative</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            `;
-        }
 
-        function renderParticipationUI() {
-            return `
-                ${activeChatroom.hint ? `
-                    <div class="hint-section">
-                        <h3>💡 Strategy Hint</h3>
-                        <p class="hint-text">${activeChatroom.hint}</p>
-                        <strong>Optimal Ranges:</strong>
-                        <div class="optimal-ranges-grid">
-                            <div class="range-card">
-                                <div class="label">Enthusiasm</div>
-                                <div class="value">${activeChatroom.optimal_enthusiasm_min}-${activeChatroom.optimal_enthusiasm_max}</div>
-                            </div>
-                            <div class="range-card">
-                                <div class="label">Criticism</div>
-                                <div class="value">${activeChatroom.optimal_criticism_min}-${activeChatroom.optimal_criticism_max}</div>
-                            </div>
-                            <div class="range-card">
-                                <div class="label">Humor</div>
-                                <div class="value">${activeChatroom.optimal_humor_min}-${activeChatroom.optimal_humor_max}</div>
-                            </div>
-                        </div>
+                <!-- Comments Section -->
+                <div class="comments-section">
+                    <div class="comments-header">
+                        <h2>💬 Comments</h2>
+                        <p class="comments-info">Your chatlings are discussing this video! Glow is earned based on comment sentiment.</p>
                     </div>
-                ` : ''}
 
-                <button class="participate-button" onclick="openParticipationModal()">
-                    ✨ Set Attitude & Participate
-                </button>
-
-                <div class="stats-section">
-                    <div class="stat-card">
-                        <div class="stat-label">Category</div>
-                        <div class="stat-value">${formatCategory(activeChatroom.video_category)}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Participants</div>
-                        <div class="stat-value">${activeChatroom.participant_count || 0}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Time Left</div>
-                        <div class="stat-value" id="time-remaining">${formatTime(activeChatroom.timeRemaining)}</div>
-                    </div>
+                    <div id="commentsContainer"></div>
                 </div>
             `;
+
+            content.innerHTML = html;
+
+            // Animate comments in one by one
+            animateComments(conversation.customizedContent.comments);
         }
 
-        function renderParticipationResults() {
-            if (!participationResult) {
-                return `
-                    <div class="status-banner closed">
-                        <h2>✅ Already Participated</h2>
-                        <p>You've already participated in this chatroom. Check back for the next one!</p>
+        // Animate comments appearing
+        async function animateComments(comments) {
+            const container = document.getElementById('commentsContainer');
+
+            for (let i = 0; i < comments.length; i++) {
+                const comment = comments[i];
+
+                // Show typing indicator
+                const typingDiv = document.createElement('div');
+                typingDiv.className = 'comment';
+                typingDiv.innerHTML = `
+                    <div class="comment-header">
+                        <div class="comment-avatar">${comment.chatlingName.charAt(0)}</div>
+                        <span class="comment-author">${comment.chatlingName}</span>
+                    </div>
+                    <div class="typing-indicator">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
                     </div>
                 `;
+                container.appendChild(typingDiv);
+
+                // Wait a bit
+                await sleep(500);
+
+                // Replace with actual comment
+                typingDiv.innerHTML = renderCommentHTML(comment);
+                typingDiv.style.animationDelay = `${i * 0.1}s`;
+
+                // Render replies if any
+                if (comment.replies && comment.replies.length > 0) {
+                    await sleep(300);
+                    const repliesDiv = document.createElement('div');
+                    repliesDiv.className = 'comment-replies';
+                    typingDiv.appendChild(repliesDiv);
+
+                    for (const reply of comment.replies) {
+                        await sleep(400);
+                        const replyDiv = document.createElement('div');
+                        replyDiv.className = 'reply';
+                        replyDiv.innerHTML = renderCommentHTML(reply);
+                        repliesDiv.appendChild(replyDiv);
+
+                        // Nested replies
+                        if (reply.replies && reply.replies.length > 0) {
+                            for (const nestedReply of reply.replies) {
+                                await sleep(400);
+                                const nestedDiv = document.createElement('div');
+                                nestedDiv.className = 'reply';
+                                nestedDiv.innerHTML = renderCommentHTML(nestedReply);
+                                nestedDiv.style.marginLeft = '20px';
+                                repliesDiv.appendChild(nestedDiv);
+                            }
+                        }
+                    }
+                }
+
+                await sleep(200);
             }
+        }
+
+        // Render comment HTML
+        function renderCommentHTML(comment) {
+            const sentimentGlow = {
+                positive: 2,
+                neutral: 1,
+                negative: -1
+            };
+
+            const glow = sentimentGlow[comment.sentiment] || 0;
 
             return `
-                <div class="results-section">
-                    <div class="results-header">
-                        <h2>🎉 Participation Complete!</h2>
-                        <div class="glow-earned">+${participationResult.glowEarned}</div>
-                    </div>
-                    <div class="breakdown">
-                        <div class="breakdown-item">
-                            <span>Base Participation:</span>
-                            <span>+${participationResult.breakdown.base}</span>
-                        </div>
-                        <div class="breakdown-item">
-                            <span>Match Bonus:</span>
-                            <span>+${participationResult.breakdown.matchBonus.toFixed(1)}</span>
-                        </div>
-                        ${participationResult.breakdown.extremismPenalty > 0 ? `
-                            <div class="breakdown-item">
-                                <span>Extremism Penalty:</span>
-                                <span>-${participationResult.breakdown.extremismPenalty}</span>
-                            </div>
-                        ` : ''}
-                        ${participationResult.breakdown.varietyBonus !== 0 ? `
-                            <div class="breakdown-item">
-                                <span>Variety Bonus:</span>
-                                <span>${participationResult.breakdown.varietyBonus >= 0 ? '+' : ''}${participationResult.breakdown.varietyBonus}</span>
-                            </div>
-                        ` : ''}
-                    </div>
+                <div class="comment-header">
+                    <div class="comment-avatar">${comment.chatlingName.charAt(0)}</div>
+                    <span class="comment-author">${comment.chatlingName}</span>
+                    <span class="comment-sentiment sentiment-${comment.sentiment}">${comment.sentiment}</span>
+                    <span class="comment-glow">${glow > 0 ? '+' : ''}${glow} ✨</span>
                 </div>
+                <div class="comment-text">${comment.text}</div>
             `;
         }
 
-        function renderError() {
-            const container = document.getElementById('chatroom-content');
-            container.innerHTML = `
-                <div class="chatroom-container">
-                    <div class="empty-state">
-                        <div class="empty-state-icon">⚠️</div>
-                        <h2>Error Loading Chatroom</h2>
-                        <p>We couldn't load the chatroom. Please try again later.</p>
-                    </div>
-                </div>
-            `;
+        // Attitude Settings
+        function openAttitudeSettings() {
+            document.getElementById('attitudeModal').classList.add('active');
         }
 
-        function openParticipationModal() {
-            openAttitudeSettings(activeChatroom.id, handleParticipation);
+        function closeAttitudeModal() {
+            document.getElementById('attitudeModal').classList.remove('active');
         }
 
-        async function handleParticipation(settings) {
+        async function loadAttitudeSettings() {
             try {
-                const response = await fetch('/api/chatroom/participate', {
-                    method: 'POST',
+                const response = await fetch('/api/user/chat-attitude');
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('enthusiasmSlider').value = data.attitude.enthusiasm_level;
+                    document.getElementById('criticismSlider').value = data.attitude.criticism_level;
+                    document.getElementById('humorSlider').value = data.attitude.humor_level;
+
+                    updateSliderValues();
+                }
+            } catch (error) {
+                console.error('Error loading attitude settings:', error);
+            }
+        }
+
+        async function saveAttitude() {
+            const enthusiasm = parseInt(document.getElementById('enthusiasmSlider').value);
+            const criticism = parseInt(document.getElementById('criticismSlider').value);
+            const humor = parseInt(document.getElementById('humorSlider').value);
+
+            try {
+                const response = await fetch('/api/user/chat-attitude', {
+                    method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        chatroomId: activeChatroom.id,
-                        creatureId: settings.creatureId,
-                        enthusiasm: settings.enthusiasm,
-                        criticism: settings.criticism,
-                        humor: settings.humor
+                        enthusiasm_level: enthusiasm,
+                        criticism_level: criticism,
+                        humor_level: humor
                     })
                 });
 
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Failed to participate');
+                const data = await response.json();
+
+                if (data.success) {
+                    closeAttitudeModal();
+                    // Reload conversation with new attitude
+                    document.getElementById('content').innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Regenerating with new attitude...</p></div>';
+                    await loadConversation();
+                } else {
+                    alert('Failed to save attitude: ' + data.error);
                 }
-
-                const result = await response.json();
-                participationResult = result;
-
-                // Reload chatroom to show results
-                renderChatroom();
-
             } catch (error) {
-                console.error('Error participating:', error);
-                alert('Failed to participate: ' + error.message);
+                console.error('Error saving attitude:', error);
+                alert('Failed to save attitude');
             }
         }
 
-        function formatTime(milliseconds) {
-            const totalSeconds = Math.floor(milliseconds / 1000);
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = totalSeconds % 60;
+        // Update slider value displays
+        document.getElementById('enthusiasmSlider').addEventListener('input', updateSliderValues);
+        document.getElementById('criticismSlider').addEventListener('input', updateSliderValues);
+        document.getElementById('humorSlider').addEventListener('input', updateSliderValues);
 
-            if (hours > 0) {
-                return `${hours}h ${minutes}m`;
-            } else if (minutes > 0) {
-                return `${minutes}m ${seconds}s`;
-            } else {
-                return `${seconds}s`;
-            }
+        function updateSliderValues() {
+            document.getElementById('enthusiasmValue').textContent = document.getElementById('enthusiasmSlider').value;
+            document.getElementById('criticismValue').textContent = document.getElementById('criticismSlider').value;
+            document.getElementById('humorValue').textContent = document.getElementById('humorSlider').value;
         }
 
-        function formatCategory(category) {
-            const categoryNames = {
-                'MUSIC': 'Music',
-                'COMEDY': 'Comedy',
-                'GAMING': 'Gaming',
-                'ENTERTAINMENT': 'Entertainment',
-                'REVIEW': 'Review',
-                'EDUCATION': 'Education',
-                'SCIENCE_TECH': 'Science & Tech',
-                'HOWTO_STYLE': 'How-To & Style',
-                'NEWS_POLITICS': 'News & Politics',
-                'PEOPLE_BLOGS': 'People & Blogs',
-                'DRAMA': 'Drama',
-                'INSPIRATIONAL': 'Inspirational',
-                'TUTORIAL': 'Tutorial',
-                'SPORTS': 'Sports',
-                'TRAVEL_EVENTS': 'Travel & Events',
-                'PETS_ANIMALS': 'Pets & Animals',
-                'GENERAL': 'General'
-            };
-            return categoryNames[category] || category;
+        // Show error
+        function showError(message) {
+            const content = document.getElementById('content');
+            content.innerHTML = `
+                <div class="error">
+                    <h2>⚠️ Error</h2>
+                    <p>${message}</p>
+                    <button class="btn" onclick="loadConversation()">Retry</button>
+                </div>
+            `;
         }
 
-        // Load attitude settings component
-        fetch('/user/components/attitude-settings.html')
-            .then(r => r.text())
-            .then(html => {
-                document.getElementById('attitude-settings-container').innerHTML = html;
-                const script = document.createElement('script');
-                script.src = '/user/components/attitude-settings.js';
-                document.body.appendChild(script);
-            });
-
-        // Load active chatroom on page load
-        window.addEventListener('load', loadActiveChatroom);
-
-        // Update countdown every second
-        setInterval(() => {
-            if (activeChatroom && activeChatroom.timeRemaining > 0) {
-                activeChatroom.timeRemaining -= 1000;
-                const timeElement = document.getElementById('time-remaining');
-                if (timeElement) {
-                    timeElement.textContent = formatTime(activeChatroom.timeRemaining);
-                }
-
-                // Reload if chatroom has closed
-                if (activeChatroom.timeRemaining <= 0) {
-                    loadActiveChatroom();
-                }
-            }
-        }, 1000);
+        // Sleep helper
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
     </script>
 </body>
 </html>

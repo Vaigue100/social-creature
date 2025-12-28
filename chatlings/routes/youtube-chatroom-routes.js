@@ -1,272 +1,130 @@
 /**
- * YouTube Chatroom API Routes
- * Handles chatroom schedules, participation, and attitude management
+ * YouTube AI Conversation API Routes
+ * Handles AI-generated conversation viewing and attitude management
  */
 
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const glowCalculator = require('../services/glow-calculator');
-const chatroomScheduler = require('../services/chatroom-scheduler');
+const YouTubeConversationService = require('../services/youtube-conversation-service');
+
+// Initialize service
+const conversationService = new YouTubeConversationService();
 
 /**
- * GET /api/chatroom/schedules/upcoming
- * Get upcoming chatroom schedules
+ * GET /api/chatroom/youtube/latest
+ * Get the latest AI-generated conversation (personalized for user)
  */
-router.get('/schedules/upcoming', async (req, res) => {
-  try {
-    const schedules = await chatroomScheduler.getUpcomingChatrooms();
+router.get('/youtube/latest', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
 
-    // Calculate time until each chatroom
-    const schedulesWithCountdown = schedules.map(schedule => ({
-      ...schedule,
-      timeUntilOpen: Math.max(0, new Date(schedule.open_time) - Date.now()),
-      isOpenSoon: new Date(schedule.open_time) - Date.now() < 15 * 60 * 1000 // < 15 min
-    }));
+  try {
+    const conversation = await conversationService.getConversationForUser(req.session.userId);
 
     res.json({
       success: true,
-      schedules: schedulesWithCountdown
+      conversation,
+      message: conversation.fromCache
+        ? 'Loaded your personalized conversation from cache'
+        : 'Generated new personalized conversation'
     });
 
   } catch (error) {
-    console.error('Error fetching upcoming schedules:', error);
-    res.status(500).json({ error: 'Failed to fetch schedules' });
-  }
-});
+    console.error('Error fetching latest conversation:', error);
 
-/**
- * GET /api/chatroom/schedules/active
- * Get currently active chatroom
- */
-router.get('/schedules/active', async (req, res) => {
-  try {
-    const activeChatroom = await chatroomScheduler.getActiveChatroom();
-
-    if (!activeChatroom) {
-      return res.json({
-        success: true,
-        chatroom: null,
-        message: 'No active chatroom right now'
+    if (error.message === 'No conversations available') {
+      return res.status(404).json({
+        error: 'No conversations available yet',
+        message: 'AI conversations are generated daily. Please check back soon!'
       });
     }
 
-    // Check if user has already participated
-    let hasParticipated = false;
-    if (req.session.userId) {
-      const participationCheck = await db.query(`
-        SELECT id FROM user_attitude_history
-        WHERE user_id = $1 AND chatroom_id = $2
-      `, [req.session.userId, activeChatroom.id]);
-
-      hasParticipated = participationCheck.rows.length > 0;
-    }
-
-    res.json({
-      success: true,
-      chatroom: {
-        ...activeChatroom,
-        timeRemaining: Math.max(0, new Date(activeChatroom.close_time) - Date.now()),
-        hasParticipated
-      }
-    });
-
-  } catch (error) {
-    console.error('Error fetching active chatroom:', error);
-    res.status(500).json({ error: 'Failed to fetch active chatroom' });
+    res.status(500).json({ error: 'Failed to fetch conversation' });
   }
 });
 
 /**
- * GET /api/chatroom/schedules/:id
- * Get specific chatroom schedule
+ * GET /api/chatroom/youtube/videos
+ * List all available AI conversations
  */
-router.get('/schedules/:id', async (req, res) => {
+router.get('/youtube/videos', async (req, res) => {
   try {
-    const result = await db.query(`
-      SELECT * FROM chatroom_schedules
-      WHERE id = $1
-    `, [req.params.id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Chatroom not found' });
-    }
+    const limit = parseInt(req.query.limit) || 10;
+    const conversations = await conversationService.getAllConversations(limit);
 
     res.json({
       success: true,
-      schedule: result.rows[0]
+      conversations,
+      total: conversations.length
     });
 
   } catch (error) {
-    console.error('Error fetching schedule:', error);
-    res.status(500).json({ error: 'Failed to fetch schedule' });
+    console.error('Error fetching conversations:', error);
+    res.status(500).json({ error: 'Failed to fetch conversations' });
   }
 });
 
 /**
- * POST /api/chatroom/participate
- * Participate in active chatroom
+ * GET /api/chatroom/youtube/video/:videoId
+ * Get specific video conversation (personalized for user)
  */
-router.post('/participate', async (req, res) => {
+router.get('/youtube/video/:videoId', async (req, res) => {
   if (!req.session.userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  const { chatroomId, creatureId, enthusiasm, criticism, humor } = req.body;
-
-  // Validate inputs
-  if (!chatroomId || !creatureId) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
-
-  if (!enthusiasm || !criticism || !humor ||
-      enthusiasm < 1 || enthusiasm > 10 ||
-      criticism < 1 || criticism > 10 ||
-      humor < 1 || humor > 10) {
-    return res.status(400).json({ error: 'Invalid attitude values (must be 1-10)' });
-  }
-
   try {
-    // Check if chatroom is active
-    const chatroomResult = await db.query(`
-      SELECT * FROM chatroom_schedules
-      WHERE id = $1 AND status = 'open'
-        AND open_time <= NOW() AND close_time > NOW()
-    `, [chatroomId]);
-
-    if (chatroomResult.rows.length === 0) {
-      return res.status(400).json({ error: 'Chatroom is not currently active' });
-    }
-
-    const chatroom = chatroomResult.rows[0];
-
-    // Check if already participated
-    const alreadyParticipated = await db.query(`
-      SELECT id FROM user_attitude_history
-      WHERE user_id = $1 AND chatroom_id = $2
-    `, [req.session.userId, chatroomId]);
-
-    if (alreadyParticipated.rows.length > 0) {
-      return res.status(400).json({ error: 'Already participated in this chatroom' });
-    }
-
-    // Verify creature ownership
-    const creatureCheck = await db.query(`
-      SELECT c.id FROM creatures c
-      JOIN user_rewards ur ON c.id = ur.creature_id
-      WHERE c.id = $1 AND ur.user_id = $2
-    `, [creatureId, req.session.userId]);
-
-    if (creatureCheck.rows.length === 0) {
-      return res.status(400).json({ error: 'Creature not found or not owned' });
-    }
-
-    // Get user's participation history for variety bonus
-    const historyResult = await db.query(`
-      SELECT enthusiasm, criticism, humor
-      FROM user_attitude_history
-      WHERE user_id = $1
-      ORDER BY participated_at DESC
-      LIMIT 5
-    `, [req.session.userId]);
-
-    // Calculate glow
-    const videoContext = {
-      category: chatroom.video_category,
-      subcategory: chatroom.video_subcategory
-    };
-
-    const userSettings = { enthusiasm, criticism, humor };
-    const glowResult = glowCalculator.calculateGlow(
-      userSettings,
-      videoContext,
-      historyResult.rows
+    const conversation = await conversationService.getConversationForUser(
+      req.session.userId,
+      req.params.videoId
     );
 
-    // Record participation
-    await db.query(`
-      INSERT INTO user_attitude_history (
-        user_id, chatroom_id, creature_id,
-        enthusiasm, criticism, humor,
-        glow_earned, match_score,
-        extremism_penalty, variety_bonus
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-    `, [
-      req.session.userId,
-      chatroomId,
-      creatureId,
-      enthusiasm,
-      criticism,
-      humor,
-      glowResult.glow,
-      glowResult.breakdown.matchBonus,
-      glowResult.breakdown.extremismPenalty,
-      glowResult.breakdown.varietyBonus
-    ]);
-
-    // Update user_rewards glow
-    await db.query(`
-      UPDATE user_rewards
-      SET
-        total_glow_earned = COALESCE(total_glow_earned, 0) + $1,
-        chatroom_participations = COALESCE(chatroom_participations, 0) + 1,
-        last_chatroom_at = NOW()
-      WHERE user_id = $2 AND creature_id = $3
-    `, [glowResult.glow, req.session.userId, creatureId]);
-
-    // Increment chatroom participant count
-    await chatroomScheduler.incrementParticipantCount(chatroomId);
-
     res.json({
       success: true,
-      glowEarned: glowResult.glow,
-      breakdown: glowResult.breakdown,
-      message: `You earned ${glowResult.glow} glow!`
+      conversation,
+      message: conversation.fromCache
+        ? 'Loaded your personalized conversation from cache'
+        : 'Generated new personalized conversation'
     });
 
   } catch (error) {
-    console.error('Error recording participation:', error);
-    res.status(500).json({ error: 'Failed to record participation' });
+    console.error('Error fetching conversation:', error);
+
+    if (error.message === 'No conversations available') {
+      return res.status(404).json({
+        error: 'Conversation not found',
+        message: 'This video does not have an AI conversation yet'
+      });
+    }
+
+    res.status(500).json({ error: 'Failed to fetch conversation' });
   }
 });
 
 /**
- * GET /api/chatroom/my-history
- * Get user's participation history
+ * GET /api/chatroom/youtube/history
+ * Get user's conversation viewing history
  */
-router.get('/my-history', async (req, res) => {
+router.get('/youtube/history', async (req, res) => {
   if (!req.session.userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
   try {
-    const result = await db.query(`
-      SELECT
-        uah.*,
-        cs.video_title,
-        cs.video_category,
-        cs.video_subcategory,
-        cs.video_thumbnail_url,
-        c.creature_name
-      FROM user_attitude_history uah
-      JOIN chatroom_schedules cs ON uah.chatroom_id = cs.id
-      LEFT JOIN creatures c ON uah.creature_id = c.id
-      WHERE uah.user_id = $1
-      ORDER BY uah.participated_at DESC
-      LIMIT 50
-    `, [req.session.userId]);
+    const limit = parseInt(req.query.limit) || 10;
+    const history = await conversationService.getUserConversationHistory(req.session.userId, limit);
 
     // Calculate stats
-    const totalGlow = result.rows.reduce((sum, r) => sum + r.glow_earned, 0);
-    const avgGlow = result.rows.length > 0
-      ? totalGlow / result.rows.length
-      : 0;
+    const totalGlow = history.reduce((sum, h) => sum + h.total_glow_change, 0);
+    const avgGlow = history.length > 0 ? totalGlow / history.length : 0;
 
     res.json({
       success: true,
-      history: result.rows,
+      history,
       stats: {
-        totalParticipations: result.rows.length,
+        totalViews: history.length,
         totalGlowEarned: totalGlow,
         averageGlow: Math.round(avgGlow * 10) / 10
       }
@@ -279,189 +137,189 @@ router.get('/my-history', async (req, res) => {
 });
 
 /**
- * GET /api/chatroom/attitudes/presets
- * Get attitude presets
+ * GET /api/user/chat-attitude
+ * Get user's current chat attitude settings
  */
-router.get('/attitudes/presets', async (req, res) => {
-  try {
-    const result = await db.query(`
-      SELECT * FROM attitude_presets
-      ORDER BY name
-    `);
-
-    res.json({
-      success: true,
-      presets: result.rows
-    });
-
-  } catch (error) {
-    console.error('Error fetching presets:', error);
-    res.status(500).json({ error: 'Failed to fetch presets' });
-  }
-});
-
-/**
- * POST /api/chatroom/attitudes/save
- * Save custom attitude
- */
-router.post('/attitudes/save', async (req, res) => {
+router.get('/user/chat-attitude', async (req, res) => {
   if (!req.session.userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  const { creatureId, attitudeName, enthusiasm, criticism, humor } = req.body;
-
-  if (!creatureId || !attitudeName || !enthusiasm || !criticism || !humor) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
-
-  if (enthusiasm < 1 || enthusiasm > 10 ||
-      criticism < 1 || criticism > 10 ||
-      humor < 1 || humor > 10) {
-    return res.status(400).json({ error: 'Invalid attitude values (must be 1-10)' });
-  }
-
   try {
-    // Verify creature ownership
-    const creatureCheck = await db.query(`
-      SELECT c.id FROM creatures c
-      JOIN user_rewards ur ON c.id = ur.creature_id
-      WHERE c.id = $1 AND ur.user_id = $2
-    `, [creatureId, req.session.userId]);
-
-    if (creatureCheck.rows.length === 0) {
-      return res.status(400).json({ error: 'Creature not found or not owned' });
-    }
-
-    // Upsert attitude
-    await db.query(`
-      INSERT INTO user_chat_attitudes (
-        user_id, creature_id, attitude_name,
-        enthusiasm, criticism, humor
-      ) VALUES ($1, $2, $3, $4, $5, $6)
-      ON CONFLICT (user_id, creature_id, attitude_name)
-      DO UPDATE SET
-        enthusiasm = EXCLUDED.enthusiasm,
-        criticism = EXCLUDED.criticism,
-        humor = EXCLUDED.humor,
-        updated_at = NOW()
-    `, [req.session.userId, creatureId, attitudeName, enthusiasm, criticism, humor]);
-
-    res.json({
-      success: true,
-      message: 'Attitude saved successfully'
-    });
-
-  } catch (error) {
-    console.error('Error saving attitude:', error);
-    res.status(500).json({ error: 'Failed to save attitude' });
-  }
-});
-
-/**
- * GET /api/chatroom/attitudes/my
- * Get user's saved attitudes
- */
-router.get('/attitudes/my', async (req, res) => {
-  if (!req.session.userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  const { creatureId } = req.query;
-
-  try {
-    let query = `
-      SELECT
-        uca.*,
-        c.creature_name
-      FROM user_chat_attitudes uca
-      JOIN creatures c ON uca.creature_id = c.id
-      WHERE uca.user_id = $1
-        AND uca.is_active = true
-    `;
-    const params = [req.session.userId];
-
-    if (creatureId) {
-      query += ` AND uca.creature_id = $2`;
-      params.push(creatureId);
-    }
-
-    query += ` ORDER BY uca.updated_at DESC`;
-
-    const result = await db.query(query, params);
-
-    res.json({
-      success: true,
-      attitudes: result.rows
-    });
-
-  } catch (error) {
-    console.error('Error fetching attitudes:', error);
-    res.status(500).json({ error: 'Failed to fetch attitudes' });
-  }
-});
-
-/**
- * POST /api/chatroom/calculate-glow
- * Calculate estimated glow (preview before participation)
- */
-router.post('/calculate-glow', async (req, res) => {
-  if (!req.session.userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  const { chatroomId, enthusiasm, criticism, humor } = req.body;
-
-  if (!chatroomId || !enthusiasm || !criticism || !humor) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
-
-  try {
-    // Get chatroom details
-    const chatroomResult = await db.query(`
-      SELECT video_category, video_subcategory
-      FROM chatroom_schedules
-      WHERE id = $1
-    `, [chatroomId]);
-
-    if (chatroomResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Chatroom not found' });
-    }
-
-    const chatroom = chatroomResult.rows[0];
-
-    // Get user's history for variety bonus
-    const historyResult = await db.query(`
-      SELECT enthusiasm, criticism, humor
-      FROM user_attitude_history
-      WHERE user_id = $1
-      ORDER BY participated_at DESC
-      LIMIT 5
-    `, [req.session.userId]);
-
-    // Calculate glow
-    const videoContext = {
-      category: chatroom.video_category,
-      subcategory: chatroom.video_subcategory
-    };
-
-    const userSettings = { enthusiasm, criticism, humor };
-    const glowResult = glowCalculator.calculateGlow(
-      userSettings,
-      videoContext,
-      historyResult.rows
+    const result = await db.query(
+      `SELECT * FROM user_chat_attitudes WHERE user_id = $1`,
+      [req.session.userId]
     );
 
+    if (result.rows.length === 0) {
+      // Return default attitude
+      return res.json({
+        success: true,
+        attitude: {
+          enthusiasm_level: 5,
+          criticism_level: 5,
+          humor_level: 5,
+          attitude_type: 'balanced'
+        },
+        isDefault: true
+      });
+    }
+
     res.json({
       success: true,
-      estimatedGlow: glowResult.glow,
-      breakdown: glowResult.breakdown
+      attitude: result.rows[0],
+      isDefault: false
     });
 
   } catch (error) {
-    console.error('Error calculating glow:', error);
-    res.status(500).json({ error: 'Failed to calculate glow' });
+    console.error('Error fetching attitude:', error);
+    res.status(500).json({ error: 'Failed to fetch attitude' });
   }
 });
+
+/**
+ * PUT /api/user/chat-attitude
+ * Update user's chat attitude settings
+ */
+router.put('/user/chat-attitude', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const { enthusiasm_level, criticism_level, humor_level } = req.body;
+
+  // Validate inputs
+  if (!enthusiasm_level || !criticism_level || !humor_level) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  if (enthusiasm_level < 1 || enthusiasm_level > 10 ||
+      criticism_level < 1 || criticism_level > 10 ||
+      humor_level < 1 || humor_level > 10) {
+    return res.status(400).json({
+      error: 'Invalid attitude values (must be 1-10)'
+    });
+  }
+
+  // Determine attitude type
+  const attitudeType = determineAttitudeType(enthusiasm_level, criticism_level, humor_level);
+
+  try {
+    await db.query(`
+      INSERT INTO user_chat_attitudes (
+        user_id,
+        enthusiasm_level,
+        criticism_level,
+        humor_level,
+        attitude_type
+      ) VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        enthusiasm_level = EXCLUDED.enthusiasm_level,
+        criticism_level = EXCLUDED.criticism_level,
+        humor_level = EXCLUDED.humor_level,
+        attitude_type = EXCLUDED.attitude_type,
+        updated_at = CURRENT_TIMESTAMP
+    `, [
+      req.session.userId,
+      enthusiasm_level,
+      criticism_level,
+      humor_level,
+      attitudeType
+    ]);
+
+    res.json({
+      success: true,
+      attitude: {
+        enthusiasm_level,
+        criticism_level,
+        humor_level,
+        attitude_type: attitudeType
+      },
+      message: 'Attitude updated successfully'
+    });
+
+  } catch (error) {
+    console.error('Error updating attitude:', error);
+    res.status(500).json({ error: 'Failed to update attitude' });
+  }
+});
+
+/**
+ * GET /api/chatroom/youtube/stats
+ * Get AI generation statistics
+ */
+router.get('/youtube/stats', async (req, res) => {
+  try {
+    const stats = await conversationService.getGenerationStats();
+
+    res.json({
+      success: true,
+      stats: {
+        totalConversations: parseInt(stats.total_conversations),
+        totalComments: parseInt(stats.total_comments),
+        totalCost: parseFloat(stats.total_cost || 0),
+        avgCostPerConversation: parseFloat(stats.avg_cost_per_conversation || 0),
+        avgDurationMs: parseFloat(stats.avg_duration_ms || 0),
+        lastGeneratedAt: stats.last_generated_at
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+/**
+ * GET /api/chatroom/youtube/validate
+ * Validate AI setup (admin/debug endpoint)
+ */
+router.get('/youtube/validate', async (req, res) => {
+  try {
+    const validation = await conversationService.validateAISetup();
+
+    res.json({
+      success: validation.success,
+      validation
+    });
+
+  } catch (error) {
+    console.error('Error validating AI setup:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to validate AI setup',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Helper: Determine attitude type from levels
+ */
+function determineAttitudeType(enthusiasm, criticism, humor) {
+  // Check for dominant attitude (>= 8)
+  if (enthusiasm >= 8) return 'enthusiastic';
+  if (criticism >= 8) return 'skeptical';
+  if (humor >= 8) return 'humorous';
+
+  // Check for balanced
+  const avg = (enthusiasm + criticism + humor) / 3;
+  const variance = Math.max(
+    Math.abs(enthusiasm - avg),
+    Math.abs(criticism - avg),
+    Math.abs(humor - avg)
+  );
+
+  if (variance <= 2) return 'balanced';
+
+  // Default to most prominent
+  const max = Math.max(enthusiasm, criticism, humor);
+  if (enthusiasm === max) return 'enthusiastic';
+  if (criticism === max) return 'skeptical';
+  if (humor === max) return 'humorous';
+
+  return 'balanced';
+}
 
 module.exports = router;
