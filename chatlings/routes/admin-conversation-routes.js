@@ -18,6 +18,14 @@ function getConversationService() {
 }
 
 /**
+ * GET /api/admin/test
+ * Test endpoint (no auth required)
+ */
+router.get('/test', async (req, res) => {
+    res.json({ success: true, message: 'Admin routes are working!' });
+});
+
+/**
  * GET /api/admin/users
  * Get all users for admin selection
  */
@@ -44,7 +52,12 @@ router.get('/users', async (req, res) => {
 
     } catch (error) {
         console.error('Error fetching users:', error);
-        res.status(500).json({ error: 'Failed to fetch users' });
+        console.error('Error stack:', error.stack);
+        res.status(500).json({
+            error: 'Failed to fetch users',
+            message: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 });
 

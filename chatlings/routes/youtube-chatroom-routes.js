@@ -12,7 +12,13 @@ const YouTubeConversationService = require('../services/youtube-conversation-ser
 let conversationService = null;
 function getConversationService() {
   if (!conversationService) {
-    conversationService = new YouTubeConversationService();
+    try {
+      conversationService = new YouTubeConversationService();
+      console.log('✅ YouTubeConversationService initialized');
+    } catch (error) {
+      console.error('❌ Failed to initialize YouTubeConversationService:', error);
+      throw error;
+    }
   }
   return conversationService;
 }
@@ -68,7 +74,12 @@ router.get('/youtube/videos', async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching conversations:', error);
-    res.status(500).json({ error: 'Failed to fetch conversations' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({
+      error: 'Failed to fetch conversations',
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
