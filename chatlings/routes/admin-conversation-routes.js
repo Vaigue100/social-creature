@@ -5,10 +5,17 @@
 
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const db = require('../services/db');
 const YouTubeConversationService = require('../services/youtube-conversation-service');
 
-const conversationService = new YouTubeConversationService();
+// Lazy initialize service (only when first API call is made)
+let conversationService = null;
+function getConversationService() {
+  if (!conversationService) {
+    conversationService = new YouTubeConversationService();
+  }
+  return conversationService;
+}
 
 /**
  * GET /api/admin/users
@@ -143,7 +150,7 @@ router.get('/conversation/user/:conversationId/:userId', async (req, res) => {
             };
 
         // Customize conversation
-        const customized = await conversationService.customizer.customizeConversation(
+        const customized = await getConversationService().customizer.customizeConversation(
             baseConv,
             { id: userId },
             attitude

@@ -5,11 +5,17 @@
 
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const db = require('../services/db');
 const YouTubeConversationService = require('../services/youtube-conversation-service');
 
-// Initialize service
-const conversationService = new YouTubeConversationService();
+// Lazy initialize service (only when first API call is made)
+let conversationService = null;
+function getConversationService() {
+  if (!conversationService) {
+    conversationService = new YouTubeConversationService();
+  }
+  return conversationService;
+}
 
 /**
  * GET /api/chatroom/youtube/latest
@@ -21,7 +27,7 @@ router.get('/youtube/latest', async (req, res) => {
   }
 
   try {
-    const conversation = await conversationService.getConversationForUser(req.session.userId);
+    const conversation = await getConversationService().getConversationForUser(req.session.userId);
 
     res.json({
       success: true,
@@ -52,7 +58,7 @@ router.get('/youtube/latest', async (req, res) => {
 router.get('/youtube/videos', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
-    const conversations = await conversationService.getAllConversations(limit);
+    const conversations = await getConversationService().getAllConversations(limit);
 
     res.json({
       success: true,
@@ -76,7 +82,7 @@ router.get('/youtube/video/:videoId', async (req, res) => {
   }
 
   try {
-    const conversation = await conversationService.getConversationForUser(
+    const conversation = await getConversationService().getConversationForUser(
       req.session.userId,
       req.params.videoId
     );
@@ -114,7 +120,7 @@ router.get('/youtube/history', async (req, res) => {
 
   try {
     const limit = parseInt(req.query.limit) || 10;
-    const history = await conversationService.getUserConversationHistory(req.session.userId, limit);
+    const history = await getConversationService().getUserConversationHistory(req.session.userId, limit);
 
     // Calculate stats
     const totalGlow = history.reduce((sum, h) => sum + h.total_glow_change, 0);
@@ -251,7 +257,7 @@ router.put('/user/chat-attitude', async (req, res) => {
  */
 router.get('/youtube/stats', async (req, res) => {
   try {
-    const stats = await conversationService.getGenerationStats();
+    const stats = await getConversationService().getGenerationStats();
 
     res.json({
       success: true,
@@ -277,7 +283,7 @@ router.get('/youtube/stats', async (req, res) => {
  */
 router.get('/youtube/validate', async (req, res) => {
   try {
-    const validation = await conversationService.validateAISetup();
+    const validation = await getConversationService().validateAISetup();
 
     res.json({
       success: validation.success,
