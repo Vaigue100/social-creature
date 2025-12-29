@@ -7,6 +7,9 @@
  * 3. Store in database for user viewing
  */
 
+// Load environment variables first
+require('dotenv').config();
+
 const YouTubeConversationService = require('../services/youtube-conversation-service');
 const { Pool } = require('pg');
 
@@ -28,11 +31,10 @@ async function fetchTrendingVideos(limit = 10) {
     SELECT
       id,
       youtube_video_id,
-      title,
-      description,
-      thumbnail_url,
-      category,
-      subcategory,
+      video_title as title,
+      video_description as description,
+      video_thumbnail_url as thumbnail_url,
+      video_category as category,
       is_active
     FROM trending_topics
     WHERE is_active = true
@@ -160,8 +162,6 @@ module.exports = {
 
 // Run standalone if executed directly
 if (require.main === module) {
-  require('dotenv').config();
-
   // Check for immediate run
   if (process.argv.includes('--now') || process.env.RUN_NOW === 'true') {
     console.log('🚀 Running conversation generation immediately...\n');

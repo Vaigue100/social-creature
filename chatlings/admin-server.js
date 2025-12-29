@@ -28,6 +28,8 @@ const PORT = process.env.PORT || 3000;
 // Storage configuration
 const ARTWORK_STORAGE_MODE = process.env.ARTWORK_STORAGE_MODE || 'azure';
 const AZURE_ARTWORK_BASE_URL = process.env.AZURE_ARTWORK_BASE_URL || 'https://chatlingsdevlyg7hq.blob.core.windows.net/artwork';
+const AZURE_ANIMATIONS_BASE_URL = process.env.AZURE_ANIMATIONS_BASE_URL || 'https://chatlingsdevlyg7hq.blob.core.windows.net/animations';
+const AZURE_THUMBS_BASE_URL = process.env.AZURE_THUMBS_BASE_URL || 'https://chatlingsdevlyg7hq.blob.core.windows.net/thumbs';
 
 // Database config
 const config = { ...require('./scripts/db-config'), database: 'chatlings' };
@@ -65,20 +67,31 @@ let animationsContainerClient = null;
 (async function initializeAzure() {
   try {
     const { BlobServiceClient } = require('@azure/storage-blob');
+    const { DefaultAzureCredential } = require('@azure/identity');
 
-    const connString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+    // Use Managed Identity on Azure, connection string locally
+    if (process.env.WEBSITE_INSTANCE_ID) {
+      // Running on Azure - use Managed Identity
+      console.log('🔐 Using Azure Managed Identity for storage authentication');
+      const credential = new DefaultAzureCredential();
+      const accountName = 'chatlingsdevlyg7hq';
+      const accountUrl = `https://${accountName}.blob.core.windows.net`;
+      blobServiceClient = new BlobServiceClient(accountUrl, credential);
+      console.log(`✓ Azure Storage configured with Managed Identity (Account: ${accountName})`);
+    } else {
+      // Running locally - use connection string
+      const connString = process.env.AZURE_STORAGE_CONNECTION_STRING;
 
-    if (!connString) {
-      console.error('❌ AZURE_STORAGE_CONNECTION_STRING is not set');
-      console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('AZURE') || k.includes('STORAGE')));
-      throw new Error('AZURE_STORAGE_CONNECTION_STRING environment variable is required');
+      if (!connString) {
+        console.error('❌ AZURE_STORAGE_CONNECTION_STRING is not set');
+        console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('AZURE') || k.includes('STORAGE')));
+        throw new Error('AZURE_STORAGE_CONNECTION_STRING environment variable is required for local development');
+      }
+
+      const accountMatch = connString.match(/AccountName=([^;]+)/);
+      console.log(`✓ Azure Storage connection string found (Account: ${accountMatch ? accountMatch[1] : 'unknown'})`);
+      blobServiceClient = BlobServiceClient.fromConnectionString(connString);
     }
-
-    // Log connection string info (without exposing the key)
-    const accountMatch = connString.match(/AccountName=([^;]+)/);
-    console.log(`✓ Azure Storage connection string found (Account: ${accountMatch ? accountMatch[1] : 'unknown'})`);
-
-    blobServiceClient = BlobServiceClient.fromConnectionString(connString);
 
     // Set up containers
     const artworkContainer = process.env.AZURE_STORAGE_CONTAINER_ARTWORK || 'artwork';
@@ -89,12 +102,18 @@ let animationsContainerClient = null;
     thumbsContainerClient = blobServiceClient.getContainerClient(thumbsContainer);
     animationsContainerClient = blobServiceClient.getContainerClient(animationsContainer);
 
-    // Ensure containers exist (synchronously)
-    await Promise.all([
-      artworkContainerClient.createIfNotExists({ access: 'blob' }),
-      thumbsContainerClient.createIfNotExists({ access: 'blob' }),
-      animationsContainerClient.createIfNotExists({ access: 'blob' })
-    ]);
+    // Try to ensure containers exist (may fail if lacking permissions, but containers should already exist)
+    try {
+      await Promise.all([
+        artworkContainerClient.createIfNotExists({ access: 'blob' }),
+        thumbsContainerClient.createIfNotExists({ access: 'blob' }),
+        animationsContainerClient.createIfNotExists({ access: 'blob' })
+      ]);
+      console.log('✓ Container creation/verification successful');
+    } catch (containerError) {
+      console.warn('⚠️  Could not create/verify containers (they may already exist):', containerError.message);
+      console.warn('   If managed identity is used, ensure it has "Storage Blob Data Contributor" role');
+    }
 
     console.log(`✓ Azure Blob Storage configured:`);
     console.log(`  - Artwork: ${artworkContainer}`);
@@ -250,152 +269,42 @@ app.use('/admin', express.static(path.join(__dirname, 'admin')));
 // Azure Blob Storage Proxy Routes - Serve files from Azure
 // ============================================================================
 
-// Artwork proxy route
-app.get('/artwork/*', requireAuth, async (req, res) => {
-  try {
-    if (!artworkContainerClient) {
-      return res.status(503).send('Storage service not available');
-    }
-
-    const blobPath = req.params[0]; // Everything after /artwork/
-    const blockBlobClient = artworkContainerClient.getBlockBlobClient(blobPath);
-
-    // Check if blob exists
-    const exists = await blockBlobClient.exists();
-    if (!exists) {
-      return res.status(404).send('File not found');
-    }
-
-    // Get blob properties for content type
-    const properties = await blockBlobClient.getProperties();
-
-    // Stream the blob to response
-    const downloadResponse = await blockBlobClient.download();
-    res.setHeader('Content-Type', properties.contentType || 'application/octet-stream');
-    res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
-    downloadResponse.readableStreamBody.pipe(res);
-  } catch (error) {
-    console.error('Error serving artwork from Azure:', error);
-    if (!res.headersSent) {
-      res.status(500).send('Error loading file');
-    }
-  }
+// Artwork route - redirect to direct Azure blob URL (artwork is public)
+app.get('/artwork/*', (req, res) => {
+  const blobPath = req.params[0];
+  const directUrl = `${AZURE_ARTWORK_BASE_URL}/${blobPath}`;
+  res.redirect(directUrl);
 });
 
-// User avatar proxy route
-app.get('/user/*', requireAuth, async (req, res) => {
-  try {
-    if (!artworkContainerClient) {
-      return res.status(503).send('Storage service not available');
-    }
-
-    const blobPath = `user/${req.params[0]}`; // Add 'user/' prefix
-    const blockBlobClient = artworkContainerClient.getBlockBlobClient(blobPath);
-
-    // Check if blob exists
-    const exists = await blockBlobClient.exists();
-    if (!exists) {
-      return res.status(404).send('File not found');
-    }
-
-    // Get blob properties for content type
-    const properties = await blockBlobClient.getProperties();
-
-    // Stream the blob to response
-    const downloadResponse = await blockBlobClient.download();
-    res.setHeader('Content-Type', properties.contentType || 'image/png');
-    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
-    downloadResponse.readableStreamBody.pipe(res);
-  } catch (error) {
-    console.error('Error serving user avatar from Azure:', error);
-    if (!res.headersSent) {
-      res.status(500).send('Error loading file');
-    }
-  }
+// User avatar route - redirect to direct Azure blob URL (avatars are public)
+// Match image files with common extensions (avatars)
+// Static files (HTML/JS/CSS) are still served by the middleware above
+app.get(/^\/user\/.*\.(png|jpg|jpeg|gif|webp)$/, (req, res) => {
+  const filename = req.path.replace('/user/', ''); // Get filename after /user/
+  const blobPath = `user/${filename}`;
+  const directUrl = `${AZURE_ARTWORK_BASE_URL}/${blobPath}`;
+  res.redirect(directUrl);
 });
 
-// Images (linked artwork) proxy route
-app.get('/images/*', requireAuth, async (req, res) => {
-  try {
-    if (!artworkContainerClient) {
-      return res.status(503).send('Storage service not available');
-    }
-
-    const blobPath = `linked/${req.params[0]}`; // Add 'linked/' prefix
-    const blockBlobClient = artworkContainerClient.getBlockBlobClient(blobPath);
-
-    const exists = await blockBlobClient.exists();
-    if (!exists) {
-      return res.status(404).send('File not found');
-    }
-
-    const properties = await blockBlobClient.getProperties();
-    const downloadResponse = await blockBlobClient.download();
-    res.setHeader('Content-Type', properties.contentType || 'application/octet-stream');
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
-    downloadResponse.readableStreamBody.pipe(res);
-  } catch (error) {
-    console.error('Error serving image from Azure:', error);
-    if (!res.headersSent) {
-      res.status(500).send('Error loading file');
-    }
-  }
+// Images (linked artwork) route - redirect to direct Azure blob URL (images are public)
+app.get('/images/*', (req, res) => {
+  const blobPath = `linked/${req.params[0]}`; // Add 'linked/' prefix
+  const directUrl = `${AZURE_ARTWORK_BASE_URL}/${blobPath}`;
+  res.redirect(directUrl);
 });
 
-// Thumbnails proxy route
-app.get('/thumbs/*', requireAuth, async (req, res) => {
-  try {
-    if (!thumbsContainerClient) {
-      return res.status(503).send('Storage service not available');
-    }
-
-    const blobPath = req.params[0];
-    const blockBlobClient = thumbsContainerClient.getBlockBlobClient(blobPath);
-
-    const exists = await blockBlobClient.exists();
-    if (!exists) {
-      return res.status(404).send('File not found');
-    }
-
-    const properties = await blockBlobClient.getProperties();
-    const downloadResponse = await blockBlobClient.download();
-    res.setHeader('Content-Type', properties.contentType || 'application/octet-stream');
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
-    downloadResponse.readableStreamBody.pipe(res);
-  } catch (error) {
-    console.error('Error serving thumbnail from Azure:', error);
-    if (!res.headersSent) {
-      res.status(500).send('Error loading file');
-    }
-  }
+// Thumbnails route - redirect to direct Azure blob URL (thumbs are public)
+app.get('/thumbs/*', (req, res) => {
+  const blobPath = req.params[0];
+  const directUrl = `${AZURE_THUMBS_BASE_URL}/${blobPath}`;
+  res.redirect(directUrl);
 });
 
-// Animations proxy route
-app.get('/animations/*', requireAuth, async (req, res) => {
-  try {
-    if (!animationsContainerClient) {
-      return res.status(503).send('Storage service not available');
-    }
-
-    const blobPath = req.params[0];
-    const blockBlobClient = animationsContainerClient.getBlockBlobClient(blobPath);
-
-    const exists = await blockBlobClient.exists();
-    if (!exists) {
-      return res.status(404).send('File not found');
-    }
-
-    const properties = await blockBlobClient.getProperties();
-    const downloadResponse = await blockBlobClient.download();
-    res.setHeader('Content-Type', properties.contentType || 'video/mp4');
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
-    downloadResponse.readableStreamBody.pipe(res);
-  } catch (error) {
-    console.error('Error serving animation from Azure:', error);
-    if (!res.headersSent) {
-      res.status(500).send('Error loading file');
-    }
-  }
+// Animations route - redirect to direct Azure blob URL (animations are public)
+app.get('/animations/*', (req, res) => {
+  const blobPath = req.params[0];
+  const directUrl = `${AZURE_ANIMATIONS_BASE_URL}/${blobPath}`;
+  res.redirect(directUrl);
 });
 
 // Handle favicon requests (just return 204 No Content to avoid 404 errors)
@@ -468,6 +377,13 @@ app.get('/manifest.json', (req, res) => {
 
 // Redirect /admin to admin index
 app.get('/admin', (req, res) => res.redirect('/index.html'));
+
+// Mount AI Conversation Routes
+const youtubeChatroomRoutes = require('./routes/youtube-chatroom-routes');
+const adminConversationRoutes = require('./routes/admin-conversation-routes');
+
+app.use('/api/chatroom', youtubeChatroomRoutes);
+app.use('/api/admin', adminConversationRoutes);
 
 /**
  * Get next creature that needs image selection
@@ -4104,29 +4020,16 @@ app.get('/api/user/team/hierarchy/available', async (req, res) => {
       is_filled: !!architectPos,
       current_creature_name: architectPos?.creature_name || null,
       position_id: architectPos?.id || null,
-      user_id: req.session.userId  // Add user context
+      user_id: req.session.userId
     };
     available.push(architectData);
 
-    // Level 2: Prime (always show, parent is architect)
-    const primePos = current.rows.find(r => r.position_type === 'prime');
-    available.push({
-      position_type: 'prime',
-      level: 2,
-      parent_position_id: architectPos?.id || null,
-      parent_type: 'architect',
-      is_filled: !!primePos,
-      current_creature_name: primePos?.creature_name || null,
-      position_id: primePos?.id || null,
-      user_id: req.session.userId
-    });
-
-    // Level 3: Dept heads (always show, parent is architect)
-    ['strategist', 'innovator', 'curator', 'sentinel', 'pathfinder'].forEach(type => {
+    // Level 2: Department heads (6 positions - always show, parent is architect)
+    ['prime', 'strategist', 'innovator', 'curator', 'sentinel', 'pathfinder'].forEach(type => {
       const deptPos = current.rows.find(r => r.position_type === type);
       available.push({
         position_type: type,
-        level: 3,
+        level: 2,
         parent_position_id: architectPos?.id || null,
         parent_type: 'architect',
         is_filled: !!deptPos,
@@ -4136,33 +4039,45 @@ app.get('/api/user/team/hierarchy/available', async (req, res) => {
       });
     });
 
-    // Level 4: Apprentices (one for Prime and one per dept head)
-    // Prime's apprentice (if Prime exists)
-    if (primePos) {
-      const primeApprentice = current.rows.find(r => r.level === 4 && r.parent_position_id === primePos.id);
-      available.push({
-        position_type: 'apprentice',
-        level: 4,
-        parent_position_id: primePos.id,
-        parent_type: 'prime',
-        is_filled: !!primeApprentice,
-        current_creature_name: primeApprentice?.creature_name || null,
-        position_id: primeApprentice?.id || null
-      });
-    }
+    // Level 3: Sub-roles (3 under each level 2 position = 18 total)
+    const level2Positions = current.rows.filter(r => r.level === 2);
+    const subRoleTypes = ['senior', 'specialist', 'associate'];
 
-    // Dept heads' apprentices
-    const deptHeads = current.rows.filter(r => r.level === 3);
-    deptHeads.forEach(head => {
-      const apprentice = current.rows.find(r => r.level === 4 && r.parent_position_id === head.id);
+    level2Positions.forEach(level2Pos => {
+      subRoleTypes.forEach(subRoleType => {
+        const subRole = current.rows.find(
+          r => r.level === 3 &&
+               r.parent_position_id === level2Pos.id &&
+               r.position_type === subRoleType
+        );
+        available.push({
+          position_type: subRoleType,
+          level: 3,
+          parent_position_id: level2Pos.id,
+          parent_type: level2Pos.position_type,
+          is_filled: !!subRole,
+          current_creature_name: subRole?.creature_name || null,
+          position_id: subRole?.id || null,
+          user_id: req.session.userId
+        });
+      });
+    });
+
+    // Level 4: Apprentices (1 under each level 3 position = 18 total)
+    const level3Positions = current.rows.filter(r => r.level === 3);
+    level3Positions.forEach(level3Pos => {
+      const apprentice = current.rows.find(
+        r => r.level === 4 && r.parent_position_id === level3Pos.id
+      );
       available.push({
         position_type: 'apprentice',
         level: 4,
-        parent_position_id: head.id,
-        parent_type: head.position_type,
+        parent_position_id: level3Pos.id,
+        parent_type: level3Pos.position_type,
         is_filled: !!apprentice,
         current_creature_name: apprentice?.creature_name || null,
-        position_id: apprentice?.id || null
+        position_id: apprentice?.id || null,
+        user_id: req.session.userId
       });
     });
 
